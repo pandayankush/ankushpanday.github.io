@@ -274,9 +274,9 @@ resource "aws_vpc_endpoint" "s3" {
           <li><strong>Forgetting <code>private_dns_enabled</code>:</strong> Without this, your application code needs to be modified to use the endpoint's unique DNS name. With it, the standard SDK resolution just works.</li>
           <li><strong>No Endpoint Policies:</strong> By default, an endpoint allows all actions. Always scope your policies to the minimum required resources.</li>
         </ul>
-        <div style="background: var(--aws-header); color: white; padding: 30px; border-radius: 8px; margin: 40px 0; border-left: 6px solid var(--aws-orange);">
-          <h4 style="margin-top: 0; color: var(--aws-orange); font-size: 20px;">The Golden Rule:</h4>
-          <p style="margin-bottom: 0; font-size: 16px; line-height: 1.6;">
+        <div style="background: var(--aws-highlight); color: var(--aws-text); padding: 30px; border-radius: 8px; margin: 40px 0; border-left: 6px solid var(--aws-orange); box-shadow: 0 2px 15px rgba(0,0,0,0.05);">
+          <h4 style="margin-top: 0; color: var(--aws-orange); font-size: 22px; font-weight: 800;">The Golden Rule:</h4>
+          <p style="margin-bottom: 0; font-size: 17px; line-height: 1.6; font-weight: 500;">
             Use <strong>Gateway Endpoints</strong> for S3 and DynamoDB — always, it's free. Use <strong>Interface Endpoints</strong> for all other AWS services in security-sensitive or high-throughput environments. Use <strong>NAT Gateway</strong> only for traffic that genuinely needs to reach the public internet.
           </p>
         </div>

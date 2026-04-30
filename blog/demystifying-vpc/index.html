@@ -168,6 +168,23 @@
   }
 }</code></pre>
 
+        <p><strong>Under the Hood:</strong> While modules are great, an architect should understand the raw resources. Here is the manual breakdown of what that module is doing:</p>
+        <pre style="background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 13px; border-left: 4px solid var(--aws-orange);"><code>resource "aws_vpc" "main" {
+  cidr_block           = "10.0.0.0/16"
+  enable_dns_support   = true
+  enable_dns_hostnames = true
+}
+
+resource "aws_subnet" "private" {
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = "10.0.1.0/24"
+  availability_zone = "eu-west-1a"
+}
+
+resource "aws_internet_gateway" "igw" {
+  vpc_id = aws_vpc.main.id
+}</code></pre>
+
         <h4>Public vs. Private Subnets: The "Internet Gateway" Rule</h4>
         <p>A subnet is <strong>Public</strong> if its route table has a path to an <strong>Internet Gateway (IGW)</strong>. A <strong>Private Subnet</strong> has no direct path to the IGW and must use a <strong>NAT Gateway</strong> located in a public subnet to reach the outside world securely.</p>
 
@@ -181,9 +198,18 @@
         <h4>Visibility & Troubleshooting: VPC Flow Logs</h4>
         <p>For high-authority environments, <strong>VPC Flow Logs</strong> are non-negotiable. They capture information about the IP traffic going to and from network interfaces in your VPC. </p>
         <ul>
-          <li><strong>Athena for Querying:</strong> Send your logs to S3 and use Amazon Athena to run SQL queries like <code>SELECT * FROM flow_logs WHERE action='REJECT'</code> to find blocked traffic instantly.</li>
-          <li><strong>The REJECT Action:</strong> This is your primary debugging tool. If an application is failing, the first thing an architect checks is if NACLs or Security Groups are rejecting the packets.</li>
+          <li><strong>Athena for Querying:</strong> Send your logs to S3 and use Amazon Athena to run SQL queries. A classic "Top Talkers" query to find bandwidth hogs looks like this:</li>
+          <pre style="background: #232f3e; color: #f8f8f2; padding: 15px; border-radius: 4px; font-size: 12px;"><code>SELECT srcaddr, dstaddr, sum(bytes) as total_bytes
+FROM vpc_flow_logs
+WHERE action = 'ACCEPT'
+GROUP BY srcaddr, dstaddr
+ORDER BY total_bytes DESC
+LIMIT 10;</code></pre>
+          <li><strong>The REJECT Action:</strong> This is your primary debugging tool. If an application is failing, check if NACLs are rejecting packets before blaming the code.</li>
         </ul>
+
+        <h4>VPC Sharing (Resource Access Manager)</h4>
+        <p>In large enterprises, we often use **VPC Sharing** via AWS RAM. Instead of every team creating their own VPC (leading to a networking mess), a central Cloud Platform team manages a single VPC and "shares" specific subnets with different accounts. This centralizes control over IP space and connectivity while letting teams remain autonomous.</p>
 
         <h4>VPC Architecture Decision Matrix</h4>
         <table style="width: 100%; border-collapse: collapse; margin: 30px 0; font-size: 14px;">

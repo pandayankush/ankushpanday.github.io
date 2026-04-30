@@ -95,7 +95,7 @@
         <div style="display: flex; gap: 12px; align-items: center; color: var(--aws-text-light); font-size: 14px; flex-wrap: wrap;">
           <span>April 30, 2026</span>
           <span>•</span>
-          <span>15 min read</span>
+          <span>12 min read</span>
           <span class="tag purple">Advanced Architecture</span>
           <span class="tag orange">Enterprise Scaling</span>
         </div>
@@ -121,20 +121,31 @@
         </ul>
 
         <h4>2. Transit Gateway (TGW): The Central Hub</h4>
-        <p>AWS Transit Gateway acts as a regional network hub. It simplifies your topology by moving away from point-to-point peering to a hub-and-spoke model.</p>
-        <pre style="background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 13px; border-left: 4px solid var(--aws-orange);"><code># Hub-and-Spoke TGW Attachment
-resource "aws_ec2_transit_gateway_vpc_attachment" "spoke" {
-  subnet_ids         = [aws_subnet.private_a.id, aws_subnet.private_b.id]
+        <p>AWS Transit Gateway acts as a regional network hub. For enterprise-scale management, we combine TGW with AWS RAM for multi-account sharing and dedicated route tables for isolation.</p>
+        <pre style="background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 13px; border-left: 4px solid var(--aws-orange);"><code># Create the Gateway
+resource "aws_ec2_transit_gateway" "main" {
+  description = "Organization Central Hub"
+}
+
+# Create an Isolated Route Table
+resource "aws_ec2_transit_gateway_route_table" "isolated" {
   transit_gateway_id = aws_ec2_transit_gateway.main.id
-  vpc_id             = aws_vpc.spoke.id
-  
-  # Appliance Mode for centralized stateful inspection
-  appliance_mode_support = "enable" 
+}
+
+# Share via Resource Access Manager (RAM)
+resource "aws_ram_resource_share" "tgw_share" {
+  name                      = "tgw-share"
+  allow_external_principals = false
+}
+
+resource "aws_ram_resource_association" "tgw" {
+  resource_arn       = aws_ec2_transit_gateway.main.arn
+  resource_share_arn = aws_ram_resource_share.tgw_share.arn
 }</code></pre>
         <ul>
+          <li><strong>Inter-Region TGW Peering:</strong> You can peer Transit Gateways in different regions. This allows you to build a global hub-and-spoke network where a VPC in London can talk to a VPC in New York over the AWS private backbone.</li>
           <li><strong>Route Table Isolation:</strong> You can create multiple TGW route tables to segment traffic. For example, preventing your "Dev" VPC spoke from ever reaching the "Prod" VPC spoke at the hub level.</li>
-          <li><strong>Resource Access Manager (RAM):</strong> In multi-account setups, you use AWS RAM to share a single TGW across your entire AWS Organization.</li>
-          <li><strong>Cost Model:</strong> Expect to pay ~$0.05 per GB of data processed plus ~$0.07 per attachment per hour. For low-traffic VPCs, Peering is cheaper; for complex routing, TGW is superior.</li>
+          <li><strong>Resource Access Manager (RAM):</strong> As shown above, you use RAM to share a single TGW across your entire AWS Organization, allowing different accounts to attach their VPCs to your hub.</li>
         </ul>
 
         <h4>3. Hybrid Connectivity: VPN vs. Direct Connect</h4>
@@ -171,7 +182,8 @@ resource "aws_ec2_transit_gateway_vpc_attachment" "spoke" {
             </tr>
           </tbody>
         </table>
-        <p><strong>Pro Architect Pattern:</strong> Use Direct Connect as your primary path and a Site-to-Site VPN as a cost-effective backup. Use **BGP (Border Gateway Protocol)** for dynamic route propagation and automatic failover.</p>
+        <p><strong>BGP & Dynamic Propagation:</strong> Use **BGP (Border Gateway Protocol)** for dynamic route propagation. This ensures that if a new subnet is added on-premises or a connection fails, the network automatically updates its routing tables without manual intervention—a massive advantage over rigid static routes in a production environment.</p>
+        <p><strong>Pro Architect Pattern:</strong> Use Direct Connect as your primary path and a Site-to-Site VPN as a cost-effective backup, with BGP weightings set to prefer the DX line.</p>
 
         <h4>4. PrivateLink: Secure Cross-Account Connectivity</h4>
         <p>While standard VPC Endpoints give you access to AWS services, <strong>PrivateLink</strong> allows you to expose your own services (Endpoint Services) to other VPCs—even across different AWS accounts—without peering. For a deep dive on this vs NAT Gateway, see our <a href="../nat-gateway-vs-privatelink/">comparison guide</a>.</p>

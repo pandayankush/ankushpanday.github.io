@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Advanced VPC Concepts: Scaling & High Performance | Ankush Panday</title>
+  <meta name="description" content="Deep dive into advanced cloud networking: Transit Gateway, VPC Peering, PrivateLink, and Global Accelerator.">
+  <link rel="stylesheet" href="../../style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    .blog-page-container {
+      max-width: 1000px;
+      margin: 100px auto 40px auto;
+      padding: 0 20px;
+    }
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--aws-blue);
+      text-decoration: none;
+      font-weight: 500;
+      margin-bottom: 24px;
+      transition: color 0.2s;
+    }
+    .back-btn:hover {
+      color: var(--aws-orange);
+    }
+    .blog-content-card {
+      background: var(--aws-white);
+      border: 1px solid var(--aws-border);
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    }
+    .blog-header {
+      background: #f8f9fa;
+      padding: 40px;
+      border-bottom: 1px solid var(--aws-border);
+    }
+    .blog-body {
+      padding: 40px;
+      line-height: 1.8;
+      font-size: 16px;
+    }
+    .blog-body h4 {
+      margin-top: 32px;
+      font-size: 20px;
+    }
+    .blog-body p {
+      margin-bottom: 20px;
+    }
+    .blog-body ul {
+      margin-bottom: 24px;
+      padding-left: 24px;
+    }
+    .blog-body li {
+      margin-bottom: 12px;
+    }
+    @media (max-width: 768px) {
+      .blog-header, .blog-body {
+        padding: 24px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- TOP NAV -->
+  <nav class="aws-topnav">
+    <a href="../../" class="logo">
+      <i class="fa-solid fa-cloud" style="color: var(--aws-orange); font-size: 20px;"></i>
+      <span>Ankush Panday</span>
+    </a>
+    <div class="nav-spacer"></div>
+    <div class="nav-icons">
+      <a href="../../index.html" class="nav-icon-btn" style="text-decoration: none;">Portfolio Home</a>
+    </div>
+  </nav>
+
+  <div class="blog-page-container">
+    <a href="../../index.html#blogs" class="back-btn">
+      <i class="fa-solid fa-arrow-left"></i> Back to Portfolio
+    </a>
+
+    <article class="blog-content-card">
+      <header class="blog-header">
+        <h1 style="font-size: 32px; color: var(--aws-text); margin-bottom: 16px;">Advanced VPC Concepts: Scaling & High Performance</h1>
+        <div style="display: flex; gap: 12px; align-items: center; color: var(--aws-text-light); font-size: 14px;">
+          <span>Posted on April 30, 2026</span>
+          <span>•</span>
+          <span>15 min read</span>
+          <span class="tag purple" style="padding: 4px 10px; font-size: 12px;">Advanced Architecture</span>
+        </div>
+      </header>
+
+      <div class="blog-body">
+        <img src="../../AWS_ADVANCED_VPC_CONCEPTS.png" alt="Advanced VPC Architecture" style="display: block; max-width: 100%; margin: 0 auto 32px auto; border-radius: 8px; border: 1px solid var(--aws-border);">
+        
+        <h4 style="color: var(--aws-blue);">Taking the Network to the Next Level</h4>
+        <p>Once you've mastered the basics of subnets and firewalls, enterprise-scale cloud architecture demands more complex connectivity patterns. In this post, we explore how to scale, connect, and optimize VPCs for global workloads.</p>
+
+        <h4 style="color: var(--aws-blue);">1. VPC Peering: The Private Highway</h4>
+        <p>VPC Peering is a direct network connection between two VPCs that allows you to route traffic between them using private IP addresses.</p>
+        <ul>
+          <li><strong>Cross-Region Peering:</strong> Peer VPCs across different AWS regions. Your data stays on the AWS global backbone.</li>
+          <li><strong>The "Transitive" Trap:</strong> VPC Peering is <strong>not transitive</strong>. If A is peered with B, and B with C, A cannot talk to C through B.</li>
+          <li><strong>Overlapping CIDRs:</strong> You cannot peer VPCs if their IP ranges overlap.</li>
+        </ul>
+
+        <h4 style="color: var(--aws-blue);">2. Transit Gateway: The Central Hub</h4>
+        <p>As your organization grows to hundreds of VPCs, managing thousands of peering connections becomes impossible. <strong>AWS Transit Gateway (TGW)</strong> acts as a central hub-and-spoke router.</p>
+        <ul>
+          <li>Connect thousands of VPCs and on-premises networks to a single gateway.</li>
+          <li>Supports <strong>Transitive Routing</strong>.</li>
+          <li>Simplifies management with a single point of control.</li>
+        </ul>
+
+        <h4 style="color: var(--aws-blue);">3. Hybrid Connectivity: VPN vs. Direct Connect</h4>
+        <ul>
+          <li><strong>Site-to-Site VPN:</strong> Quick to deploy, uses the public internet (encrypted).</li>
+          <li><strong>AWS Direct Connect (DX):</strong> A dedicated physical line from your data center to AWS. Consistent performance and lower latency.</li>
+        </ul>
+
+        <h4 style="color: var(--aws-blue);">4. PrivateLink & VPC Endpoints</h4>
+        <ul>
+          <li><strong>Gateway Endpoints:</strong> Free endpoints for S3 and DynamoDB.</li>
+          <li><strong>Interface Endpoints (PrivateLink):</strong> Reach services privately across different accounts/VPCs without touching the internet.</li>
+        </ul>
+
+        <h4 style="color: var(--aws-blue);">5. Global Acceleration</h4>
+        <p><strong>AWS Global Accelerator</strong> uses the AWS global network to route your users' traffic, improving performance by up to 60% by avoiding internet congestion.</p>
+
+        <div style="background: var(--aws-highlight); padding: 24px; border-left: 5px solid var(--aws-orange); margin-top: 40px;">
+          <h4 style="margin-top: 0; color: var(--aws-orange);">Expert Architect Tip: The Overlap Nightmare</h4>
+          <p style="margin-bottom: 0;">
+            Overlapping CIDR blocks are a common headache during mergers. Standard Peering or TGW will fail. To resolve this, use <strong>AWS PrivateLink</strong> to expose specific services across the overlap, or implement <strong>Private NAT Gateways</strong>.
+          </p>
+        </div>
+      </div>
+    </article>
+  </div>
+
+  <footer class="aws-footer">
+    Privacy | Site Terms | © 2026, Ankush Panday Portfolio.
+  </footer>
+
+</body>
+</html>

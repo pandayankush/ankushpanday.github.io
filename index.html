@@ -441,7 +441,7 @@
             </div>
             
             <div id="blog1-content" style="display: none; padding: 24px; font-size: 14px; line-height: 1.7; color: var(--aws-text);">
-              <img src="AWS_VPC_AND_NETWORKING.png" alt="AWS VPC Architecture" style="display: block; max-width: 85%; margin: 0 auto 24px auto; border-radius: 6px; border: 1px solid var(--aws-border);">
+              <img src="AWS_VPC_AND_NETWORKING.png" alt="AWS VPC Architecture" style="display: block; max-width: 75%; margin: 0 auto 24px auto; border-radius: 6px; border: 1px solid var(--aws-border);">
               
               <h4 style="font-size: 15px; margin-bottom: 12px; color: var(--aws-blue);">Why Do We Need a VPC?</h4>
               <p style="margin-bottom: 14px;">Think of a VPC as your own private data center in the cloud. Without it, your resources would be floating in a shared space. A VPC gives you <strong>isolation</strong>, <strong>security</strong>, and <strong>complete control</strong> over your virtual networking environment, including your own IP address range, subnets, and route tables.</p>
@@ -508,14 +508,57 @@
                 <div>
                   <h3 style="font-size: 16px; font-weight: 700; color: var(--aws-text);">Advanced VPC Concepts: Scaling & High Performance</h3>
                   <div style="font-size: 12px; color: var(--aws-text-light); margin-top: 6px;">
-                    Coming Soon • <span class="tag purple" style="padding: 2px 6px; font-size: 10px; margin-left: 4px;">Advanced Architecture</span>
+                    Posted on April 30, 2026 • 15 min read • <span class="tag purple" style="padding: 2px 6px; font-size: 10px; margin-left: 4px;">Advanced Architecture</span>
                   </div>
                 </div>
                 <div><i class="fa-solid fa-chevron-down" id="blog2-icon" style="color: var(--aws-text-light);"></i></div>
               </div>
             </div>
             <div id="blog2-content" style="display: none; padding: 24px; font-size: 14px; line-height: 1.7; color: var(--aws-text);">
-              <p>This deep dive into advanced VPC networking is coming tomorrow! We will cover Transit Gateway architectures, Global Accelerator, and high-performance networking for large-scale deployments.</p>
+              <img src="AWS_ADVANCED_VPC_CONCEPTS.png" alt="Advanced VPC Architecture" style="display: block; max-width: 75%; margin: 0 auto 24px auto; border-radius: 6px; border: 1px solid var(--aws-border);">
+              
+              <h4 style="font-size: 15px; margin-bottom: 12px; color: var(--aws-blue);">Taking the Network to the Next Level</h4>
+              <p style="margin-bottom: 14px;">Once you've mastered the basics of subnets and firewalls, enterprise-scale cloud architecture demands more complex connectivity patterns. In this post, we explore how to scale, connect, and optimize VPCs for global workloads.</p>
+
+              <h4 style="font-size: 15px; margin-bottom: 12px; color: var(--aws-blue);">1. VPC Peering: The Private Highway</h4>
+              <p style="margin-bottom: 10px;">VPC Peering is a direct network connection between two VPCs that allows you to route traffic between them using private IP addresses.</p>
+              <ul style="margin-bottom: 20px; padding-left: 20px; color: var(--aws-text-light);">
+                <li><strong>Cross-Region Peering:</strong> You can peer VPCs across different AWS regions. Your data stays on the AWS global backbone, never touching the public internet.</li>
+                <li><strong>The "Transitive" Trap:</strong> VPC Peering is <strong>not transitive</strong>. If VPC A is peered with VPC B, and VPC B is peered with VPC C, VPC A <em>cannot</em> talk to VPC C through VPC B. You would need a separate peering connection between A and C.</li>
+                <li><strong>Overlapping CIDRs:</strong> You cannot peer VPCs if their IP ranges overlap. This is the #1 reason to plan your IP space carefully!</li>
+              </ul>
+
+              <h4 style="font-size: 15px; margin-bottom: 12px; color: var(--aws-blue);">2. Transit Gateway: The Central Hub</h4>
+              <p style="margin-bottom: 14px;">As your organization grows to dozens or hundreds of VPCs, managing thousands of peering connections (a "full mesh") becomes impossible. <strong>AWS Transit Gateway (TGW)</strong> acts as a central hub-and-spoke router.</p>
+              <ul style="margin-bottom: 20px; padding-left: 20px; color: var(--aws-text-light);">
+                <li>Connect thousands of VPCs and on-premises networks to a single gateway.</li>
+                <li>Supports <strong>Transitive Routing</strong>: VPC A can talk to VPC C via the Transit Gateway.</li>
+                <li>Simplifies management with a single point of control for network security and routing.</li>
+              </ul>
+
+              <h4 style="font-size: 15px; margin-bottom: 12px; color: var(--aws-blue);">3. Hybrid Connectivity: VPN vs. Direct Connect</h4>
+              <p style="margin-bottom: 14px;">How do you connect your office or data center to the cloud?</p>
+              <ul style="margin-bottom: 20px; padding-left: 20px; color: var(--aws-text-light);">
+                <li><strong>Site-to-Site VPN:</strong> Quick to deploy, uses the public internet (encrypted). Good for dev/test or small workloads.</li>
+                <li><strong>AWS Direct Connect (DX):</strong> A dedicated physical line from your data center to AWS. Provides consistent performance, higher bandwidth, and lower latency. Critical for production enterprise workloads.</li>
+              </ul>
+
+              <h4 style="font-size: 15px; margin-bottom: 12px; color: var(--aws-blue);">4. PrivateLink & VPC Endpoints</h4>
+              <p style="margin-bottom: 14px;">Connecting to AWS services or 3rd-party SaaS applications without exposing your traffic to the internet:</p>
+              <ul style="margin-bottom: 20px; padding-left: 20px; color: var(--aws-text-light);">
+                <li><strong>Gateway Endpoints:</strong> Free endpoints for S3 and DynamoDB. They live in your route table.</li>
+                <li><strong>Interface Endpoints (PrivateLink):</strong> Uses an ENI with a private IP in your subnet. This is how you reach services like Kinesis, EC2 APIs, or even your own custom services across different accounts/VPCs privately.</li>
+              </ul>
+
+              <h4 style="font-size: 15px; margin-bottom: 12px; color: var(--aws-blue);">5. Global Acceleration</h4>
+              <p style="margin-bottom: 14px;"><strong>AWS Global Accelerator</strong> uses the AWS global network to route your users' traffic. It provides two static anycast IP addresses that act as a fixed entry point to your application. This can improve performance by up to 60% by avoiding internet congestion.</p>
+
+              <div style="background: var(--aws-highlight); padding: 16px; border-left: 4px solid var(--aws-orange); margin-top: 24px; font-weight: 500;">
+                <h4 style="font-size: 14px; margin-bottom: 8px; color: var(--aws-orange);">Expert Architect Tip: The Overlap Nightmare</h4>
+                <p style="font-size: 13px; font-weight: 400; color: var(--aws-text-light); margin-bottom: 0;">
+                  Overlapping CIDR blocks are a common headache during mergers or acquisitions. Standard Peering or Transit Gateway routing will fail if IP ranges conflict. To resolve this, you can use <strong>AWS PrivateLink</strong> to expose specific services across the overlap, or implement <strong>Private NAT Gateways</strong> to translate IPs between the conflicting networks. However, the best defense is always a strictly planned, non-overlapping IP scheme from Day 1.
+                </p>
+              </div>
             </div>
           </div>
           

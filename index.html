@@ -428,7 +428,7 @@
           <div style="border: 1px solid var(--aws-border); border-radius: 8px; margin-top: 20px; overflow: hidden; background: var(--aws-white);">
             <div style="background: #f8f9fa; padding: 16px 20px; border-bottom: 1px solid var(--aws-border); cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#f0f4f8'" onmouseout="this.style.background='#f8f9fa'">
               <div style="display: flex; justify-content: space-between; align-items: center;">
-                <a href="blog/demystifying-vpc/index.html" style="text-decoration: none; flex-grow: 1;">
+                <a href="blog/demystifying-vpc/" style="text-decoration: none; flex-grow: 1;">
                   <h3 style="font-size: 16px; font-weight: 700; color: var(--aws-text);">Demystifying AWS VPC: From Layman to Cloud Architect</h3>
                   <div style="font-size: 12px; color: var(--aws-text-light); margin-top: 6px;">
                     Posted on April 29, 2026 • 12 min read • 
@@ -499,7 +499,7 @@
                 </ul>
               </div>
               <div style="margin-top: 24px; text-align: right;">
-                <a href="blog/demystifying-vpc/index.html" class="nav-icon-btn orange" style="text-decoration: none; display: inline-block;">Read Full Article <i class="fa-solid fa-arrow-right" style="margin-left: 8px;"></i></a>
+                <a href="blog/demystifying-vpc/" class="nav-icon-btn orange" style="text-decoration: none; display: inline-block;">Read Full Article <i class="fa-solid fa-arrow-right" style="margin-left: 8px;"></i></a>
               </div>
             </div>
           </div>
@@ -508,7 +508,7 @@
           <div style="border: 1px solid var(--aws-border); border-radius: 8px; margin-top: 20px; overflow: hidden; background: var(--aws-white);">
             <div style="background: #f8f9fa; padding: 16px 20px; border-bottom: 1px solid var(--aws-border); cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#f0f4f8'" onmouseout="this.style.background='#f8f9fa'">
               <div style="display: flex; justify-content: space-between; align-items: center;">
-                <a href="blog/advanced-vpc-concepts/index.html" style="text-decoration: none; flex-grow: 1;">
+                <a href="blog/advanced-vpc-concepts/" style="text-decoration: none; flex-grow: 1;">
                   <h3 style="font-size: 16px; font-weight: 700; color: var(--aws-text);">Advanced VPC Concepts: Scaling & High Performance</h3>
                   <div style="font-size: 12px; color: var(--aws-text-light); margin-top: 6px;">
                     Posted on April 30, 2026 • 15 min read • <span class="tag purple" style="padding: 2px 6px; font-size: 10px; margin-left: 4px;">Advanced Architecture</span>
@@ -563,9 +563,15 @@
                 </p>
               </div>
               <div style="margin-top: 24px; text-align: right;">
-                <a href="blog/advanced-vpc-concepts/index.html" class="nav-icon-btn orange" style="text-decoration: none; display: inline-block;">Read Full Article <i class="fa-solid fa-arrow-right" style="margin-left: 8px;"></i></a>
+                <a href="blog/advanced-vpc-concepts/" class="nav-icon-btn orange" style="text-decoration: none; display: inline-block;">Read Full Article <i class="fa-solid fa-arrow-right" style="margin-left: 8px;"></i></a>
               </div>
             </div>
+          </div>
+
+          <div style="margin-top: 40px; text-align: center;">
+            <a href="blog/" class="nav-icon-btn" style="text-decoration: none; background: var(--aws-highlight); color: var(--aws-blue); border: 1px solid var(--aws-border); padding: 12px 24px; font-size: 16px;">
+              View All Technical Blogs <i class="fa-solid fa-list" style="margin-left: 8px;"></i>
+            </a>
           </div>
           
         </div>
@@ -575,7 +581,7 @@
   </div>
 
   <footer class="aws-footer">
-    Privacy | Site Terms | © 2026, <span>Ankush Panday</span> Portfolio. Cloud-Native Interface.
+    Built for Performance. Architected for the Cloud. &bull; &copy; 2026 <span>Ankush Panday</span>
   </footer>
 
   <script>
@@ -591,6 +597,22 @@
         icon.classList.remove('fa-chevron-up');
         icon.classList.add('fa-chevron-down');
       }
+    }
+
+    // Local viewing fix: If opened as a file, ensure links work
+    if (window.location.protocol === 'file:') {
+      document.querySelectorAll('a').forEach(link => {
+        let href = link.getAttribute('href');
+        if (href && !href.startsWith('http') && !href.startsWith('#')) {
+          let path = href.split('#')[0];
+          let anchor = href.split('#')[1] ? '#' + href.split('#')[1] : '';
+          if (path && !path.endsWith('.html') && !path.endsWith('/')) {
+            link.setAttribute('href', path + '/index.html' + anchor);
+          } else if (path && path.endsWith('/')) {
+            link.setAttribute('href', path + 'index.html' + anchor);
+          }
+        }
+      });
     }
 
     function toggleRow(id) {

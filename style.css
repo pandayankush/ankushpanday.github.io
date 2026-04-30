@@ -524,16 +524,22 @@ body {
   text-align: center;
   padding: 20px;
   font-size: 12px;
-  margin-left: 240px;
   border-top: 1px solid #2a3547;
+  width: 100%;
 }
 .aws-footer span { color: var(--aws-orange); }
+
+/* Apply sidebar offset only on main portfolio layout */
+.layout + .aws-footer {
+  margin-left: 240px;
+  width: calc(100% - 240px);
+}
 
 /* ===== RESPONSIVE ===== */
 @media (max-width: 900px) {
   .sidebar { display: none; }
   .main { margin-left: 0; padding: 16px; }
-  .aws-footer { margin-left: 0; }
+  .aws-footer { margin-left: 0; width: 100%; }
   .stats-row { grid-template-columns: repeat(2, 1fr); }
   .hero-card { flex-direction: column; text-align: center; }
   .hero-meta { justify-content: center; }

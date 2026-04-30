@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Cloud Architecture & Engineering Blog | Ankush Panday</title>
+  <meta name="description" content="Technical deep dives into AWS networking, performance testing, and cloud architecture by Ankush Panday.">
+  
+  <link rel="stylesheet" href="../style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    .blog-page-container { 
+      max-width: 1000px; 
+      margin: 100px auto 40px auto; 
+      padding: 0 20px; 
+      min-height: calc(100vh - 200px); 
+    }
+    .blog-grid { display: grid; grid-template-columns: 1fr; gap: 30px; margin-top: 40px; }
+    .blog-card { background: white; border: 1px solid var(--aws-border); border-radius: 8px; overflow: hidden; transition: transform 0.2s, box-shadow 0.2s; text-decoration: none; display: flex; flex-direction: column; }
+    .blog-card:hover { transform: translateY(-4px); box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+    .blog-card-img { height: 200px; background: #f8f9fa; display: flex; align-items: center; justify-content: center; border-bottom: 1px solid var(--aws-border); }
+    .blog-card-img img { max-width: 60%; max-height: 80%; object-fit: contain; }
+    .blog-card-content { padding: 24px; flex-grow: 1; }
+    .blog-card-title { font-size: 20px; font-weight: 700; color: var(--aws-text); margin-bottom: 12px; }
+    .blog-card-excerpt { font-size: 14px; color: var(--aws-text-light); line-height: 1.6; margin-bottom: 20px; }
+    .blog-card-meta { font-size: 12px; color: var(--aws-text-light); display: flex; gap: 15px; align-items: center; }
+
+    @media (min-width: 768px) { .blog-grid { grid-template-columns: repeat(2, 1fr); } }
+  </style>
+</head>
+<body>
+
+  <nav class="aws-topnav">
+    <a href="../" class="logo">
+      <i class="fa-solid fa-cloud" style="color: var(--aws-orange); font-size: 20px;"></i>
+      <span>Ankush Panday</span>
+    </a>
+    <div class="nav-spacer"></div>
+    <div class="nav-icons">
+      <a href="../" class="nav-icon-btn">Portfolio Home</a>
+    </div>
+  </nav>
+
+  <div class="blog-page-container">
+    <h1 style="font-size: 32px; color: var(--aws-text); margin-bottom: 8px;">Technical Blog</h1>
+    <p style="color: var(--aws-text-light); border-left: 4px solid var(--aws-blue); padding-left: 15px;">Insights into AWS architecture, performance engineering, and the future of cloud networking.</p>
+
+    <div class="blog-grid">
+      <!-- Blog 1 -->
+      <a href="demystifying-vpc/" class="blog-card">
+        <div class="blog-card-img">
+          <img src="../AWS_VPC_AND_NETWORKING.png" alt="AWS VPC Basics">
+        </div>
+        <div class="blog-card-content">
+          <div class="blog-card-title">Demystifying AWS VPC: From Layman to Cloud Architect</div>
+          <p class="blog-card-excerpt">Master the foundations of AWS networking. Learn about subnets, route tables, IGWs, and the famous 'Rule of 5' reserved IPs.</p>
+          <div class="blog-card-meta">
+            <span><i class="fa-regular fa-calendar"></i> April 29, 2026</span>
+            <span><i class="fa-regular fa-clock"></i> 12 min read</span>
+          </div>
+        </div>
+      </a>
+
+      <!-- Blog 2 -->
+      <a href="advanced-vpc-concepts/" class="blog-card">
+        <div class="blog-card-img">
+          <img src="../AWS_ADVANCED_VPC_CONCEPTS.png" alt="Advanced VPC Concepts">
+        </div>
+        <div class="blog-card-content">
+          <div class="blog-card-title">Advanced VPC Concepts: Scaling & High Performance</div>
+          <p class="blog-card-excerpt">Dive deep into Transit Gateway, PrivateLink, Global Accelerator, and cross-region peering for enterprise-scale workloads.</p>
+          <div class="blog-card-meta">
+            <span><i class="fa-regular fa-calendar"></i> April 30, 2026</span>
+            <span><i class="fa-regular fa-clock"></i> 15 min read</span>
+          </div>
+        </div>
+      </a>
+    </div>
+  </div>
+
+  <footer class="aws-footer">
+    Built for Performance. Architected for the Cloud. &bull; &copy; 2026 <span>Ankush Panday</span>
+  </footer>
+
+  <script>
+    // Local viewing fix: If opened as a file, ensure links work
+    if (window.location.protocol === 'file:') {
+      document.querySelectorAll('a').forEach(link => {
+        let href = link.getAttribute('href');
+        if (href && !href.startsWith('http') && !href.startsWith('#')) {
+          let path = href.split('#')[0];
+          let anchor = href.split('#')[1] ? '#' + href.split('#')[1] : '';
+          if (path && !path.endsWith('.html') && !path.endsWith('/')) {
+            link.setAttribute('href', path + '/index.html' + anchor);
+          } else if (path && path.endsWith('/')) {
+            link.setAttribute('href', path + 'index.html' + anchor);
+          }
+        }
+      });
+    }
+  </script>
+</body>
+</html>

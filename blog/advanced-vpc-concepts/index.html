@@ -3,70 +3,77 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <!-- SEO PRIMARY -->
   <title>Advanced VPC Concepts: Scaling & High Performance | Ankush Panday</title>
-  <meta name="description" content="Deep dive into advanced cloud networking: Transit Gateway, VPC Peering, PrivateLink, and Global Accelerator.">
+  <meta name="description" content="Master advanced AWS networking: Transit Gateway, VPC Peering across regions, PrivateLink, and Global Accelerator for enterprise scale.">
+  <link rel="canonical" href="https://www.ankushpanday.com/blog/advanced-vpc-concepts/">
+
+  <!-- OPEN GRAPH / FACEBOOK / LINKEDIN -->
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://www.ankushpanday.com/blog/advanced-vpc-concepts/">
+  <meta property="og:title" content="Advanced VPC Concepts: Scaling & High Performance">
+  <meta property="og:description" content="A guide to scaling cloud networks: Transit Gateway, PrivateLink, and handling overlapping CIDRs.">
+  <meta property="og:image" content="https://www.ankushpanday.com/AWS_ADVANCED_VPC_CONCEPTS.png">
+
+  <!-- TWITTER -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Advanced VPC Concepts: Scaling & High Performance">
+  <meta name="twitter:description" content="Enterprise-scale AWS networking concepts explained.">
+  <meta name="twitter:image" content="https://www.ankushpanday.com/AWS_ADVANCED_VPC_CONCEPTS.png">
+
+  <!-- STRUCTURED DATA (JSON-LD) -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": "Advanced VPC Concepts: Scaling & High Performance",
+    "author": {
+      "@type": "Person",
+      "name": "Ankush Panday",
+      "url": "https://www.ankushpanday.com"
+    },
+    "datePublished": "2026-04-30",
+    "image": "https://www.ankushpanday.com/AWS_ADVANCED_VPC_CONCEPTS.png",
+    "url": "https://www.ankushpanday.com/blog/advanced-vpc-concepts/",
+    "description": "Deep dive into Transit Gateway, Global Accelerator, PrivateLink, and Cross-Region Peering."
+  }
+  </script>
+
   <link rel="stylesheet" href="../../style.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
-    .blog-page-container {
-      max-width: 1000px;
-      margin: 100px auto 40px auto;
-      padding: 0 20px;
+    .blog-page-container { 
+      max-width: 900px; 
+      margin: 100px auto 40px auto; 
+      padding: 0 20px; 
+      min-height: calc(100vh - 200px);
     }
-    .back-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      color: var(--aws-blue);
-      text-decoration: none;
-      font-weight: 500;
-      margin-bottom: 24px;
-      transition: color 0.2s;
-    }
-    .back-btn:hover {
-      color: var(--aws-orange);
-    }
-    .blog-content-card {
-      background: var(--aws-white);
-      border: 1px solid var(--aws-border);
-      border-radius: 8px;
-      overflow: hidden;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-    }
-    .blog-header {
-      background: #f8f9fa;
-      padding: 40px;
-      border-bottom: 1px solid var(--aws-border);
-    }
-    .blog-body {
-      padding: 40px;
-      line-height: 1.8;
-      font-size: 16px;
-    }
-    .blog-body h4 {
-      margin-top: 32px;
-      font-size: 20px;
-    }
-    .blog-body p {
-      margin-bottom: 20px;
-    }
-    .blog-body ul {
-      margin-bottom: 24px;
-      padding-left: 24px;
-    }
-    .blog-body li {
-      margin-bottom: 12px;
-    }
-    @media (max-width: 768px) {
-      .blog-header, .blog-body {
-        padding: 24px;
-      }
-    }
+    .back-btn { display: inline-flex; align-items: center; gap: 8px; color: var(--aws-blue); text-decoration: none; font-weight: 500; margin-bottom: 24px; }
+    .blog-content-card { background: var(--aws-white); border: 1px solid var(--aws-border); border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+    .blog-header { background: #f8f9fa; padding: 40px; border-bottom: 1px solid var(--aws-border); }
+    .blog-body { padding: 40px; line-height: 1.8; font-size: 16px; color: var(--aws-text); }
+    .blog-body h4 { margin-top: 32px; font-size: 20px; color: var(--aws-blue); margin-bottom: 16px; }
+    .blog-body p { margin-bottom: 20px; }
+    .blog-body ul { margin-bottom: 24px; padding-left: 24px; }
+    .blog-body li { margin-bottom: 12px; color: var(--aws-text-light); }
+    .blog-body strong { color: var(--aws-text); }
+    
+    .author-card { display: flex; gap: 20px; align-items: center; padding: 30px; background: #fcfcfc; border-top: 1px solid var(--aws-border); }
+    .author-img { width: 80px; height: 80px; border-radius: 50%; background: var(--aws-highlight); display: flex; align-items: center; justify-content: center; font-size: 30px; color: var(--aws-orange); border: 2px solid var(--aws-border); }
+    
+    .share-section { padding: 20px 40px; border-top: 1px solid var(--aws-border); display: flex; justify-content: space-between; align-items: center; background: #fff; }
+    .share-btn { padding: 8px 16px; border-radius: 4px; text-decoration: none; font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 8px; }
+    .linkedin-btn { background: #0077b5; color: white; }
+    
+    .nav-links { display: flex; justify-content: space-between; margin-top: 40px; padding: 20px 0; border-top: 1px solid var(--aws-border); }
+    .nav-link { text-decoration: none; color: var(--aws-blue); font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 8px; }
+
+    @media (max-width: 768px) { .blog-header, .blog-body { padding: 24px; } .author-card { flex-direction: column; text-align: center; } }
   </style>
 </head>
 <body>
 
-  <!-- TOP NAV -->
   <nav class="aws-topnav">
     <a href="../../" class="logo">
       <i class="fa-solid fa-cloud" style="color: var(--aws-orange); font-size: 20px;"></i>
@@ -74,76 +81,115 @@
     </a>
     <div class="nav-spacer"></div>
     <div class="nav-icons">
-      <a href="../../index.html" class="nav-icon-btn" style="text-decoration: none;">Portfolio Home</a>
+      <a href="../../" class="nav-icon-btn">Portfolio Home</a>
     </div>
   </nav>
 
   <div class="blog-page-container">
-    <a href="../../index.html#blogs" class="back-btn">
-      <i class="fa-solid fa-arrow-left"></i> Back to Portfolio
-    </a>
+    <a href="../../#blogs" class="back-btn"><i class="fa-solid fa-arrow-left"></i> Back to Portfolio</a>
 
     <article class="blog-content-card">
       <header class="blog-header">
-        <h1 style="font-size: 32px; color: var(--aws-text); margin-bottom: 16px;">Advanced VPC Concepts: Scaling & High Performance</h1>
-        <div style="display: flex; gap: 12px; align-items: center; color: var(--aws-text-light); font-size: 14px;">
-          <span>Posted on April 30, 2026</span>
+        <h1 style="font-size: 32px; color: var(--aws-text); margin-bottom: 16px; line-height: 1.2;">Advanced VPC Concepts: Scaling & High Performance</h1>
+        <div style="display: flex; gap: 12px; align-items: center; color: var(--aws-text-light); font-size: 14px; flex-wrap: wrap;">
+          <span>April 30, 2026</span>
           <span>•</span>
           <span>15 min read</span>
-          <span class="tag purple" style="padding: 4px 10px; font-size: 12px;">Advanced Architecture</span>
+          <span class="tag purple">Advanced Architecture</span>
+          <span class="tag orange">Enterprise Scaling</span>
         </div>
       </header>
 
       <div class="blog-body">
-        <img src="../../AWS_ADVANCED_VPC_CONCEPTS.png" alt="Advanced VPC Architecture" style="display: block; max-width: 100%; margin: 0 auto 32px auto; border-radius: 8px; border: 1px solid var(--aws-border);">
+        <img src="../../AWS_ADVANCED_VPC_CONCEPTS.png" alt="Advanced AWS Architecture Diagram" style="display: block; max-width: 85%; margin: 0 auto 32px auto; border-radius: 8px; border: 1px solid var(--aws-border);">
         
-        <h4 style="color: var(--aws-blue);">Taking the Network to the Next Level</h4>
+        <h4>Taking the Network to the Next Level</h4>
         <p>Once you've mastered the basics of subnets and firewalls, enterprise-scale cloud architecture demands more complex connectivity patterns. In this post, we explore how to scale, connect, and optimize VPCs for global workloads.</p>
 
-        <h4 style="color: var(--aws-blue);">1. VPC Peering: The Private Highway</h4>
-        <p>VPC Peering is a direct network connection between two VPCs that allows you to route traffic between them using private IP addresses.</p>
+        <h4>1. VPC Peering: The Private Highway</h4>
+        <p>VPC Peering is a direct network connection between two VPCs that allows you to route traffic between them using private IP addresses. It is cost-effective and highly performant.</p>
         <ul>
-          <li><strong>Cross-Region Peering:</strong> Peer VPCs across different AWS regions. Your data stays on the AWS global backbone.</li>
-          <li><strong>The "Transitive" Trap:</strong> VPC Peering is <strong>not transitive</strong>. If A is peered with B, and B with C, A cannot talk to C through B.</li>
-          <li><strong>Overlapping CIDRs:</strong> You cannot peer VPCs if their IP ranges overlap.</li>
+          <li><strong>Cross-Region Peering:</strong> You can peer VPCs across different AWS regions. Your data stays on the AWS global backbone, providing higher security and lower latency than the public internet.</li>
+          <li><strong>The "Transitive" Trap:</strong> VPC Peering is <strong>not transitive</strong>. If VPC A is peered with VPC B, and VPC B is peered with VPC C, VPC A <em>cannot</em> talk to VPC C through VPC B. You would need a separate peering connection between A and C.</li>
+          <li><strong>Overlapping CIDRs:</strong> You cannot peer VPCs if their IP ranges overlap. This is why meticulous IP planning is critical from day one.</li>
         </ul>
 
-        <h4 style="color: var(--aws-blue);">2. Transit Gateway: The Central Hub</h4>
-        <p>As your organization grows to hundreds of VPCs, managing thousands of peering connections becomes impossible. <strong>AWS Transit Gateway (TGW)</strong> acts as a central hub-and-spoke router.</p>
+        <h4>2. Transit Gateway: The Central Hub</h4>
+        <p>As your organization grows to dozens or hundreds of VPCs, managing thousands of peering connections (a "full mesh") becomes impossible. <strong>AWS Transit Gateway (TGW)</strong> acts as a central hub-and-spoke router.</p>
         <ul>
-          <li>Connect thousands of VPCs and on-premises networks to a single gateway.</li>
-          <li>Supports <strong>Transitive Routing</strong>.</li>
-          <li>Simplifies management with a single point of control.</li>
+          <li><strong>Scale:</strong> Connect thousands of VPCs and on-premises networks to a single gateway.</li>
+          <li><strong>Transitive Routing:</strong> Unlike Peering, TGW supports transitive routing—VPC A can talk to VPC C via the hub.</li>
+          <li><strong>Simplified Security:</strong> Centralize your egress traffic through a single VPC for inspection or firewalling.</li>
         </ul>
 
-        <h4 style="color: var(--aws-blue);">3. Hybrid Connectivity: VPN vs. Direct Connect</h4>
+        <h4>3. Hybrid Connectivity: VPN vs. Direct Connect</h4>
+        <p>Connecting your on-premises data center to the AWS cloud requires a choice based on performance and cost:</p>
         <ul>
-          <li><strong>Site-to-Site VPN:</strong> Quick to deploy, uses the public internet (encrypted).</li>
-          <li><strong>AWS Direct Connect (DX):</strong> A dedicated physical line from your data center to AWS. Consistent performance and lower latency.</li>
+          <li><strong>AWS Site-to-Site VPN:</strong> Quick to deploy and encrypted. It uses the public internet, so performance can be variable.</li>
+          <li><strong>AWS Direct Connect (DX):</strong> A dedicated physical line from your data center to AWS. It provides consistent performance, higher bandwidth, and lower latency—essential for enterprise production workloads.</li>
         </ul>
 
-        <h4 style="color: var(--aws-blue);">4. PrivateLink & VPC Endpoints</h4>
+        <h4>4. PrivateLink & VPC Endpoints</h4>
+        <p>Connecting to AWS services or 3rd-party SaaS applications without exposing your traffic to the internet is a key security requirement:</p>
         <ul>
-          <li><strong>Gateway Endpoints:</strong> Free endpoints for S3 and DynamoDB.</li>
-          <li><strong>Interface Endpoints (PrivateLink):</strong> Reach services privately across different accounts/VPCs without touching the internet.</li>
+          <li><strong>Gateway Endpoints:</strong> Free endpoints for S3 and DynamoDB. They live in your route table.</li>
+          <li><strong>Interface Endpoints (PrivateLink):</strong> Powered by PrivateLink, these use an ENI with a private IP in your subnet. Perfect for reaching services like Kinesis or your own custom services across accounts privately.</li>
         </ul>
 
-        <h4 style="color: var(--aws-blue);">5. Global Acceleration</h4>
-        <p><strong>AWS Global Accelerator</strong> uses the AWS global network to route your users' traffic, improving performance by up to 60% by avoiding internet congestion.</p>
+        <h4>5. Global Acceleration</h4>
+        <p><strong>AWS Global Accelerator</strong> uses the AWS global network to route your users' traffic. By utilizing Anycast IP addresses, it can improve application performance by up to 60% by avoiding internet congestion and finding the fastest path to your endpoint.</p>
 
         <div style="background: var(--aws-highlight); padding: 24px; border-left: 5px solid var(--aws-orange); margin-top: 40px;">
           <h4 style="margin-top: 0; color: var(--aws-orange);">Expert Architect Tip: The Overlap Nightmare</h4>
           <p style="margin-bottom: 0;">
-            Overlapping CIDR blocks are a common headache during mergers. Standard Peering or TGW will fail. To resolve this, use <strong>AWS PrivateLink</strong> to expose specific services across the overlap, or implement <strong>Private NAT Gateways</strong>.
+            Overlapping CIDR blocks are a common headache during company mergers. Standard Peering or TGW will fail. To resolve this without re-IPing, use <strong>AWS PrivateLink</strong> to expose specific services across the overlap, or implement <strong>Private NAT Gateways</strong> to translate IPs between conflicting networks.
           </p>
         </div>
       </div>
+
+      <div class="share-section">
+        <span style="font-weight: 700; color: var(--aws-text-light);">Share this article:</span>
+        <a href="https://www.linkedin.com/sharing/share-offsite/?url=https://www.ankushpanday.com/blog/advanced-vpc-concepts/" target="_blank" class="share-btn linkedin-btn">
+          <i class="fa-brands fa-linkedin"></i> Share on LinkedIn
+        </a>
+      </div>
+
+      <div class="author-card">
+        <div class="author-img"><i class="fa-solid fa-user-tie"></i></div>
+        <div>
+          <h4 style="margin: 0 0 8px 0; color: var(--aws-text);">Ankush Panday</h4>
+          <p style="margin: 0; font-size: 14px; color: var(--aws-text-light);">Specializing in highly scalable AWS infrastructure and automated quality engineering.</p>
+          <a href="https://linkedin.com/in/ankushpanday" target="_blank" style="display: inline-block; margin-top: 10px; color: var(--aws-blue); text-decoration: none; font-size: 13px; font-weight: 600;">Connect on LinkedIn <i class="fa-solid fa-external-link" style="font-size: 10px;"></i></a>
+        </div>
+      </div>
     </article>
+
+    <div class="nav-links">
+      <a href="../demystifying-vpc/" class="nav-link"><i class="fa-solid fa-arrow-left"></i> Previous: VPC Basics</a>
+      <span></span> <!-- Spacer -->
+    </div>
   </div>
 
   <footer class="aws-footer">
-    Privacy | Site Terms | © 2026, Ankush Panday Portfolio.
+    Built for Performance. Architected for the Cloud. &bull; &copy; 2026 <span>Ankush Panday</span>
   </footer>
 
+  <script>
+    // Local viewing fix: If opened as a file, ensure links work
+    if (window.location.protocol === 'file:') {
+      document.querySelectorAll('a').forEach(link => {
+        let href = link.getAttribute('href');
+        if (href && !href.startsWith('http') && !href.startsWith('#')) {
+          let path = href.split('#')[0];
+          let anchor = href.split('#')[1] ? '#' + href.split('#')[1] : '';
+          if (path && !path.endsWith('.html') && !path.endsWith('/')) {
+            link.setAttribute('href', path + '/index.html' + anchor);
+          } else if (path && path.endsWith('/')) {
+            link.setAttribute('href', path + 'index.html' + anchor);
+          }
+        }
+      });
+    }
+  </script>
 </body>
 </html>

@@ -574,19 +574,21 @@
                 <a href="blog/nat-gateway-vs-privatelink/" style="text-decoration: none; flex-grow: 1;">
                   <h3 style="font-size: 16px; font-weight: 700; color: var(--aws-text);">NAT Gateway vs PrivateLink vs VPC Endpoints</h3>
                   <div style="font-size: 12px; color: var(--aws-text-light); margin-top: 6px;">
-                    Coming Soon • 10 min read • 
-                    <span class="tag orange" style="padding: 2px 6px; font-size: 10px; margin-left: 4px;">AWS Connectivity</span>
+                    Posted on April 30, 2026 • 15 min read • 
+                    <span class="tag orange" style="padding: 2px 6px; font-size: 10px; margin-left: 4px;">Cost Optimization</span>
+                    <span class="tag purple" style="padding: 2px 6px; font-size: 10px; margin-left: 4px;">Architecture</span>
                   </div>
                 </a>
-                <span class="tag orange" style="font-size: 10px;">Coming Soon</span>
+                <div onclick="toggleBlog('blog3')"><i class="fa-solid fa-chevron-down" id="blog3-icon" style="color: var(--aws-text-light); padding: 10px;"></i></div>
               </div>
             </div>
             
-            <div style="padding: 24px; display: flex; flex-direction: column; align-items: center; background: #fafafa;">
-              <img src="NAT_GATEWAY_PRIVATE_LINK_VPC_ENDPOINTS.png" alt="NAT Gateway vs PrivateLink Architecture" style="display: block; max-width: 75%; margin-bottom: 20px; border-radius: 6px; border: 1px solid var(--aws-border); filter: grayscale(20%);">
-              <p style="font-size: 14px; color: var(--aws-text-light); text-align: center; max-width: 600px;">
-                Deep dive into cost and architecture trade-offs for AWS connectivity patterns. Full article coming tomorrow.
-              </p>
+            <div id="blog3-content" style="display: none; padding: 24px; font-size: 14px; line-height: 1.7; color: var(--aws-text);">
+              <img src="NAT_GATEWAY_PRIVATE_LINK_VPC_ENDPOINTS.png" alt="Architecture Comparison" style="display: block; max-width: 75%; margin: 0 auto 24px auto; border-radius: 6px; border: 1px solid var(--aws-border);">
+              <p style="margin-bottom: 14px;">One of the most misunderstood areas in AWS networking is knowing when to use a NAT Gateway, PrivateLink, or VPC Endpoint. Engineers often default to NAT Gateway for everything—and then get a nasty AWS bill at the end of the month.</p>
+              <div style="margin-top: 24px; text-align: right;">
+                <a href="blog/nat-gateway-vs-privatelink/" class="nav-icon-btn orange" style="text-decoration: none; display: inline-block;">Read Full Article <i class="fa-solid fa-arrow-right" style="margin-left: 8px;"></i></a>
+              </div>
             </div>
           </div>
 

@@ -95,7 +95,7 @@
         <div style="display: flex; gap: 12px; align-items: center; color: var(--aws-text-light); font-size: 14px; flex-wrap: wrap;">
           <span>April 30, 2026</span>
           <span>•</span>
-          <span>10 min read</span>
+          <span>12 min read</span>
           <span class="tag purple">Advanced Architecture</span>
           <span class="tag orange">Enterprise Scaling</span>
         </div>
@@ -212,7 +212,7 @@ resource "aws_ec2_transit_gateway_route_table_propagation" "prod_vpc" {
             </tr>
           </tbody>
         </table>
-        <p><strong>BGP & Dynamic Propagation:</strong> Use **BGP (Border Gateway Protocol)** to automatically "advertise" routes between your on-premises network and AWS. This ensures that if a new subnet is added or a connection fails, the network path updates itself dynamically—a massive advantage over rigid, manually-updated static routes.</p>
+        <p><strong>BGP & Dynamic Propagation:</strong> BGP automatically advertises routes between your data center and AWS. When your Direct Connect path fails, BGP withdraws those routes and your VPN backup begins advertising them — failover happens without any manual intervention.</p>
         <p><strong>Pro Architect Pattern:</strong> Use Direct Connect as your primary path and a Site-to-Site VPN as a cost-effective backup, with BGP weightings set to prefer the DX line.</p>
 
         <h4>4. PrivateLink: Secure Cross-Account Connectivity</h4>

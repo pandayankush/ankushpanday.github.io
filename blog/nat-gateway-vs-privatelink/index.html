@@ -96,7 +96,7 @@
         <div style="display: flex; gap: 12px; align-items: center; color: var(--aws-text-light); font-size: 14px; flex-wrap: wrap;">
           <span>April 30, 2026</span>
           <span>•</span>
-          <span>15 min read</span>
+          <span>10 min read</span>
           <span class="tag orange">Cost Optimization</span>
           <span class="tag purple">AWS Networking</span>
         </div>
@@ -243,6 +243,27 @@ resource "aws_nat_gateway" "optimized" {
           </tbody>
         </table>
 
+        <pre style="background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 13px; border-left: 4px solid var(--aws-orange);"><code># High Availability Per-AZ NAT Gateway Pattern
+resource "aws_eip" "nat" {
+  for_each = toset(["eu-west-1a", "eu-west-1b", "eu-west-1c"])
+  domain   = "vpc"
+  tags     = { Name = "nat-eip-${each.key}" }
+}
+
+resource "aws_nat_gateway" "az" {
+  for_each      = toset(["eu-west-1a", "eu-west-1b", "eu-west-1c"])
+  allocation_id = aws_eip.nat[each.key].id
+  subnet_id     = aws_subnet.public[each.key].id
+  tags          = { Name = "nat-gw-${each.key}" }
+}
+
+resource "aws_route" "private_nat" {
+  for_each               = toset(["eu-west-1a", "eu-west-1b", "eu-west-1c"])
+  route_table_id         = aws_route_table.private[each.key].id
+  destination_cidr_block = "0.0.0.0/0"
+  nat_gateway_id         = aws_nat_gateway.az[each.key].id
+}</code></pre>
+
         <div style="background: var(--aws-highlight); padding: 24px; border-radius: 8px; border-left: 5px solid var(--aws-blue); margin: 32px 0;">
           <p style="font-weight: 700; margin-bottom: 12px; font-size: 18px; color: var(--aws-text);">Architect's Rule of Thumb</p>
           <p>Deploy one NAT Gateway <strong>per AZ</strong>. While this triples the hourly charge, it avoids the $0.01/GB cross-AZ penalty and removes a single point of failure for your entire region.</p>
@@ -310,9 +331,29 @@ resource "aws_vpc_endpoint" "interface" {
 
         <div style="background: var(--aws-highlight); padding: 24px; border-left: 5px solid var(--aws-orange); margin-top: 40px;">
           <h4 style="margin-top: 0; color: var(--aws-orange);">Expert Tip: Security Enforced via Policy</h4>
-          <p style="margin-bottom: 0;">
+          <p style="margin-bottom: 15px;">
             You can attach an <strong>Endpoint Policy</strong> to your Gateway Endpoint to restrict access to only specific buckets. For example, denying all access unless it comes through your specific VPC Endpoint ensures your sensitive data stays within your network boundary.
           </p>
+          <pre style="background: #232f3e; color: #f8f8f2; padding: 15px; border-radius: 4px; font-size: 12px; margin-bottom: 15px;"><code># S3 Bucket Policy enforcing VPC Endpoint access
+resource "aws_s3_bucket_policy" "enforce_vpce" {
+  bucket = aws_s3_bucket.sensitive_data.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "Access-to-specific-VPCE-only"
+      Effect    = "Deny"
+      Principal = "*"
+      Action    = "s3:*"
+      Resource  = ["${aws_s3_bucket.sensitive_data.arn}/*"]
+      Condition = {
+        StringNotEquals = {
+          "aws:sourceVpce" = aws_vpc_endpoint.s3.id
+        }
+      }
+    }]
+  })
+}</code></pre>
+          <p style="margin-bottom: 0; font-size: 13px;"><strong>Pro Tip:</strong> Even a valid IAM user with <code>s3:GetObject</code> cannot access this bucket from outside your VPC—the explicit Deny overrides all Allow statements. This is standard control for PCI-DSS and HIPAA environments.</p>
         </div>
 
         <h3>The Decision Framework</h3>
@@ -324,9 +365,63 @@ resource "aws_vpc_endpoint" "interface" {
           <li><strong>Need a supported SaaS partner?</strong> → PrivateLink.</li>
         </ul>
 
+        <h4>The Cost Reality Check: Scenario A vs Scenario B</h4>
+        <p>Let's look at the actual numbers for a standard production environment with 2 Availability Zones:</p>
+        <div style="background: #fdfdfd; padding: 24px; border: 1px solid var(--aws-border); border-radius: 8px;">
+          <p><strong>Scenario A — NAT Only:</strong></p>
+          <ul style="font-size: 14px;">
+            <li>NAT GW 2 AZs (Hourly) = $65.70</li>
+            <li>ECR Pulls (200GB) = $9.00</li>
+            <li>S3 Data (500GB) = $22.50</li>
+            <li>SSM Usage (5GB) = $0.23</li>
+            <li><strong>Total = $97.43/month</strong></li>
+          </ul>
+          
+          <p style="margin-top: 20px;"><strong>Scenario B — Optimised:</strong></p>
+          <ul style="font-size: 14px;">
+            <li>NAT GW Hourly = $65.70</li>
+            <li>S3 Gateway Endpoint = <strong>FREE</strong></li>
+            <li>ECR Interface Endpoints (4 ENIs) = $29.20</li>
+            <li>ECR Data Processed = $2.00</li>
+            <li>SSM Endpoints (6 ENIs) = $43.80</li>
+            <li><strong>Total = $140.70/month</strong></li>
+          </ul>
+          
+          <div style="margin-top: 20px; border-top: 1px solid var(--aws-border); padding-top: 15px; font-style: italic; font-size: 13px; color: var(--aws-text-light);">
+            <strong>Honest Architect's Note:</strong> The S3 Gateway Endpoint is always a win—free with zero trade-offs. However, Interface Endpoints actually cost <em>more</em> for low-traffic services because of the per-ENI hourly charge. They only pay off financially at >200GB/month per service, OR when compliance mandates traffic never touches the internet regardless of cost.
+          </div>
+        </div>
+
         <h3>Common Mistakes & Anti-Patterns</h3>
         <ul>
           <li><strong>Using NAT Gateway for S3:</strong> This is a major "bill shock" waiting to happen. S3 traffic is high-volume; routing it through a NAT Gateway is throwing money away.</li>
+          <li><strong>Forgetting endpoints in fully private accounts:</strong> Engineers consistently fail ECS Fargate deployments in private subnets because of this gap.</li>
+        </ul>
+
+        <pre style="background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 13px; border-left: 4px solid var(--aws-orange);"><code>locals {
+  required_endpoints = {
+    ecr_api = "com.amazonaws.${var.region}.ecr.api"
+    ecr_dkr = "com.amazonaws.${var.region}.ecr.dkr"
+    logs    = "com.amazonaws.${var.region}.logs"
+    ssm     = "com.amazonaws.${var.region}.ssm"
+    # ... and others like secretsmanager, kms, sts
+  }
+}
+
+resource "aws_vpc_endpoint" "interface" {
+  for_each            = local.required_endpoints
+  vpc_id              = aws_vpc.main.id
+  service_name        = each.value
+  vpc_endpoint_type   = "Interface"
+  subnet_ids          = aws_subnet.private[*].id
+  private_dns_enabled = true
+}</code></pre>
+
+        <div style="background: var(--aws-highlight); padding: 20px; border-radius: 6px; border-left: 5px solid var(--aws-orange); margin-bottom: 30px;">
+          <p style="margin-bottom: 0;"><strong>Critical Gotcha:</strong> ECR stores image layers in S3. Without the <strong>S3 Gateway Endpoint</strong>, ECS tasks will fail to pull images even if the ECR Interface Endpoints are present. This is the most common works-in-dev, fails-in-prod architect error.</p>
+        </div>
+
+        <ul>
           <li><strong>Forgetting <code>private_dns_enabled</code>:</strong> Without this, your application code needs to be modified to use the endpoint's unique DNS name. With it, the standard SDK resolution just works.</li>
           <li><strong>No Endpoint Policies:</strong> By default, an endpoint allows all actions. Always scope your policies to the minimum required resources.</li>
         </ul>

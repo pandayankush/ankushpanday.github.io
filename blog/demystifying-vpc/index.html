@@ -158,8 +158,8 @@
   public_subnets  = ["10.0.101.0/24", "10.0.102.0/24", "10.0.103.0/24"]
 
   enable_nat_gateway     = true
-  single_nat_gateway     = false # Provisions one NAT Gateway per AZ, eliminating cross-AZ charges and single points of failure.
-  one_nat_gateway_per_az = true
+  single_nat_gateway     = false
+  one_nat_gateway_per_az = true # Provisions one NAT Gateway per AZ, eliminating cross-AZ charges and single points of failure
   enable_dns_hostnames = true
   enable_dns_support   = true
 
@@ -205,6 +205,13 @@ FROM vpc_flow_logs
 WHERE action = 'ACCEPT'
 GROUP BY srcaddr, dstaddr
 ORDER BY total_bytes DESC
+LIMIT 10;
+
+-- Top talkers by source IP (useful for detecting noisy or compromised instances)
+SELECT srcaddr, COUNT(*) as request_count 
+FROM flow_logs 
+GROUP BY srcaddr 
+ORDER BY request_count DESC 
 LIMIT 10;</code></pre>
           <li><strong>The REJECT Action:</strong> This is your primary debugging tool. If an application is failing, check if NACLs are rejecting packets before blaming the code.</li>
         </ul>

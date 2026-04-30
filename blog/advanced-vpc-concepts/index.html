@@ -95,7 +95,7 @@
         <div style="display: flex; gap: 12px; align-items: center; color: var(--aws-text-light); font-size: 14px; flex-wrap: wrap;">
           <span>April 30, 2026</span>
           <span>•</span>
-          <span>12 min read</span>
+          <span>10 min read</span>
           <span class="tag purple">Advanced Architecture</span>
           <span class="tag orange">Enterprise Scaling</span>
         </div>
@@ -142,6 +142,36 @@ resource "aws_ram_resource_association" "tgw" {
   resource_arn       = aws_ec2_transit_gateway.main.arn
   resource_share_arn = aws_ram_resource_share.tgw_share.arn
 }</code></pre>
+
+        <h4>Association vs Propagation — The Most Confused Concept</h4>
+        <p>Every TGW attachment (VPC, VPN, Direct Connect) interacts with a TGW Route Table in <strong>two distinct ways</strong>. Mixing them up is the #1 reason for unexpected connectivity (or lack thereof):</p>
+        
+        <ul>
+          <li><strong>Association (The GPS):</strong> <em>"Which route table does this attachment use to make forwarding decisions?"</em> When traffic arrives from a VPC, the TGW looks at that attachment's <strong>associated</strong> route table to decide where to send the packet. One attachment = one association.</li>
+          <li><strong>Propagation (The Announcement):</strong> <em>"Which route tables should automatically learn this attachment's CIDR?"</em> Think of this as the attachment <strong>announcing its address</strong>. When a VPC is propagated into a route table, that table automatically gets a route pointing to that VPC's range.</li>
+        </ul>
+
+        <pre style="background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 13px; border-left: 4px solid var(--aws-orange);"><code># Prod VPC: Associated with Prod RT (read), Propagated into Prod RT (write)
+resource "aws_ec2_transit_gateway_route_table_association" "prod_vpc" {
+  transit_gateway_attachment_id  = aws_ec2_transit_gateway_vpc_attachment.prod.id
+  transit_gateway_route_table_id = aws_ec2_transit_gateway_route_table.prod.id
+}
+
+resource "aws_ec2_transit_gateway_route_table_propagation" "prod_vpc" {
+  transit_gateway_attachment_id  = aws_ec2_transit_gateway_vpc_attachment.prod.id
+  transit_gateway_route_table_id = aws_ec2_transit_gateway_route_table.prod.id
+}
+
+# Isolation: Non-prod will never learn the prod CIDR unless we propagate it there.
+# Traffic is blocked at the TGW layer—Security Groups never even see the packet.</code></pre>
+
+        <div style="background: var(--aws-highlight); padding: 20px; border-radius: 6px; border-left: 5px solid var(--aws-blue); margin: 32px 0;">
+          <p style="font-weight: 700; margin-bottom: 8px;">The Mental Model:</p>
+          <p style="margin-bottom: 0;"><strong>Association</strong> = "I read from this table." | <strong>Propagation</strong> = "I write into this table."</p>
+        </div>
+
+        <p>A <strong>Shared Services VPC</strong> is a classic example of propagating into <em>both</em> Prod and Non-Prod tables. This allows both environments to reach shared tools (AD, Logging) while keeping Prod and Non-Prod completely isolated from each other.</p>
+
         <ul>
           <li><strong>Inter-Region TGW Peering:</strong> You can peer Transit Gateways in different regions. This allows you to build a global hub-and-spoke network where a VPC in London can talk to a VPC in New York over the AWS private backbone.</li>
           <li><strong>Route Table Isolation:</strong> You can create multiple TGW route tables to segment traffic. For example, preventing your "Dev" VPC spoke from ever reaching the "Prod" VPC spoke at the hub level.</li>
@@ -182,7 +212,7 @@ resource "aws_ram_resource_association" "tgw" {
             </tr>
           </tbody>
         </table>
-        <p><strong>BGP & Dynamic Propagation:</strong> Use **BGP (Border Gateway Protocol)** for dynamic route propagation. This ensures that if a new subnet is added on-premises or a connection fails, the network automatically updates its routing tables without manual intervention—a massive advantage over rigid static routes in a production environment.</p>
+        <p><strong>BGP & Dynamic Propagation:</strong> Use **BGP (Border Gateway Protocol)** to automatically "advertise" routes between your on-premises network and AWS. This ensures that if a new subnet is added or a connection fails, the network path updates itself dynamically—a massive advantage over rigid, manually-updated static routes.</p>
         <p><strong>Pro Architect Pattern:</strong> Use Direct Connect as your primary path and a Site-to-Site VPN as a cost-effective backup, with BGP weightings set to prefer the DX line.</p>
 
         <h4>4. PrivateLink: Secure Cross-Account Connectivity</h4>

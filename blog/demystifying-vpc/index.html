@@ -6,8 +6,8 @@
   
   <!-- SEO PRIMARY -->
   <title>Demystifying AWS VPC: From Layman to Cloud Architect | Ankush Panday</title>
-  <meta name="description" content="Master the foundations of AWS networking. Learn about subnets, route tables, IGWs, and VPC architecture.">
-  <meta name="keywords" content="AWS, VPC, Networking, Cloud Architecture, DevSecOps, IaC, Terraform, AWSNetworking">
+  <meta name="description" content="Master the foundations of AWS networking. Learn about subnets, route tables, IGWs, VPC Flow Logs, and DNS architecture.">
+  <meta name="keywords" content="AWS, VPC, Networking, Cloud Architecture, VPCFlowLogs, Athena, DNS, IaC, Terraform">
   <link rel="canonical" href="https://www.ankushpanday.com/blog/demystifying-vpc/">
 
   <!-- OPEN GRAPH / FACEBOOK / LINKEDIN -->
@@ -126,12 +126,47 @@
           </ul>
         </div>
 
+        <h4>Strategic CIDR Planning: Beyond the /16</h4>
+        <p>While many engineers default to a <code>10.0.0.0/16</code>, high-level architecture requires more nuance. If you are part of a large organization, you must avoid overlapping with corporate data centers (often using RFC 1918 ranges like <code>10.x.x.x</code>). </p>
+        <ul>
+          <li><strong>Secondary CIDRs:</strong> If you run out of space, you can associate additional CIDR blocks with your VPC.</li>
+          <li><strong>The /17 Split:</strong> A common enterprise pattern is splitting a /16 into two /17s—one for production and one for non-production—ensuring clear separation while staying within a manageable range.</li>
+          <li><strong>Non-Routable Ranges:</strong> Consider using the <code>100.64.0.0/10</code> range (CGNAT) for internal VPC resources that don't need to be routable from your corporate network.</li>
+        </ul>
+
+        <h4>The Silent Killer: VPC DNS Attributes</h4>
+        <p>Two often-overlooked attributes are critical for connectivity: <code>enableDnsSupport</code> and <code>enableDnsHostnames</code>. If these are disabled, your resources won't resolve AWS service endpoints privately. This is a common "day 1" troubleshooting issue when PrivateLink or Interface Endpoints fail to work as expected.</p>
+
         <h4>The Foundational Components</h4>
         <ul>
           <li><strong>Subnets:</strong> Segments of your VPC's IP range. You use them to group resources (like Web, App, and DB tiers) based on security needs.</li>
           <li><strong>Availability Zones (AZs):</strong> Data centers within a region. Always spread subnets across multiple AZs to achieve High Availability (HA).</li>
           <li><strong>Route Tables:</strong> The "GPS" of your VPC. They contain a set of rules that determine where network traffic is directed.</li>
         </ul>
+
+        <h4>Provisioning with Infrastructure as Code (Terraform)</h4>
+        <p>In modern cloud engineering, we never create VPCs via the console. Here is the standard "Golden Template" for a multi-AZ VPC using Terraform:</p>
+        <pre style="background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 13px; border-left: 4px solid var(--aws-orange);"><code>module "vpc" {
+  source  = "terraform-aws-modules/vpc/aws"
+  version = "5.0.0"
+
+  name = "production-vpc"
+  cidr = "10.0.0.0/16"
+
+  azs             = ["eu-west-1a", "eu-west-1b", "eu-west-1c"]
+  private_subnets = ["10.0.1.0/24", "10.0.2.0/24", "10.0.3.0/24"]
+  public_subnets  = ["10.0.101.0/24", "10.0.102.0/24", "10.0.103.0/24"]
+
+  enable_nat_gateway = true
+  single_nat_gateway = false # High Availability in prod
+  enable_dns_hostnames = true
+  enable_dns_support   = true
+
+  tags = {
+    Environment = "production"
+    Owner       = "Architecture-Team"
+  }
+}</code></pre>
 
         <h4>Public vs. Private Subnets: The "Internet Gateway" Rule</h4>
         <p>A subnet is <strong>Public</strong> if its route table has a path to an <strong>Internet Gateway (IGW)</strong>. A <strong>Private Subnet</strong> has no direct path to the IGW and must use a <strong>NAT Gateway</strong> located in a public subnet to reach the outside world securely.</p>
@@ -143,6 +178,46 @@
           <li><strong>Network ACLs (Stateless):</strong> These act at the <strong>Subnet level</strong>. They are "rigid"—you must explicitly allow both inbound and outbound traffic separately.</li>
         </ul>
 
+        <h4>Visibility & Troubleshooting: VPC Flow Logs</h4>
+        <p>For high-authority environments, <strong>VPC Flow Logs</strong> are non-negotiable. They capture information about the IP traffic going to and from network interfaces in your VPC. </p>
+        <ul>
+          <li><strong>Athena for Querying:</strong> Send your logs to S3 and use Amazon Athena to run SQL queries like <code>SELECT * FROM flow_logs WHERE action='REJECT'</code> to find blocked traffic instantly.</li>
+          <li><strong>The REJECT Action:</strong> This is your primary debugging tool. If an application is failing, the first thing an architect checks is if NACLs or Security Groups are rejecting the packets.</li>
+        </ul>
+
+        <h4>VPC Architecture Decision Matrix</h4>
+        <table style="width: 100%; border-collapse: collapse; margin: 30px 0; font-size: 14px;">
+          <thead>
+            <tr style="background: var(--aws-header); color: white;">
+              <th style="padding: 12px; border: 1px solid #3a4a5c;">Need</th>
+              <th style="padding: 12px; border: 1px solid #3a4a5c;">Solution</th>
+              <th style="padding: 12px; border: 1px solid #3a4a5c;">Best Practice</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="padding: 12px; border: 1px solid var(--aws-border);">Isolation</td>
+              <td style="padding: 12px; border: 1px solid var(--aws-border);">Subnets</td>
+              <td style="padding: 12px; border: 1px solid var(--aws-border);">Web / App / DB tiering</td>
+            </tr>
+            <tr>
+              <td style="padding: 12px; border: 1px solid var(--aws-border);">Internet Access</td>
+              <td style="padding: 12px; border: 1px solid var(--aws-border);">NAT Gateway</td>
+              <td style="padding: 12px; border: 1px solid var(--aws-border);">Deploy one per AZ</td>
+            </tr>
+            <tr>
+              <td style="padding: 12px; border: 1px solid var(--aws-border);">Private AWS Access</td>
+              <td style="padding: 12px; border: 1px solid var(--aws-border);">VPC Endpoints</td>
+              <td style="padding: 12px; border: 1px solid var(--aws-border);">Gateway for S3/Dynamo (Free)</td>
+            </tr>
+            <tr>
+              <td style="padding: 12px; border: 1px solid var(--aws-border);">Compliance</td>
+              <td style="padding: 12px; border: 1px solid var(--aws-border);">Flow Logs</td>
+              <td style="padding: 12px; border: 1px solid var(--aws-border);">Log to S3 + Athena</td>
+            </tr>
+          </tbody>
+        </table>
+
         <div style="background: var(--aws-highlight); padding: 24px; border-left: 5px solid var(--aws-orange); margin-top: 40px;">
           <h4 style="margin-top: 0; color: var(--aws-orange);">Architect's Tips & Best Practices:</h4>
           <ul style="margin-bottom: 0;">
@@ -153,7 +228,7 @@
         </div>
         <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--aws-border);">
           <span style="font-weight: 700; color: var(--aws-text-light); margin-right: 12px; font-size: 13px;">Tags:</span>
-          <span class="tag">#AWS</span> <span class="tag">#VPC</span> <span class="tag">#Networking</span> <span class="tag">#CloudArchitecture</span> <span class="tag">#IaC</span> <span class="tag">#Terraform</span>
+          <span class="tag">#AWS</span> <span class="tag">#VPC</span> <span class="tag">#Networking</span> <span class="tag">#FlowLogs</span> <span class="tag">#Athena</span> <span class="tag">#DNS</span> <span class="tag">#Terraform</span>
         </div>
       </div>
 

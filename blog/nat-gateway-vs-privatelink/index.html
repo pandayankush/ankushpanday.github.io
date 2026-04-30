@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NAT Gateway vs PrivateLink vs VPC Endpoints | Coming Soon | Ankush Panday</title>
+  <link rel="stylesheet" href="../../style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    .blog-page-container { max-width: 900px; margin: 100px auto 40px auto; padding: 0 20px; min-height: calc(100vh - 200px); text-align: center; }
+    .coming-soon-card { background: white; border: 1px solid var(--aws-border); padding: 60px; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
+    .back-btn { display: inline-flex; align-items: center; gap: 8px; color: var(--aws-blue); text-decoration: none; font-weight: 500; margin-bottom: 24px; }
+  </style>
+</head>
+<body>
+  <nav class="aws-topnav">
+    <a href="../../" class="logo">
+      <i class="fa-solid fa-cloud" style="color: var(--aws-orange); font-size: 20px;"></i>
+      <span>Ankush Panday</span>
+    </a>
+    <div class="nav-spacer"></div>
+    <div class="nav-icons">
+      <a href="../../" class="nav-icon-btn">Portfolio Home</a>
+    </div>
+  </nav>
+
+  <div class="blog-page-container">
+    <a href="../../#blogs" class="back-btn"><i class="fa-solid fa-arrow-left"></i> Back to Portfolio</a>
+    <div class="coming-soon-card">
+      <h1 style="color: var(--aws-blue); margin-bottom: 20px;">Coming Soon</h1>
+      <img src="../../NAT_GATEWAY_PRIVATE_LINK_VPC_ENDPOINTS.png" alt="NAT Gateway vs PrivateLink Architecture" style="display: block; max-width: 80%; margin: 0 auto 30px auto; border-radius: 8px; border: 1px solid var(--aws-border); filter: grayscale(10%);">
+      <h2 style="color: var(--aws-text); margin-bottom: 30px;">NAT Gateway vs PrivateLink vs VPC Endpoints — Cost & Architecture Trade-offs</h2>
+      <p style="color: var(--aws-text-light); line-height: 1.6;">I am currently finalizing the architectural diagrams and cost analysis for this deep dive. Stay tuned!</p>
+    </div>
+  </div>
+
+  <footer class="aws-footer">
+    Built for Performance. Architected for the Cloud. &bull; &copy; 2026 <span>Ankush Panday</span>
+  </footer>
+
+  <script>
+    // Local viewing fix: If opened as a file, ensure links work
+    if (window.location.protocol === 'file:') {
+      document.querySelectorAll('a').forEach(link => {
+        let href = link.getAttribute('href');
+        if (href && !href.startsWith('http') && !href.startsWith('#')) {
+          let path = href.split('#')[0];
+          let anchor = href.split('#')[1] ? '#' + href.split('#')[1] : '';
+          if (path && !path.endsWith('.html') && !path.endsWith('/')) {
+            link.setAttribute('href', path + '/index.html' + anchor);
+          } else if (path && path.endsWith('/')) {
+            link.setAttribute('href', path + 'index.html' + anchor);
+          }
+        }
+      });
+    }
+  </script>
+</body>
+</html>

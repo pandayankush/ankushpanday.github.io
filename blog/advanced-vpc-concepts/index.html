@@ -213,7 +213,7 @@ resource "aws_ec2_transit_gateway_route_table_propagation" "prod_vpc" {
           </tbody>
         </table>
         <p><strong>BGP & Dynamic Propagation:</strong> BGP automatically advertises routes between your data center and AWS. When your Direct Connect path fails, BGP withdraws those routes and your VPN backup begins advertising them — failover happens without any manual intervention.</p>
-        <p><strong>Pro Architect Pattern:</strong> Use Direct Connect as your primary path and a Site-to-Site VPN as a cost-effective backup, with BGP weightings set to prefer the DX line.</p>
+        <p><strong>Pro Architect Pattern:</strong> Use Direct Connect as your primary path and a Site-to-Site VPN as a cost-effective backup, with BGP weightings set to prefer the DX line. #HighAvailability</p>
 
         <h4>4. PrivateLink: Secure Cross-Account Connectivity</h4>
         <p>While standard VPC Endpoints give you access to AWS services, <strong>PrivateLink</strong> allows you to expose your own services (Endpoint Services) to other VPCs—even across different AWS accounts—without peering. For a deep dive on this vs NAT Gateway, see our <a href="../nat-gateway-vs-privatelink/">comparison guide</a>.</p>

@@ -15,7 +15,7 @@
   <meta property="og:url" content="https://www.ankushpanday.com/blog/aws-dns-deep-dive/">
   <meta property="og:title" content="How DNS Actually Works in AWS: Route 53, Private Hosted Zones & Hybrid Failover">
   <meta property="og:description" content="The final piece of the AWS networking puzzle: Master DNS in the cloud.">
-  <meta property="og:image" content="https://www.ankushpanday.com/images/AWS_DNS_ROUTE53_DEEP_DIVE.png">
+  <meta property="og:image" content="https://www.ankushpanday.com/images/HOW_DNS_WORKS_IN_AWS.png">
 
   <link rel="stylesheet" href="../../style.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -25,6 +25,14 @@
     .blog-content-card { background: var(--aws-white); border: 1px solid var(--aws-border); border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
     .blog-header { background: #f8f9fa; padding: 40px; border-bottom: 1px solid var(--aws-border); }
     .blog-body { padding: 40px; line-height: 1.8; font-size: 16px; color: var(--aws-text); }
+    .blog-body h2 { margin-top: 48px; font-size: 26px; color: var(--aws-text); border-bottom: 2px solid var(--aws-orange); display: inline-block; padding-bottom: 4px; margin-bottom: 24px; }
+    .blog-body h3 { margin-top: 32px; font-size: 22px; color: var(--aws-blue); margin-bottom: 16px; }
+    .blog-body h4 { margin-top: 24px; font-size: 18px; color: var(--aws-text); font-weight: 700; }
+    .blog-body p { margin-bottom: 20px; }
+    .blog-body ul { margin-bottom: 24px; padding-left: 24px; }
+    .blog-body li { margin-bottom: 12px; }
+    .blog-body strong { color: var(--aws-text); }
+
     .author-card { display: flex; gap: 20px; align-items: center; padding: 30px; background: #fcfcfc; border-top: 1px solid var(--aws-border); }
     .author-img { width: 80px; height: 80px; border-radius: 50%; background: var(--aws-highlight); display: flex; align-items: center; justify-content: center; font-size: 30px; color: var(--aws-orange); border: 2px solid var(--aws-border); }
     .nav-links { display: flex; justify-content: space-between; margin-top: 40px; padding: 20px 0; border-top: 1px solid var(--aws-border); }
@@ -61,8 +69,9 @@
 
       <div class="blog-body">
         <p style="font-style: italic; color: var(--aws-text-light); margin-bottom: 30px; border-left: 4px solid var(--aws-orange); padding-left: 15px;">
-          <strong>AWS Series | Part 5</strong> — The final chapter in the AWS Networking Foundation series
+          <strong>AWS Networking Series | Part 5</strong> — The final chapter in the AWS Networking Foundation series
         </p>
+        <img src="../../images/HOW_DNS_WORKS_IN_AWS.png" alt="AWS DNS Route 53 Architecture" style="display: block; max-width: 85%; margin: 0 auto 32px auto; border-radius: 8px; border: 1px solid var(--aws-border);">
 
         <div style="text-align: center; padding: 60px 20px; background: #f9f9f9; border-radius: 8px; border: 2px dashed var(--aws-border); margin: 40px 0;">
           <i class="fa-solid fa-compass-drafting" style="font-size: 48px; color: var(--aws-text-muted); margin-bottom: 20px;"></i>

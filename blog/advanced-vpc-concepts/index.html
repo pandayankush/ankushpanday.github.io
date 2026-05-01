@@ -76,18 +76,18 @@
 <body>
 
   <nav class="aws-topnav">
-    <a href="../../" class="logo">
+    <a href="../../index.html" class="logo">
       <i class="fa-solid fa-cloud" style="color: var(--aws-orange); font-size: 20px;"></i>
       <span>Ankush Panday</span>
     </a>
     <div class="nav-spacer"></div>
     <div class="nav-icons">
-      <a href="../../" class="nav-icon-btn">Portfolio Home</a>
+      <a href="../../index.html" class="nav-icon-btn">Portfolio Home</a>
     </div>
   </nav>
 
   <div class="blog-page-container">
-    <a href="../../#blogs" class="back-btn"><i class="fa-solid fa-arrow-left"></i> Back to All Posts</a>
+    <a href="../../index.html#blogs" class="back-btn"><i class="fa-solid fa-arrow-left"></i> Back to All Posts</a>
 
     <article class="blog-content-card">
       <header class="blog-header">
@@ -216,7 +216,7 @@ resource "aws_ec2_transit_gateway_route_table_propagation" "prod_vpc" {
         <p><strong>Pro Architect Pattern:</strong> Use Direct Connect as your primary path and a Site-to-Site VPN as a cost-effective backup, with BGP weightings set to prefer the DX line. #HighAvailability</p>
 
         <h4>4. PrivateLink: Secure Cross-Account Connectivity</h4>
-        <p>While standard VPC Endpoints give you access to AWS services, <strong>PrivateLink</strong> allows you to expose your own services (Endpoint Services) to other VPCs—even across different AWS accounts—without peering. For a deep dive on this vs NAT Gateway, see our <a href="../nat-gateway-vs-privatelink/">comparison guide</a>.</p>
+        <p>While standard VPC Endpoints give you access to AWS services, <strong>PrivateLink</strong> allows you to expose your own services (Endpoint Services) to other VPCs—even across different AWS accounts—without peering. For a deep dive on this vs NAT Gateway, see our <a href="../nat-gateway-vs-privatelink/index.html">comparison guide</a>.</p>
         <ul>
           <li><strong>Architecture:</strong> Your service must be behind a <strong>Network Load Balancer (NLB)</strong>. The consumer creates an Interface Endpoint that connects to your NLB privately.</li>
           <li><strong>Acceptance Required:</strong> Unlike peering, you can require explicit acceptance of each connection request, giving you granular control over who accesses your service.</li>
@@ -308,8 +308,8 @@ resource "aws_ec2_transit_gateway_route_table_propagation" "prod_vpc" {
     </article>
 
     <div class="nav-links">
-      <a href="../demystifying-vpc/" class="nav-link"><i class="fa-solid fa-arrow-left"></i> Previous: VPC Basics</a>
-      <a href="../nat-gateway-vs-privatelink/" class="nav-link">Next: NAT Gateway vs PrivateLink <i class="fa-solid fa-arrow-right"></i></a>
+      <a href="../demystifying-vpc/index.html" class="nav-link"><i class="fa-solid fa-arrow-left"></i> Previous: VPC Basics</a>
+      <a href="../nat-gateway-vs-privatelink/index.html" class="nav-link">Next: NAT Gateway vs PrivateLink <i class="fa-solid fa-arrow-right"></i></a>
     </div>
   </div>
 

@@ -593,7 +593,7 @@
           </div>
 
           <!-- BLOG POST 4 -->
-          <div style="border: 1px solid var(--aws-border); border-radius: 8px; margin-top: 20px; overflow: hidden; background: var(--aws-white); opacity: 0.8;">
+          <div style="border: 1px solid var(--aws-border); border-radius: 8px; margin-top: 20px; overflow: hidden; background: var(--aws-white); opacity: 0.9;">
             <div style="background: #f8f9fa; padding: 16px 20px; border-bottom: 1px solid var(--aws-border); cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#f0f4f8'" onmouseout="this.style.background='#f8f9fa'">
               <div style="display: flex; justify-content: space-between; align-items: center;">
                 <a href="blog/tgw-vs-peering/" style="text-decoration: none; flex-grow: 1;">
@@ -609,7 +609,6 @@
             </div>
             
             <div id="blog4-content" style="display: none; padding: 24px; font-size: 14px; line-height: 1.7; color: var(--aws-text);">
-              <img src="images/TRANSIT_GATEWAY_VS_VPC_PEERING.png" alt="TGW vs VPC Peering" style="display: block; max-width: 75%; margin: 0 auto 24px auto; border-radius: 6px; border: 1px solid var(--aws-border);">
               <p style="margin-bottom: 14px;">The "Point of No Return" for network complexity. Learn when to migrate from Mesh Peering to a Hub-and-Spoke Transit Gateway architecture, and how to manage the costs of scale.</p>
               <div style="margin-top: 24px; text-align: right;">
                 <a href="blog/tgw-vs-peering/" class="nav-icon-btn orange" style="text-decoration: none; display: inline-block;">Read Preview <i class="fa-solid fa-arrow-right" style="margin-left: 8px;"></i></a>
@@ -617,8 +616,32 @@
             </div>
           </div>
 
+          <!-- BLOG POST 5 -->
+          <div style="border: 1px solid var(--aws-border); border-radius: 8px; margin-top: 20px; overflow: hidden; background: var(--aws-white); opacity: 0.8;">
+            <div style="background: #f8f9fa; padding: 16px 20px; border-bottom: 1px solid var(--aws-border); cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#f0f4f8'" onmouseout="this.style.background='#f8f9fa'">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <a href="blog/aws-dns-deep-dive/" style="text-decoration: none; flex-grow: 1;">
+                  <h3 style="font-size: 16px; font-weight: 700; color: var(--aws-text);">How DNS Actually Works in AWS: Route 53 & Hybrid Failover</h3>
+                  <div style="font-size: 12px; color: var(--aws-text-light); margin-top: 6px;">
+                    Coming May 3, 2026 • 15 min read • 
+                    <span class="tag blue" style="padding: 2px 6px; font-size: 10px; margin-left: 4px;">Networking</span>
+                    <span class="tag purple" style="padding: 2px 6px; font-size: 10px; margin-left: 4px;">Series Finale</span>
+                  </div>
+                </a>
+                <div onclick="toggleBlog('blog5')"><i class="fa-solid fa-chevron-down" id="blog5-icon" style="color: var(--aws-text-light); padding: 10px;"></i></div>
+              </div>
+            </div>
+            
+            <div id="blog5-content" style="display: none; padding: 24px; font-size: 14px; line-height: 1.7; color: var(--aws-text);">
+              <p style="margin-bottom: 14px;">The final piece of the networking foundation. Master Route 53 Private Hosted Zones, Resolver Endpoints, and hybrid cloud DNS architectures for true resilience.</p>
+              <div style="margin-top: 24px; text-align: right;">
+                <a href="blog/aws-dns-deep-dive/" class="nav-icon-btn orange" style="text-decoration: none; display: inline-block;">Read Preview <i class="fa-solid fa-arrow-right" style="margin-left: 8px;"></i></a>
+              </div>
+            </div>
+          </div>
+
           <div style="margin-top: 40px; text-align: center;">
-            <a href="blog/" class="nav-icon-btn" style="text-decoration: none; background: var(--aws-highlight); color: var(--aws-blue); border: 1px solid var(--aws-border); padding: 12px 24px; font-size: 16px;">
+            <a href="blog/index.html" class="nav-icon-btn" style="text-decoration: none; background: var(--aws-highlight); color: var(--aws-blue); border: 1px solid var(--aws-border); padding: 12px 24px; font-size: 16px;">
               View All Technical Blogs <i class="fa-solid fa-list" style="margin-left: 8px;"></i>
             </a>
           </div>

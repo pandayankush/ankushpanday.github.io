@@ -185,13 +185,6 @@ resource "aws_nat_gateway" "main" {
 
     nat_gateway_id = aws_nat_gateway.main.id
   }
-}
-
-# Per-AZ NAT Gateway Pattern (High Availability)
-resource "aws_nat_gateway" "optimized" {
-  for_each      = aws_subnet.public_subnets
-  allocation_id = aws_eip.nat[each.key].id
-  subnet_id     = each.value.id
 }</code></pre>
 
         <h4>Real-World Cost Comparison: NAT-Only vs Optimised</h4>
@@ -429,33 +422,6 @@ resource "aws_s3_bucket_policy" "enforce_vpce" {
           <li><strong>Need other AWS services (ECR, SSM, etc)?</strong> → Interface Endpoint (PrivateLink).</li>
           <li><strong>Need a supported SaaS partner?</strong> → PrivateLink.</li>
         </ul>
-
-        <h4>The Cost Reality Check: Scenario A vs Scenario B</h4>
-        <p>Let's look at the actual numbers for a standard production environment with 2 Availability Zones:</p>
-        <div style="background: #fdfdfd; padding: 24px; border: 1px solid var(--aws-border); border-radius: 8px;">
-          <p><strong>Scenario A — NAT Only:</strong></p>
-          <ul style="font-size: 14px;">
-            <li>NAT GW 2 AZs (Hourly) = $65.70</li>
-            <li>ECR Pulls (200GB) = $9.00</li>
-            <li>S3 Data (500GB) = $22.50</li>
-            <li>SSM Usage (5GB) = $0.23</li>
-            <li><strong>Total = $97.43/month</strong></li>
-          </ul>
-          
-          <p style="margin-top: 20px;"><strong>Scenario B — Optimised:</strong></p>
-          <ul style="font-size: 14px;">
-            <li>NAT GW Hourly = $65.70</li>
-            <li>S3 Gateway Endpoint = <strong>FREE</strong></li>
-            <li>ECR Interface Endpoints (4 ENIs) = $29.20</li>
-            <li>ECR Data Processed = $2.00</li>
-            <li>SSM Endpoints (6 ENIs) = $43.80</li>
-            <li><strong>Total = $140.70/month</strong></li>
-          </ul>
-          
-          <div style="margin-top: 20px; border-top: 1px solid var(--aws-border); padding-top: 15px; font-style: italic; font-size: 13px; color: var(--aws-text-light);">
-            <strong>Honest Architect's Note:</strong> The S3 Gateway Endpoint is always a win—free with zero trade-offs. However, Interface Endpoints actually cost <em>more</em> for low-traffic services because of the per-ENI hourly charge. They only pay off financially at >200GB/month per service, OR when compliance mandates traffic never touches the internet regardless of cost.
-          </div>
-        </div>
 
         <h3>Common Mistakes & Anti-Patterns</h3>
         <ul>

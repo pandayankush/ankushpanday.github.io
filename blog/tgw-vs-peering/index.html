@@ -119,93 +119,83 @@
             </tr>
           </thead>
           <tbody>
-            <tr>
-              <td><strong>Topology</strong></td>
-              <td>Point-to-point (1:1)</td>
-              <td>Hub-and-spoke (1:many)</td>
-            </tr>
-            <tr>
-              <td><strong>Max connections</strong></td>
-              <td>50 per VPC (soft limit)</td>
-              <td>5,000 attachments per TGW</td>
-            </tr>
-            <tr>
-              <td><strong>Transitive routing</strong></td>
-              <td>❌ Not supported</td>
-              <td>✅ Supported</td>
-            </tr>
-            <tr>
-              <td><strong>Route management</strong></td>
-              <td>Manual, both sides</td>
-              <td>Centralised route tables</td>
-            </tr>
-            <tr>
-              <td><strong>Bandwidth</strong></td>
-              <td>No limit (VPC capacity)</td>
-              <td>50 Gbps burst per AZ</td>
-            </tr>
-            <tr>
-              <td><strong>Cost</strong></td>
-              <td>Free (in-region) + transfer</td>
-              <td>$0.05/GB + $0.07/attachment/hr</td>
-            </tr>
-            <tr>
-              <td><strong>Best for</strong></td>
-              <td>2-3 high-traffic VPCs</td>
-              <td>10+ VPCs, complex routing</td>
-            </tr>
+            <tr><td><strong>Topology</strong></td><td>Point-to-point (1:1)</td><td>Hub-and-spoke (1:many)</td></tr>
+            <tr><td><strong>Max connections</strong></td><td>50 per VPC (soft limit)</td><td>5,000 attachments per TGW</td></tr>
+            <tr><td><strong>Transitive routing</strong></td><td>❌ Not supported</td><td>✅ Supported</td></tr>
+            <tr><td><strong>Cross-region</strong></td><td>✅ Supported ($0.01/GB)</td><td>✅ Supported (TGW peering)</td></tr>
+            <tr><td><strong>Cross-account</strong></td><td>✅ Supported</td><td>✅ Via AWS RAM</td></tr>
+            <tr><td><strong>Route management</strong></td><td>Manual, both sides</td><td>Centralised route tables</td></tr>
+            <tr><td><strong>Traffic isolation</strong></td><td>Security Groups only</td><td>Dedicated route tables per segment</td></tr>
+            <tr><td><strong>Bandwidth</strong></td><td>No limit</td><td>50 Gbps burst per AZ</td></tr>
+            <tr><td><strong>Cost</strong></td><td>Free (in-region) + data transfer</td><td>$0.05/GB + $0.07/attachment/hour</td></tr>
+            <tr><td><strong>Best for</strong></td><td>2-3 high-traffic VPCs</td><td>10+ VPCs, complex routing</td></tr>
           </tbody>
         </table>
 
         <h3>Introduction</h3>
         <p>In Part 2 of this series we introduced VPC Peering and Transit Gateway as concepts. In this post we go significantly deeper — because choosing the wrong one at scale is one of the most expensive, hardest-to-undo architectural decisions you can make in AWS.</p>
-        <p>The surface-level answer is simple: small number of VPCs → Peering, large number → TGW. But the reality is far more nuanced. There are workloads where Peering is the right answer at 50 VPCs, and workloads where TGW is the right answer at 3. Understanding <strong>why</strong> requires understanding transitive routing, route table isolation, centralized egress, and inspection architectures.</p>
+        <p>The surface-level answer is simple: small number of VPCs → Peering, large number → TGW. But the reality is far more nuanced. There are workloads where Peering is the right answer at 50 VPCs, and workloads where TGW is the right answer at 3. Understanding <strong>why</strong> requires understanding transitive routing, route table isolation, centralized egress, and inspection architectures — all of which we cover in detail here.</p>
 
         <h2>1. VPC Peering — Direct, Non-Transitive, Fast</h2>
+        <h3>How It Works</h3>
         <p>VPC Peering creates a <strong>direct network link</strong> between exactly two VPCs. Traffic flows privately over the AWS backbone — no internet, no gateway, no bandwidth bottleneck. The connection is symmetric: both VPCs can initiate traffic to each other.</p>
 
-        <h4>The Transitivity Problem — The #1 Peering Mistake</h4>
+        <pre><code>VPC A (10.0.0.0/16) ←——————→ VPC B (10.1.0.0/16)
+         VPC Peering Connection (pcx-xxxxxxxx)</code></pre>
+
+        <p>The key operational requirement: <strong>routing is not automatic</strong>. After creating the peering connection, you must add routes on <strong>both sides</strong>:</p>
+
+        <pre><code># VPC Peering Connection
+resource "aws_vpc_peering_connection" "app_to_data" {
+  vpc_id        = aws_vpc.app.id
+  peer_vpc_id   = aws_vpc.data.id
+  peer_region   = "eu-west-1"   # Same region — omit for cross-region
+  auto_accept   = true
+
+  tags = { Name = "app-to-data-peering" }
+}
+
+# Route on VPC A side — traffic to VPC B goes via peering
+resource "aws_route" "app_to_data" {
+  route_table_id            = aws_route_table.app_private.id
+  destination_cidr_block    = "10.1.0.0/16"   # VPC B CIDR
+  vpc_peering_connection_id = aws_vpc_peering_connection.app_to_data.id
+}
+
+# Route on VPC B side — traffic to VPC A goes via peering
+resource "aws_route" "data_to_app" {
+  route_table_id            = aws_route_table.data_private.id
+  destination_cidr_block    = "10.0.0.0/16"   # VPC A CIDR
+  vpc_peering_connection_id = aws_vpc_peering_connection.app_to_data.id
+}</code></pre>
+
+        <h3>The Transitivity Problem — The #1 Peering Mistake</h3>
         <p>This is the most critical concept to understand about VPC Peering. <strong>Peering is non-transitive.</strong> If VPC A peers with VPC B, and VPC B peers with VPC C, VPC A cannot reach VPC C through VPC B.</p>
-        
-        <div style="background: var(--aws-highlight); padding: 20px; border-radius: 6px; border-left: 5px solid var(--aws-orange); margin: 32px 0;">
-          <p style="margin-bottom: 0;"><strong>Scale Warning:</strong> If you need A to reach C, you must create a direct peering between A and C. This is why full-mesh peering falls apart at scale:</p>
-        </div>
+
+        <pre><code>VPC A ←——→ VPC B ←——→ VPC C
+     ✅ A↔B works    ✅ B↔C works
+     ❌ A↔C does NOT work — traffic cannot transit through VPC B</code></pre>
+
+        <p>This is not a bug — it is a deliberate design decision by AWS. If you need A to reach C, you must create a direct peering between A and C. This is why full-mesh peering falls apart at scale:</p>
 
         <table class="compare-table">
           <thead>
-            <tr>
-              <th>VPCs</th>
-              <th>Peering connections needed for full mesh</th>
-            </tr>
+            <tr><th>VPCs</th><th>Peering connections needed for full mesh</th></tr>
           </thead>
           <tbody>
-            <tr>
-              <td>3</td>
-              <td>3</td>
-            </tr>
-            <tr>
-              <td>5</td>
-              <td>10</td>
-            </tr>
-            <tr>
-              <td>10</td>
-              <td>45</td>
-            </tr>
-            <tr>
-              <td>20</td>
-              <td>190</td>
-            </tr>
-            <tr>
-              <td>50</td>
-              <td>1,225</td>
-            </tr>
+            <tr><td>3</td><td>3</td></tr>
+            <tr><td>5</td><td>10</td></tr>
+            <tr><td>10</td><td>45</td></tr>
+            <tr><td>20</td><td>190</td></tr>
+            <tr><td>50</td><td>1,225</td></tr>
           </tbody>
         </table>
 
-        <p>At 20 VPCs you need 190 peering connections and 380 route table entries. This is the "Full Mesh Nightmare" where Transit Gateway becomes mandatory.</p>
+        <p>At 20 VPCs you need 190 peering connections, 380 route table entries, and a spreadsheet to track it all. This is the point where TGW becomes not just preferable but necessary.</p>
 
-        <h4>Terraform: Cross-Account Peering Pattern</h4>
-        <p>Peering works across AWS accounts. The requester/accepter pattern is a common point of friction for engineers:</p>
+        <h3>Cross-Account Peering</h3>
+        <p>Peering works across AWS accounts. The accepter account must explicitly accept the connection:</p>
+
         <pre><code># In the requester account
 resource "aws_vpc_peering_connection" "cross_account" {
   vpc_id      = aws_vpc.requester.id
@@ -213,118 +203,374 @@ resource "aws_vpc_peering_connection" "cross_account" {
   peer_owner_id = var.accepter_account_id
   peer_region = var.accepter_region
   auto_accept = false   # Must be accepted by the other account
+
+  tags = { Name = "cross-account-peering" }
 }
 
-# In the accepter account
+# In the accepter account (separate Terraform workspace/provider)
 resource "aws_vpc_peering_connection_accepter" "cross_account" {
   vpc_peering_connection_id = var.peering_connection_id
   auto_accept               = true
+
+  tags = { Name = "cross-account-peering-accepter" }
 }</code></pre>
 
-        <h4>Expert Tip: Security Group Referencing</h4>
-        <p>Within the <strong>same region</strong>, you can reference a Security Group from a peered VPC directly in your rules — no need to use CIDR blocks:</p>
+        <h3>Security Group Referencing Across Peers</h3>
+        <p>One powerful but underused feature: within the <strong>same region</strong>, you can reference a Security Group from a peered VPC directly in your Security Group rules — no need to use CIDR blocks:</p>
+
         <pre><code>resource "aws_security_group_rule" "allow_peered_app" {
   type                     = "ingress"
   from_port                = 5432
   to_port                  = 5432
   protocol                 = "tcp"
-  source_security_group_id = "sg-xxxxxxxxx" # SG from peered VPC
+  source_security_group_id = "sg-xxxxxxxxx"   # SG from peered VPC
   security_group_id        = aws_security_group.rds.id
 }</code></pre>
 
-        <h2>2. Transit Gateway — The Enterprise Hub</h2>
-        <p>Transit Gateway (TGW) acts as a regional network hub. Instead of point-to-point connections, every VPC connects once to the TGW — the TGW handles all routing decisions centrally.</p>
+        <p>This is far more precise than allowing an entire CIDR block — if the peered VPC's CIDR is <code>10.1.0.0/16</code>, referencing the SG means only resources in that specific Security Group can connect, not any resource in the entire VPC.</p>
 
-        <h4>Route Table Isolation: The Core Power</h4>
-        <p>This is where TGW outperforms Peering. You can create separate route tables per environment and control exactly what each attachment can reach:</p>
-        <pre><code># ASSOCIATION — Each attachment reads from one route table (its GPS)
+        <h3>When Peering IS the Right Answer</h3>
+        <ul>
+          <li>You have <strong>2-5 VPCs</strong> that need direct, high-throughput connectivity</li>
+          <li>The VPCs are <strong>in the same region</strong> (in-region peering is free)</li>
+          <li>You don't need <strong>transitive routing</strong> — point-to-point is sufficient</li>
+          <li>You want <strong>zero data processing cost</strong> — unlike TGW, in-region peering has no per-GB charge</li>
+          <li>You need <strong>maximum throughput</strong> — peering has no bandwidth cap, TGW bursts to 50 Gbps per AZ</li>
+        </ul>
+
+        <h2>2. Transit Gateway — The Enterprise Hub</h2>
+        <h3>Architecture Overview</h3>
+        <p>Transit Gateway is a <strong>regional network hub</strong> that your VPCs and on-premises networks attach to. Instead of point-to-point connections, every VPC connects once to the TGW — the TGW handles all routing decisions from there.</p>
+
+        <h3>Full TGW Infrastructure — Terraform</h3>
+        <pre><code># The Transit Gateway itself
+resource "aws_ec2_transit_gateway" "main" {
+  description                     = "Organization Central Hub"
+  amazon_side_asn                 = 64512
+  default_route_table_association = "disable"   # We manage route tables manually
+  default_route_table_propagation = "disable"   # We manage propagation manually
+  auto_accept_shared_attachments  = "enable"    # Auto-accept RAM-shared attachments
+
+  tags = { Name = "org-tgw-eu-west-1" }
+}
+
+# Attach Prod VPC
+resource "aws_ec2_transit_gateway_vpc_attachment" "prod" {
+  subnet_ids         = aws_subnet.prod_private[*].id
+  transit_gateway_id = aws_ec2_transit_gateway.main.id
+  vpc_id             = aws_vpc.prod.id
+  appliance_mode_support = "enable"   # Required for stateful inspection via GWLB
+
+  tags = { Name = "tgw-attach-prod" }
+}
+
+# Attach Non-Prod VPC
+resource "aws_ec2_transit_gateway_vpc_attachment" "non_prod" {
+  subnet_ids         = aws_subnet.non_prod_private[*].id
+  transit_gateway_id = aws_ec2_transit_gateway.main.id
+  vpc_id             = aws_vpc.non_prod.id
+
+  tags = { Name = "tgw-attach-non-prod" }
+}
+
+# Attach Shared Services VPC
+resource "aws_ec2_transit_gateway_vpc_attachment" "shared" {
+  subnet_ids         = aws_subnet.shared_private[*].id
+  transit_gateway_id = aws_ec2_transit_gateway.main.id
+  vpc_id             = aws_vpc.shared.id
+
+  tags = { Name = "tgw-attach-shared" }
+}</code></pre>
+
+        <h3>Route Table Isolation — The Core TGW Power</h3>
+        <p>This is where TGW fundamentally outperforms Peering. You create <strong>separate route tables per environment</strong> and control exactly what each attachment can reach:</p>
+
+        <pre><code># Prod Route Table — Prod VPCs only see each other + Shared Services
+resource "aws_ec2_transit_gateway_route_table" "prod" {
+  transit_gateway_id = aws_ec2_transit_gateway.main.id
+  tags               = { Name = "tgw-rt-prod" }
+}
+
+# Non-Prod Route Table — Non-Prod VPCs only see each other + Shared Services
+resource "aws_ec2_transit_gateway_route_table" "non_prod" {
+  transit_gateway_id = aws_ec2_transit_gateway.main.id
+  tags               = { Name = "tgw-rt-non-prod" }
+}
+
+# ASSOCIATION — Each attachment reads from one route table (its GPS)
 resource "aws_ec2_transit_gateway_route_table_association" "prod" {
   transit_gateway_attachment_id  = aws_ec2_transit_gateway_vpc_attachment.prod.id
   transit_gateway_route_table_id = aws_ec2_transit_gateway_route_table.prod.id
 }
 
-# PROPAGATION — Each attachment writes into specific route tables
+resource "aws_ec2_transit_gateway_route_table_association" "non_prod" {
+  transit_gateway_attachment_id  = aws_ec2_transit_gateway_vpc_attachment.non_prod.id
+  transit_gateway_route_table_id = aws_ec2_transit_gateway_route_table.non_prod.id
+}
+
+# PROPAGATION — Each attachment writes its CIDR into specific route tables
 # Prod VPC announces itself to the Prod RT only
 resource "aws_ec2_transit_gateway_route_table_propagation" "prod_to_prod_rt" {
   transit_gateway_attachment_id  = aws_ec2_transit_gateway_vpc_attachment.prod.id
   transit_gateway_route_table_id = aws_ec2_transit_gateway_route_table.prod.id
+}
+
+# Shared Services announces itself to BOTH Prod and Non-Prod RTs
+# This allows both environments to reach AD, logging, monitoring — but not each other
+resource "aws_ec2_transit_gateway_route_table_propagation" "shared_to_prod_rt" {
+  transit_gateway_attachment_id  = aws_ec2_transit_gateway_vpc_attachment.shared.id
+  transit_gateway_route_table_id = aws_ec2_transit_gateway_route_table.prod.id
+}
+
+resource "aws_ec2_transit_gateway_route_table_propagation" "shared_to_non_prod_rt" {
+  transit_gateway_attachment_id  = aws_ec2_transit_gateway_vpc_attachment.shared.id
+  transit_gateway_route_table_id = aws_ec2_transit_gateway_route_table.non_prod.id
 }</code></pre>
 
-        <div style="background: var(--aws-highlight); padding: 24px; border-left: 5px solid var(--aws-blue); margin-top: 40px;">
-          <p style="margin-bottom: 0;"><strong>Security Fact:</strong> Traffic is blocked at the TGW routing layer. A packet from a Dev VPC destined for a Prod VPC is dropped at the hub before it ever reaches a Security Group. This is true network-level segmentation.</p>
+        <div style="background: var(--aws-highlight); padding: 20px; border-radius: 6px; border-left: 5px solid var(--aws-blue); margin: 32px 0;">
+          <p style="font-weight: 700; margin-bottom: 8px;">The Mental Model:</p>
+          <p style="margin-bottom: 0;"><strong>Association</strong> = "I read from this table." | <strong>Propagation</strong> = "I write into this table."</p>
         </div>
 
-        <h2>3. Advanced Pattern: Centralised Egress</h2>
-        <p>Deploying a NAT Gateway in every spoke VPC is expensive ($32/month minimum per NAT GW). Instead, we use a single <strong>Egress VPC</strong> to consolidate internet traffic.</p>
-        <pre><code># In the TGW route table — default route points to Egress VPC attachment
+        <h3>Sharing TGW Across Accounts — AWS RAM</h3>
+        <p>In a multi-account AWS Organisation, you create one TGW in a central Networking account and share it with all other accounts via Resource Access Manager:</p>
+
+        <pre><code># In the Networking account
+resource "aws_ram_resource_share" "tgw" {
+  name                      = "org-tgw-share"
+  allow_external_principals = false   # Restrict to AWS Organisation only
+
+  tags = { Name = "tgw-ram-share" }
+}
+
+resource "aws_ram_resource_association" "tgw" {
+  resource_arn       = aws_ec2_transit_gateway.main.arn
+  resource_share_arn = aws_ram_resource_share.tgw.arn
+}
+
+# Share with the entire AWS Organisation
+resource "aws_ram_principal_association" "org" {
+  principal          = data.aws_organizations_organization.main.arn
+  resource_share_arn = aws_ram_resource_share.tgw.arn
+}
+
+# In any spoke account — attaches to the shared TGW
+resource "aws_ec2_transit_gateway_vpc_attachment" "spoke" {
+  subnet_ids         = aws_subnet.private[*].id
+  transit_gateway_id = var.shared_tgw_id   # ID from Networking account
+  vpc_id             = aws_vpc.main.id
+
+  tags = { Name = "spoke-attachment-${var.account_name}" }
+}</code></pre>
+
+        <h2>3. Advanced Pattern: Centralised Egress via TGW</h2>
+        <p>This is the enterprise-standard pattern for controlling and auditing all outbound internet traffic from multiple VPCs through a <strong>single NAT Gateway</strong> in a dedicated Egress VPC.</p>
+
+        <h3>Full Egress VPC Terraform</h3>
+        <pre><code># Egress VPC — the only VPC with an IGW
+resource "aws_vpc" "egress" {
+  cidr_block = "10.255.0.0/24"
+  tags       = { Name = "egress-vpc" }
+}
+
+resource "aws_internet_gateway" "egress" {
+  vpc_id = aws_vpc.egress.id
+}
+
+resource "aws_nat_gateway" "egress" {
+  for_each      = toset(["eu-west-1a", "eu-west-1b", "eu-west-1c"])
+  allocation_id = aws_eip.egress[each.key].id
+  subnet_id     = aws_subnet.egress_public[each.key].id
+  tags          = { Name = "nat-gw-egress-${each.key}" }
+}
+
+# Attach Egress VPC to TGW
+resource "aws_ec2_transit_gateway_vpc_attachment" "egress" {
+  subnet_ids         = aws_subnet.egress_private[*].id
+  transit_gateway_id = aws_ec2_transit_gateway.main.id
+  vpc_id             = aws_vpc.egress.id
+  appliance_mode_support = "enable"   # Critical for asymmetric flows
+  tags               = { Name = "tgw-attach-egress" }
+}
+
+# In each spoke VPC's route table — default route points to TGW
+resource "aws_route" "spoke_default_via_tgw" {
+  route_table_id         = aws_route_table.spoke_private.id
+  destination_cidr_block = "0.0.0.0/0"
+  transit_gateway_id     = aws_ec2_transit_gateway.main.id
+}
+
+# In the TGW route table — default route points to Egress VPC attachment
 resource "aws_ec2_transit_gateway_route" "default_to_egress" {
   destination_cidr_block         = "0.0.0.0/0"
   transit_gateway_attachment_id  = aws_ec2_transit_gateway_vpc_attachment.egress.id
   transit_gateway_route_table_id = aws_ec2_transit_gateway_route_table.prod.id
+}
+
+# In Egress VPC — route internet-bound traffic via NAT GW, return traffic via TGW
+resource "aws_route" "egress_return_to_spokes" {
+  route_table_id         = aws_route_table.egress_private.id
+  destination_cidr_block = "10.0.0.0/8"   # All spoke CIDRs
+  transit_gateway_id     = aws_ec2_transit_gateway.main.id
 }</code></pre>
 
-        <div style="background: var(--aws-highlight); padding: 20px; border-radius: 6px; border-left: 5px solid var(--aws-orange); margin-bottom: 30px;">
-          <p style="margin-bottom: 0;"><strong>Critical Gotcha:</strong> Always enable <code>appliance_mode_support = "enable"</code> on your Egress VPC attachment. Without it, asymmetric routing will cause NAT sessions to drop return traffic when packets enter and exit via different AZs.</p>
-        </div>
+        <h2>4. Advanced Pattern: Centralised Inspection via GWLB</h2>
+        <p>For high-security workloads, all traffic may need to be inspected by a third-party firewall fleet. <strong>Gateway Load Balancer (GWLB)</strong> enables this transparently.</p>
 
-        <h2>4. Advanced Pattern: Centralised Inspection (GWLB)</h2>
-        <p>For high-security workloads (Rabobank, Fintech), all traffic may need inspection by a 3rd-party firewall (Palo Alto, Fortinet). <strong>Gateway Load Balancer (GWLB)</strong> enables this transparently.</p>
-        <pre><code>resource "aws_lb_target_group" "firewalls" {
+        <h3>Full GWLB Infrastructure</h3>
+        <pre><code># Inspection VPC with GWLB
+resource "aws_lb" "inspection" {
+  name               = "inspection-gwlb"
+  load_balancer_type = "gateway"
+  subnets            = aws_subnet.inspection[*].id
+
+  tags = { Name = "gwlb-inspection" }
+}
+
+resource "aws_lb_target_group" "firewalls" {
   name        = "firewall-targets"
-  port        = 6081 # GENEVE protocol — GWLB uses this for encapsulation
+  port        = 6081    # GENEVE protocol — GWLB uses this for encapsulation
   protocol    = "GENEVE"
   vpc_id      = aws_vpc.inspection.id
   target_type = "instance"
+
+  health_check {
+    port     = 80
+    protocol = "HTTP"
+  }
+}
+
+# VPC Endpoint Service — exposes GWLB to other VPCs via PrivateLink
+resource "aws_vpc_endpoint_service" "inspection" {
+  acceptance_required        = false
+  gateway_load_balancer_arns = [aws_lb.inspection.arn]
+
+  tags = { Name = "gwlb-endpoint-service" }
+}
+
+# In each spoke VPC — a GWLB endpoint that redirects traffic to inspection
+resource "aws_vpc_endpoint" "gwlb_spoke" {
+  vpc_id            = aws_vpc.spoke.id
+  service_name      = aws_vpc_endpoint_service.inspection.service_name
+  vpc_endpoint_type = "GatewayLoadBalancer"
+  subnet_ids        = aws_subnet.spoke_private[*].id
+
+  tags = { Name = "gwlb-endpoint-spoke" }
 }</code></pre>
 
-        <h2>5. Inter-Region TGW Peering</h2>
-        <p>To connect VPCs across regions, you peer Transit Gateways. Traffic flows over the AWS private backbone. <strong>Crucial Difference:</strong> Routes do <em>not</em> propagate across TGW peering connections — you must add static routes manually on both sides.</p>
+        <h2>5. Inter-Region TGW Peering — Global Hub-and-Spoke</h2>
+        <p>To connect VPCs across regions, you peer Transit Gateways together. Traffic flows entirely over the AWS private backbone.</p>
 
-        <h2>6. Cost Deep-Dive — The Honest View</h2>
-        <p>TGW is genuinely more expensive for pure data transfer between same-region VPCs ($0.02/GB processing fee). The cost is the price of <strong>operational simplicity</strong>.</p>
-        
+        <pre><code># In eu-west-1
+resource "aws_ec2_transit_gateway_peering_attachment" "eu_to_us" {
+  transit_gateway_id      = aws_ec2_transit_gateway.eu.id
+  peer_transit_gateway_id = var.us_east_1_tgw_id
+  peer_region             = "us-east-1"
+
+  tags = { Name = "tgw-peer-eu-to-us" }
+}
+
+# In us-east-1 — must be accepted
+resource "aws_ec2_transit_gateway_peering_attachment_accepter" "us" {
+  transit_gateway_attachment_id = var.peering_attachment_id
+
+  tags = { Name = "tgw-peer-us-accepter" }
+}
+
+# Static routes required — no propagation across TGW peering
+resource "aws_ec2_transit_gateway_route" "eu_to_us_cidrs" {
+  destination_cidr_block         = "10.100.0.0/16"   # US VPC CIDRs
+  transit_gateway_attachment_id  = aws_ec2_transit_gateway_peering_attachment.eu_to_us.id
+  transit_gateway_route_table_id = aws_ec2_transit_gateway_route_table.prod.id
+}</code></pre>
+
+        <h2>6. Cost Deep-Dive — When Does TGW Actually Save Money?</h2>
+        <p>The most honest part of this post. TGW has two cost components that stack up fast:</p>
+
         <table class="compare-table">
           <thead>
-            <tr>
-              <th>Architecture</th>
-              <th>Hourly Cost (10 VPCs)</th>
-              <th>Data Cost (1TB/mo)</th>
-              <th>Overhead</th>
-            </tr>
+            <tr><th>Component</th><th>Cost (eu-west-1)</th></tr>
           </thead>
           <tbody>
-            <tr>
-              <td><strong>VPC Peering</strong></td>
-              <td>$0</td>
-              <td>$0</td>
-              <td>Very High</td>
-            </tr>
-            <tr>
-              <td><strong>Transit Gateway</strong></td>
-              <td>~$530/month</td>
-              <td>$20</td>
-              <td>Low</td>
-            </tr>
+            <tr><td>TGW hourly</td><td>$0.073/attachment/hour</td></tr>
+            <tr><td>Data processed</td><td>$0.02/GB</td></tr>
+            <tr><td>Inter-region peering</td><td>$0.02/GB (each side)</td></tr>
           </tbody>
         </table>
 
-        <h2>7. Common Mistakes & Anti-Patterns</h2>
+        <h3>Scenario: 10 VPCs, All Needing Full-Mesh Connectivity</h3>
+        <p><strong>Option A — VPC Peering (full mesh, same region):</strong></p>
         <ul>
-          <li><strong>Full-Mesh Peering Beyond 5 VPCs:</strong> Managing 45+ peering connections manually is an operational disaster.</li>
-          <li><strong>Forgetting <code>appliance_mode_support</code>:</strong> Causes mysterious "silent drops" in centralized egress architectures.</li>
-          <li><strong>Default Associations:</strong> Always disable <code>default_route_table_association</code> to prevent route leakage across environments.</li>
+          <li>Peering connections needed: 45</li>
+          <li>Route table entries needed: ~900</li>
+          <li>Hourly cost: $0</li>
+          <li>Data transfer (in-region): $0</li>
+          <li><strong>Operational overhead: Very High</strong></li>
         </ul>
 
-        <div style="background: var(--aws-highlight); color: var(--aws-text); padding: 30px; border-radius: 8px; margin: 40px 0; border-left: 6px solid var(--aws-orange); box-shadow: 0 2px 15px rgba(0,0,0,0.05);">
-          <h4 style="margin-top: 0; color: var(--aws-orange); font-size: 22px; font-weight: 800;">The Golden Rule:</h4>
-          <p style="margin-bottom: 0; font-size: 17px; line-height: 1.6; font-weight: 500;">
-            Use <strong>VPC Peering</strong> for direct, high-throughput connectivity between 2-5 VPCs. Use <strong>Transit Gateway</strong> for centralized control, traffic inspection, and multi-account scale. If you're asking if you need TGW, you likely already do.
+        <p><strong>Option B — Transit Gateway:</strong></p>
+        <ul>
+          <li>TGW attachments: 10 VPCs</li>
+          <li>Hourly cost: 10 × $0.073 × 730h = $532.90/month</li>
+          <li>Data processed (est 1TB/mo): 1,000 GB × $0.02 = $20.00/month</li>
+          <li><strong>Total: ~$552.90/month</strong></li>
+          <li><strong>Operational overhead: Low (centralised)</strong></li>
+        </ul>
+
+        <h2>7. The Decision Framework</h2>
+        <div style="background: #fdfdfd; padding: 24px; border: 1px solid var(--aws-border); border-radius: 8px; font-family: monospace; font-size: 14px; line-height: 1.6;">
+          How many VPCs need to communicate?<br>
+          ├── 2-5 VPCs<br>
+          │   ├── Same region + high throughput (>1TB/month)?<br>
+          │   │   └── VPC Peering (free data transfer, no bottleneck)<br>
+          │   └── Need transitive routing or centralized control?<br>
+          │       └── Transit Gateway<br>
+          └── 6+ VPCs<br>
+              └── Transit Gateway (always — operational complexity of peering is too high)<br>
+          <br>
+          Do you need traffic inspection / centralized security?<br>
+          └── YES → TGW + Inspection VPC (GWLB + firewall fleet)<br>
+          <br>
+          Do you need centralized egress?<br>
+          └── YES → TGW + Egress VPC (single NAT GW per AZ for all spokes)<br>
+          <br>
+          Are CIDRs overlapping?<br>
+          └── YES → TGW + Private NAT Gateway
+        </div>
+
+        <h2>8. Common Mistakes & Anti-Patterns</h2>
+        <ul>
+          <li><strong>Full-Mesh Peering Beyond 5 VPCs:</strong> Managing 45+ peering connections manually is an operational nightmare.</li>
+          <li><strong>Forgetting <code>appliance_mode_support</code>:</strong> Without this, stateful NAT will drop return traffic when packets enter and exit through different AZs.</li>
+          <li><strong>Expecting Propagation to Work Across TGW Peering:</strong> Route propagation only works within a single TGW. Across a peering connection, all routes must be <strong>static</strong>.</li>
+          <li><strong>Not Disabling Defaults:</strong> Always disable <code>default_route_table_association</code> to prevent all new attachments from leaking routes across environments.</li>
+          <li><strong>Using TGW for Latency-Sensitive HPC:</strong> TGW adds a small hop. For ultra-low-latency financial trading or HPC, direct Peering is faster.</li>
+        </ul>
+
+        <table class="compare-table">
+          <thead>
+            <tr><th>Requirement</th><th>VPC Peering</th><th>Transit Gateway</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>2-3 VPCs, same region</td><td>✅ Best choice</td><td>❌ Overkill</td></tr>
+            <tr><td>10+ VPCs</td><td>❌ Unmanageable</td><td>✅ Best choice</td></tr>
+            <tr><td>Zero data transfer cost</td><td>✅ In-region free</td><td>❌ $0.02/GB</td></tr>
+            <tr><td>Transitive routing</td><td>❌ Not supported</td><td>✅ Native</td></tr>
+            <tr><td>Centralized egress</td><td>❌ Not possible</td><td>✅ Egress VPC pattern</td></tr>
+            <tr><td>Multi-account (AWS Org)</td><td>✅ Manual per-pair</td><td>✅ Single TGW via RAM</td></tr>
+          </tbody>
+        </table>
+
+        <div style="background: var(--aws-highlight); color: var(--aws-text); padding: 30px; border-radius: 8px; margin: 40px 0; border-left: 6px solid var(--aws-orange);">
+          <h4 style="margin-top: 0; color: var(--aws-orange); font-size: 22px;">The Golden Rule:</h4>
+          <p style="margin-bottom: 0; font-size: 17px;">
+            Use <strong>VPC Peering</strong> for direct, high-throughput connectivity between 2-5 VPCs. Use <strong>Transit Gateway</strong> for centralized control, multi-account scale, and advanced inspection. When in doubt — if you're asking if you need TGW, you probably need TGW.
           </p>
         </div>
 
         <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--aws-border);">
           <span style="font-weight: 700; color: var(--aws-text-light); margin-right: 12px; font-size: 13px;">Tags:</span>
-          <span class="tag">#AWS</span> <span class="tag">#TransitGateway</span> <span class="tag">#VPCPeering</span> <span class="tag">#Networking</span> <span class="tag">#FinOps</span> <span class="tag">#IaC</span>
+          <span class="tag">#AWS</span> <span class="tag">#TransitGateway</span> <span class="tag">#VPCPeering</span> <span class="tag">#Networking</span> <span class="tag">#FinOps</span> <span class="tag">#IaC</span> <span class="tag">#Terraform</span>
         </div>
       </div>
 

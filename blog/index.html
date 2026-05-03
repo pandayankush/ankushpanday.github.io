@@ -16,6 +16,7 @@
       padding: 0 20px; 
       min-height: calc(100vh - 200px); 
     }
+    .back-btn { display: inline-flex; align-items: center; gap: 8px; color: var(--aws-blue); text-decoration: none; font-weight: 500; margin-bottom: 24px; }
     .blog-grid { display: grid; grid-template-columns: 1fr; gap: 30px; margin-top: 40px; }
     .blog-card { background: white; border: 1px solid var(--aws-border); border-radius: 8px; overflow: hidden; transition: transform 0.2s, box-shadow 0.2s; text-decoration: none; display: flex; flex-direction: column; }
     .blog-card:hover { transform: translateY(-4px); box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
@@ -32,7 +33,6 @@
 <body>
 
   <nav class="aws-topnav">
-    <a href="../index.html#blogs" class="back-btn"><i class="fa-solid fa-arrow-left"></i> Back to Portfolio</a>
     <a href="../index.html" class="logo">
       <i class="fa-solid fa-cloud" style="color: var(--aws-orange); font-size: 20px;"></i>
       <span>Ankush Panday</span>
@@ -44,6 +44,7 @@
   </nav>
 
   <div class="blog-page-container">
+    <a href="../index.html#blogs" class="back-btn"><i class="fa-solid fa-arrow-left"></i> Back to Portfolio</a>
     <h1 style="font-size: 32px; color: var(--aws-text); margin-bottom: 8px;">Technical Blog</h1>
     <p style="color: var(--aws-text-light); border-left: 4px solid var(--aws-blue); padding-left: 15px; margin-bottom: 40px;">Architecting for the Real World: AWS Deep Dives, Production Scaling Patterns, and the AI-Driven Cloud.</p>
 

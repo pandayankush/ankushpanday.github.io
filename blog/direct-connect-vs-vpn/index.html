@@ -209,9 +209,9 @@
         <p style="margin-bottom: 20px;">A Direct Connect Gateway (DXGW) lets a single DX connection reach VPCs in <strong>multiple AWS regions</strong> — without separate connections per region:</p>
 
         <div style="background: #1e1e1e; padding: 16px; border-radius: 6px; margin-bottom: 24px; overflow-x: auto; border: 1px solid #333;">
-          <pre style="margin: 0; color: #d4d4d4; font-family: monospace; font-size: 13px;"><code>Data Center → DX Connection → DXGW → TGW eu-west-1 → EU VPCs
-                                    → TGW us-east-1 → US VPCs
-                                    → TGW ap-southeast-1 → APAC VPCs</code></pre>
+          <pre style="margin: 0; color: #d4d4d4; font-family: monospace; font-size: 13px;"><code>Data Center → DX Connection → DXGW → TGW eu-west-<span style="color: #b5cea8;">1</span> → EU VPCs
+                                    → TGW us-east-<span style="color: #b5cea8;">1</span> → US VPCs
+                                    → TGW ap-southeast-<span style="color: #b5cea8;">1</span> → APAC VPCs</code></pre>
         </div>
 
         <div style="background: #1e1e1e; padding: 16px; border-radius: 6px; margin-bottom: 24px; overflow-x: auto; border: 1px solid #333;">
@@ -323,8 +323,8 @@
 
         <p style="margin-bottom: 10px;"><strong>Pattern 1: Dual DX (Maximum Resilience)</strong></p>
         <div style="background: #1e1e1e; padding: 16px; border-radius: 6px; margin-bottom: 24px; overflow-x: auto; border: 1px solid #333;">
-          <pre style="margin: 0; color: #d4d4d4; font-family: monospace; font-size: 13px;"><code>Data Center Router A → DX Location 1 → AWS
-Data Center Router B → DX Location 2 → AWS (different DX location)</code></pre>
+          <pre style="margin: 0; color: #d4d4d4; font-family: monospace; font-size: 13px;"><code>Data Center Router A → DX Location <span style="color: #b5cea8;">1</span> → AWS
+Data Center Router B → DX Location <span style="color: #b5cea8;">2</span> → AWS (different DX location)</code></pre>
         </div>
 
         <p style="margin-bottom: 10px;"><strong>Pattern 2: DX Primary + VPN Backup (Cost-Optimised)</strong></p>
@@ -368,8 +368,8 @@ Data Center → Site-to-Site VPN (backup, activates on DX failure via BGP)</code
 
         <div style="background: #1e1e1e; padding: 16px; border-radius: 6px; margin-bottom: 24px; overflow-x: auto; border: 1px solid #333;">
           <pre style="margin: 0; color: #d4d4d4; font-family: monospace; font-size: 13px;"><code>On-Premises Router (Customer Gateway)
-    → Tunnel 1 → AWS VPN Endpoint AZ-a
-    → Tunnel 2 → AWS VPN Endpoint AZ-b (standby)</code></pre>
+    → Tunnel <span style="color: #b5cea8;">1</span> → AWS VPN Endpoint AZ-a
+    → Tunnel <span style="color: #b5cea8;">2</span> → AWS VPN Endpoint AZ-b (standby)</code></pre>
         </div>
 
         <h3 style="margin-top: 32px; font-size: 22px; color: var(--aws-blue); margin-bottom: 16px;">Full Site-to-Site VPN Terraform</h3>
@@ -481,7 +481,7 @@ Data Center → Site-to-Site VPN (backup, activates on DX failure via BGP)</code
 
         <div style="background: #1e1e1e; padding: 16px; border-radius: 6px; margin-bottom: 24px; overflow-x: auto; border: 1px solid #333;">
           <pre style="margin: 0; color: #d4d4d4; font-family: monospace; font-size: 13px;"><code>User Laptop (anywhere)
-    → TLS 1.2+ encrypted tunnel
+    → TLS <span style="color: #b5cea8;">1</span>.<span style="color: #b5cea8;">2</span>+ encrypted tunnel
         → Client VPN Endpoint (ENI in your VPC)
             → Your VPC resources / TGW / on-premises</code></pre>
         </div>
@@ -592,11 +592,11 @@ Data Center → Site-to-Site VPN (backup, activates on DX failure via BGP)</code
 
         <h3 style="margin-top: 32px; font-size: 22px; color: var(--aws-blue); margin-bottom: 16px;">Split Tunnel vs Full Tunnel — The Most Impactful Choice</h3>
         <div style="background: #1e1e1e; padding: 16px; border-radius: 6px; margin-bottom: 24px; overflow-x: auto; border: 1px solid #333;">
-          <pre style="margin: 0; color: #d4d4d4; font-family: monospace; font-size: 13px;"><code>Split Tunnel (split_tunnel = true):
+          <pre style="margin: 0; color: #d4d4d4; font-family: monospace; font-size: 13px;"><code>Split Tunnel (split_tunnel = <span style="color: #569cd6;">true</span>):
 User → VPN tunnel → VPC resources only
 User → Direct internet → All other internet traffic
 
-Full Tunnel (split_tunnel = false):
+Full Tunnel (split_tunnel = <span style="color: #569cd6;">false</span>):
 User → VPN tunnel → ALL traffic (VPC + internet)
                         ↓
                   NAT Gateway in your VPC → Internet</code></pre>
@@ -753,16 +753,16 @@ Remote Users ────── Client VPN ────────────�
 
         <p style="margin-bottom: 10px;"><strong>Client VPN cost example — 50 remote users, 8h/day, 22 days/month:</strong></p>
         <div style="background: #1e1e1e; padding: 16px; border-radius: 6px; margin-bottom: 24px; overflow-x: auto; border: 1px solid #333;">
-          <pre style="margin: 0; color: #d4d4d4; font-family: monospace; font-size: 13px;"><code>Endpoint (2 AZ associations): 2 × $0.10 × 730h      = $146.00/month (fixed)
-Active connections:            50 × $0.05 × 8h × 22d = $440.00/month
-Total:                                                  ~$586/month</code></pre>
+          <pre style="margin: 0; color: #d4d4d4; font-family: monospace; font-size: 13px;"><code>Endpoint (<span style="color: #b5cea8;">2</span> AZ associations): <span style="color: #b5cea8;">2</span> × $<span style="color: #b5cea8;">0</span>.<span style="color: #b5cea8;">10</span> × 730h      = $<span style="color: #b5cea8;">146</span>.<span style="color: #b5cea8;">00</span>/month (fixed)
+Active connections:            <span style="color: #b5cea8;">50</span> × $<span style="color: #b5cea8;">0</span>.<span style="color: #b5cea8;">05</span> × 8h × 22d = $<span style="color: #b5cea8;">440</span>.<span style="color: #b5cea8;">00</span>/month
+Total:                                                  ~$<span style="color: #b5cea8;">586</span>/month</code></pre>
         </div>
 
         <p style="margin-bottom: 20px;">For small teams (&lt;10 users), Client VPN's fixed endpoint cost makes it expensive per-user. Consider AWS WorkSpaces or a self-managed OpenVPN on EC2 for very small teams.</p>
 
         <h2 style="margin-top: 40px; font-size: 26px; color: var(--aws-text); border-bottom: 2px solid var(--aws-orange); display: inline-block; padding-bottom: 4px; margin-bottom: 24px;">6. The Decision Framework</h2>
         <div style="background: #1e1e1e; padding: 16px; border-radius: 6px; margin-bottom: 24px; overflow-x: auto; border: 1px solid #333;">
-          <pre style="margin: 0; color: #d4d4d4; font-family: monospace; font-size: 13px;"><code>Connecting a data center or office network to AWS?
+          <pre style="margin: 0; color: #d4d4d4; font-family: monospace; font-size: 13px;"><code>Connecting a <span style="color: #569cd6;">data</span> center or office network to AWS?
 ├── Need guaranteed bandwidth + consistent latency?
 │   └── Direct Connect
 │       ├── Multiple VPCs / regions? → Transit VIF + DXGW + TGW
@@ -784,8 +784,8 @@ Connecting individual users or devices?
     └── Access to on-premises via AWS? → Route via TGW
 
 What about cost?
-├── <10 TB/month transfer → VPN (DX ROI not yet justified)
-├── >10 TB/month transfer → Evaluate DX ROI
+├── <<span style="color: #b5cea8;">10</span> TB/month transfer → VPN (DX ROI not yet justified)
+├── ><span style="color: #b5cea8;">10</span> TB/month transfer → Evaluate DX ROI
 ├── Need <10ms predictable latency → DX (mandatory)
 └── Budget-constrained + low traffic → Hosted Connection or VPN</code></pre>
         </div>

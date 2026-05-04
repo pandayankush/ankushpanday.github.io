@@ -140,33 +140,33 @@
         <h3>How It Works</h3>
         <p>VPC Peering creates a <strong>direct network link</strong> between exactly two VPCs. Traffic flows privately over the AWS backbone — no internet, no gateway, no bandwidth bottleneck. The connection is symmetric: both VPCs can initiate traffic to each other.</p>
 
-        <pre><code>VPC A (10.0.0.0/16) ←——————→ VPC B (10.1.0.0/16)
+        <pre><code>VPC A (<span style="color: #b5cea8;">10</span>.<span style="color: #b5cea8;">0</span>.<span style="color: #b5cea8;">0</span>.<span style="color: #b5cea8;">0</span>/<span style="color: #b5cea8;">16</span>) ←——————→ VPC B (<span style="color: #b5cea8;">10</span>.<span style="color: #b5cea8;">1</span>.<span style="color: #b5cea8;">0</span>.<span style="color: #b5cea8;">0</span>/<span style="color: #b5cea8;">16</span>)
          VPC Peering Connection (pcx-xxxxxxxx)</code></pre>
 
         <p>The key operational requirement: <strong>routing is not automatic</strong>. After creating the peering connection, you must add routes on <strong>both sides</strong>:</p>
 
-        <pre><code># VPC Peering Connection
-resource "aws_vpc_peering_connection" "app_to_data" {
-  vpc_id        = aws_vpc.app.id
-  peer_vpc_id   = aws_vpc.data.id
-  peer_region   = "eu-west-1"   # Same region — omit for cross-region
-  auto_accept   = true
+        <pre><code><span style="color: #6a9955;"># VPC Peering Connection</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_vpc_peering_connection"</span> <span style="color: #ce9178;">"app_to_data"</span> {
+  <span style="color: #9cdcfe;">vpc_id</span>        = aws_vpc.app.id
+  <span style="color: #9cdcfe;">peer_vpc_id</span>   = aws_vpc.<span style="color: #569cd6;">data</span>.id
+  <span style="color: #9cdcfe;">peer_region</span>   = <span style="color: #ce9178;">"eu-west-1"</span>   <span style="color: #6a9955;"># Same region — omit for cross-region</span>
+  <span style="color: #9cdcfe;">auto_accept</span>   = <span style="color: #569cd6;">true</span>
 
-  tags = { Name = "app-to-data-peering" }
+  <span style="color: #9cdcfe;">tags</span> = { Name = <span style="color: #ce9178;">"app-to-data-peering"</span> }
 }
 
-# Route on VPC A side — traffic to VPC B goes via peering
-resource "aws_route" "app_to_data" {
-  route_table_id            = aws_route_table.app_private.id
-  destination_cidr_block    = "10.1.0.0/16"   # VPC B CIDR
-  vpc_peering_connection_id = aws_vpc_peering_connection.app_to_data.id
+<span style="color: #6a9955;"># Route on VPC A side — traffic to VPC B goes via peering</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_route"</span> <span style="color: #ce9178;">"app_to_data"</span> {
+  <span style="color: #9cdcfe;">route_table_id</span>            = aws_route_table.app_private.id
+  <span style="color: #9cdcfe;">destination_cidr_block</span>    = <span style="color: #ce9178;">"10.1.0.0/16"</span>   <span style="color: #6a9955;"># VPC B CIDR</span>
+  <span style="color: #9cdcfe;">vpc_peering_connection_id</span> = aws_vpc_peering_connection.app_to_data.id
 }
 
-# Route on VPC B side — traffic to VPC A goes via peering
-resource "aws_route" "data_to_app" {
-  route_table_id            = aws_route_table.data_private.id
-  destination_cidr_block    = "10.0.0.0/16"   # VPC A CIDR
-  vpc_peering_connection_id = aws_vpc_peering_connection.app_to_data.id
+<span style="color: #6a9955;"># Route on VPC B side — traffic to VPC A goes via peering</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_route"</span> <span style="color: #ce9178;">"data_to_app"</span> {
+  <span style="color: #9cdcfe;">route_table_id</span>            = aws_route_table.data_private.id
+  <span style="color: #9cdcfe;">destination_cidr_block</span>    = <span style="color: #ce9178;">"10.0.0.0/16"</span>   <span style="color: #6a9955;"># VPC A CIDR</span>
+  <span style="color: #9cdcfe;">vpc_peering_connection_id</span> = aws_vpc_peering_connection.app_to_data.id
 }</code></pre>
 
         <h3>The Transitivity Problem — The #1 Peering Mistake</h3>
@@ -196,35 +196,35 @@ resource "aws_route" "data_to_app" {
         <h3>Cross-Account Peering</h3>
         <p>Peering works across AWS accounts. The accepter account must explicitly accept the connection:</p>
 
-        <pre><code># In the requester account
-resource "aws_vpc_peering_connection" "cross_account" {
-  vpc_id      = aws_vpc.requester.id
-  peer_vpc_id = var.accepter_vpc_id
-  peer_owner_id = var.accepter_account_id
-  peer_region = var.accepter_region
-  auto_accept = false   # Must be accepted by the other account
+        <pre><code><span style="color: #6a9955;"># In the requester account</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_vpc_peering_connection"</span> <span style="color: #ce9178;">"cross_account"</span> {
+  <span style="color: #9cdcfe;">vpc_id</span>      = aws_vpc.requester.id
+  <span style="color: #9cdcfe;">peer_vpc_id</span> = var.accepter_vpc_id
+  <span style="color: #9cdcfe;">peer_owner_id</span> = var.accepter_account_id
+  <span style="color: #9cdcfe;">peer_region</span> = var.accepter_region
+  <span style="color: #9cdcfe;">auto_accept</span> = <span style="color: #569cd6;">false</span>   <span style="color: #6a9955;"># Must be accepted by the other account</span>
 
-  tags = { Name = "cross-account-peering" }
+  <span style="color: #9cdcfe;">tags</span> = { Name = <span style="color: #ce9178;">"cross-account-peering"</span> }
 }
 
-# In the accepter account (separate Terraform workspace/provider)
-resource "aws_vpc_peering_connection_accepter" "cross_account" {
-  vpc_peering_connection_id = var.peering_connection_id
-  auto_accept               = true
+<span style="color: #6a9955;"># In the accepter account (separate Terraform workspace/provider)</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_vpc_peering_connection_accepter"</span> <span style="color: #ce9178;">"cross_account"</span> {
+  <span style="color: #9cdcfe;">vpc_peering_connection_id</span> = var.peering_connection_id
+  <span style="color: #9cdcfe;">auto_accept</span>               = <span style="color: #569cd6;">true</span>
 
-  tags = { Name = "cross-account-peering-accepter" }
+  <span style="color: #9cdcfe;">tags</span> = { Name = <span style="color: #ce9178;">"cross-account-peering-accepter"</span> }
 }</code></pre>
 
         <h3>Security Group Referencing Across Peers</h3>
         <p>One powerful but underused feature: within the <strong>same region</strong>, you can reference a Security Group from a peered VPC directly in your Security Group rules — no need to use CIDR blocks:</p>
 
-        <pre><code>resource "aws_security_group_rule" "allow_peered_app" {
-  type                     = "ingress"
-  from_port                = 5432
-  to_port                  = 5432
-  protocol                 = "tcp"
-  source_security_group_id = "sg-xxxxxxxxx"   # SG from peered VPC
-  security_group_id        = aws_security_group.rds.id
+        <pre><code><span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_security_group_rule"</span> <span style="color: #ce9178;">"allow_peered_app"</span> {
+  <span style="color: #9cdcfe;">type</span>                     = <span style="color: #ce9178;">"ingress"</span>
+  <span style="color: #9cdcfe;">from_port</span>                = <span style="color: #b5cea8;">5432</span>
+  <span style="color: #9cdcfe;">to_port</span>                  = <span style="color: #b5cea8;">5432</span>
+  <span style="color: #9cdcfe;">protocol</span>                 = <span style="color: #ce9178;">"tcp"</span>
+  <span style="color: #9cdcfe;">source_security_group_id</span> = <span style="color: #ce9178;">"sg-xxxxxxxxx"</span>   <span style="color: #6a9955;"># SG from peered VPC</span>
+  <span style="color: #9cdcfe;">security_group_id</span>        = aws_security_group.rds.id
 }</code></pre>
 
         <p>This is far more precise than allowing an entire CIDR block — if the peered VPC's CIDR is <code>10.1.0.0/16</code>, referencing the SG means only resources in that specific Security Group can connect, not any resource in the entire VPC.</p>
@@ -243,88 +243,88 @@ resource "aws_vpc_peering_connection_accepter" "cross_account" {
         <p>Transit Gateway is a <strong>regional network hub</strong> that your VPCs and on-premises networks attach to. Instead of point-to-point connections, every VPC connects once to the TGW — the TGW handles all routing decisions from there.</p>
 
         <h3>Full TGW Infrastructure — Terraform</h3>
-        <pre><code># The Transit Gateway itself
-resource "aws_ec2_transit_gateway" "main" {
-  description                     = "Organization Central Hub"
-  amazon_side_asn                 = 64512
-  default_route_table_association = "disable"   # We manage route tables manually
-  default_route_table_propagation = "disable"   # We manage propagation manually
-  auto_accept_shared_attachments  = "enable"    # Auto-accept RAM-shared attachments
+        <pre><code><span style="color: #6a9955;"># The Transit Gateway itself</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_ec2_transit_gateway"</span> <span style="color: #ce9178;">"main"</span> {
+  <span style="color: #9cdcfe;">description</span>                     = <span style="color: #ce9178;">"Organization Central Hub"</span>
+  <span style="color: #9cdcfe;">amazon_side_asn</span>                 = <span style="color: #b5cea8;">64512</span>
+  <span style="color: #9cdcfe;">default_route_table_association</span> = <span style="color: #ce9178;">"disable"</span>   <span style="color: #6a9955;"># We manage route tables manually</span>
+  <span style="color: #9cdcfe;">default_route_table_propagation</span> = <span style="color: #ce9178;">"disable"</span>   <span style="color: #6a9955;"># We manage propagation manually</span>
+  <span style="color: #9cdcfe;">auto_accept_shared_attachments</span>  = <span style="color: #ce9178;">"enable"</span>    <span style="color: #6a9955;"># Auto-accept RAM-shared attachments</span>
 
-  tags = { Name = "org-tgw-eu-west-1" }
+  <span style="color: #9cdcfe;">tags</span> = { Name = <span style="color: #ce9178;">"org-tgw-eu-west-1"</span> }
 }
 
-# Attach Prod VPC
-resource "aws_ec2_transit_gateway_vpc_attachment" "prod" {
-  subnet_ids         = aws_subnet.prod_private[*].id
-  transit_gateway_id = aws_ec2_transit_gateway.main.id
-  vpc_id             = aws_vpc.prod.id
-  appliance_mode_support = "enable"   # Required for stateful inspection via GWLB
+<span style="color: #6a9955;"># Attach Prod VPC</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_ec2_transit_gateway_vpc_attachment"</span> <span style="color: #ce9178;">"prod"</span> {
+  <span style="color: #9cdcfe;">subnet_ids</span>         = aws_subnet.prod_private[*].id
+  <span style="color: #9cdcfe;">transit_gateway_id</span> = aws_ec2_transit_gateway.main.id
+  <span style="color: #9cdcfe;">vpc_id</span>             = aws_vpc.prod.id
+  <span style="color: #9cdcfe;">appliance_mode_support</span> = <span style="color: #ce9178;">"enable"</span>   <span style="color: #6a9955;"># Required for stateful inspection via GWLB</span>
 
-  tags = { Name = "tgw-attach-prod" }
+  <span style="color: #9cdcfe;">tags</span> = { Name = <span style="color: #ce9178;">"tgw-attach-prod"</span> }
 }
 
-# Attach Non-Prod VPC
-resource "aws_ec2_transit_gateway_vpc_attachment" "non_prod" {
-  subnet_ids         = aws_subnet.non_prod_private[*].id
-  transit_gateway_id = aws_ec2_transit_gateway.main.id
-  vpc_id             = aws_vpc.non_prod.id
+<span style="color: #6a9955;"># Attach Non-Prod VPC</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_ec2_transit_gateway_vpc_attachment"</span> <span style="color: #ce9178;">"non_prod"</span> {
+  <span style="color: #9cdcfe;">subnet_ids</span>         = aws_subnet.non_prod_private[*].id
+  <span style="color: #9cdcfe;">transit_gateway_id</span> = aws_ec2_transit_gateway.main.id
+  <span style="color: #9cdcfe;">vpc_id</span>             = aws_vpc.non_prod.id
 
-  tags = { Name = "tgw-attach-non-prod" }
+  <span style="color: #9cdcfe;">tags</span> = { Name = <span style="color: #ce9178;">"tgw-attach-non-prod"</span> }
 }
 
-# Attach Shared Services VPC
-resource "aws_ec2_transit_gateway_vpc_attachment" "shared" {
-  subnet_ids         = aws_subnet.shared_private[*].id
-  transit_gateway_id = aws_ec2_transit_gateway.main.id
-  vpc_id             = aws_vpc.shared.id
+<span style="color: #6a9955;"># Attach Shared Services VPC</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_ec2_transit_gateway_vpc_attachment"</span> <span style="color: #ce9178;">"shared"</span> {
+  <span style="color: #9cdcfe;">subnet_ids</span>         = aws_subnet.shared_private[*].id
+  <span style="color: #9cdcfe;">transit_gateway_id</span> = aws_ec2_transit_gateway.main.id
+  <span style="color: #9cdcfe;">vpc_id</span>             = aws_vpc.shared.id
 
-  tags = { Name = "tgw-attach-shared" }
+  <span style="color: #9cdcfe;">tags</span> = { Name = <span style="color: #ce9178;">"tgw-attach-shared"</span> }
 }</code></pre>
 
         <h3>Route Table Isolation — The Core TGW Power</h3>
         <p>This is where TGW fundamentally outperforms Peering. You create <strong>separate route tables per environment</strong> and control exactly what each attachment can reach:</p>
 
-        <pre><code># Prod Route Table — Prod VPCs only see each other + Shared Services
-resource "aws_ec2_transit_gateway_route_table" "prod" {
-  transit_gateway_id = aws_ec2_transit_gateway.main.id
-  tags               = { Name = "tgw-rt-prod" }
+        <pre><code><span style="color: #6a9955;"># Prod Route Table — Prod VPCs only see each other + Shared Services</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_ec2_transit_gateway_route_table"</span> <span style="color: #ce9178;">"prod"</span> {
+  <span style="color: #9cdcfe;">transit_gateway_id</span> = aws_ec2_transit_gateway.main.id
+  <span style="color: #9cdcfe;">tags</span>               = { Name = <span style="color: #ce9178;">"tgw-rt-prod"</span> }
 }
 
-# Non-Prod Route Table — Non-Prod VPCs only see each other + Shared Services
-resource "aws_ec2_transit_gateway_route_table" "non_prod" {
-  transit_gateway_id = aws_ec2_transit_gateway.main.id
-  tags               = { Name = "tgw-rt-non-prod" }
+<span style="color: #6a9955;"># Non-Prod Route Table — Non-Prod VPCs only see each other + Shared Services</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_ec2_transit_gateway_route_table"</span> <span style="color: #ce9178;">"non_prod"</span> {
+  <span style="color: #9cdcfe;">transit_gateway_id</span> = aws_ec2_transit_gateway.main.id
+  <span style="color: #9cdcfe;">tags</span>               = { Name = <span style="color: #ce9178;">"tgw-rt-non-prod"</span> }
 }
 
-# ASSOCIATION — Each attachment reads from one route table (its GPS)
-resource "aws_ec2_transit_gateway_route_table_association" "prod" {
-  transit_gateway_attachment_id  = aws_ec2_transit_gateway_vpc_attachment.prod.id
-  transit_gateway_route_table_id = aws_ec2_transit_gateway_route_table.prod.id
+<span style="color: #6a9955;"># ASSOCIATION — Each attachment reads from one route table (its GPS)</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_ec2_transit_gateway_route_table_association"</span> <span style="color: #ce9178;">"prod"</span> {
+  <span style="color: #9cdcfe;">transit_gateway_attachment_id</span>  = aws_ec2_transit_gateway_vpc_attachment.prod.id
+  <span style="color: #9cdcfe;">transit_gateway_route_table_id</span> = aws_ec2_transit_gateway_route_table.prod.id
 }
 
-resource "aws_ec2_transit_gateway_route_table_association" "non_prod" {
-  transit_gateway_attachment_id  = aws_ec2_transit_gateway_vpc_attachment.non_prod.id
-  transit_gateway_route_table_id = aws_ec2_transit_gateway_route_table.non_prod.id
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_ec2_transit_gateway_route_table_association"</span> <span style="color: #ce9178;">"non_prod"</span> {
+  <span style="color: #9cdcfe;">transit_gateway_attachment_id</span>  = aws_ec2_transit_gateway_vpc_attachment.non_prod.id
+  <span style="color: #9cdcfe;">transit_gateway_route_table_id</span> = aws_ec2_transit_gateway_route_table.non_prod.id
 }
 
-# PROPAGATION — Each attachment writes its CIDR into specific route tables
-# Prod VPC announces itself to the Prod RT only
-resource "aws_ec2_transit_gateway_route_table_propagation" "prod_to_prod_rt" {
-  transit_gateway_attachment_id  = aws_ec2_transit_gateway_vpc_attachment.prod.id
-  transit_gateway_route_table_id = aws_ec2_transit_gateway_route_table.prod.id
+<span style="color: #6a9955;"># PROPAGATION — Each attachment writes its CIDR into specific route tables</span>
+<span style="color: #6a9955;"># Prod VPC announces itself to the Prod RT only</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_ec2_transit_gateway_route_table_propagation"</span> <span style="color: #ce9178;">"prod_to_prod_rt"</span> {
+  <span style="color: #9cdcfe;">transit_gateway_attachment_id</span>  = aws_ec2_transit_gateway_vpc_attachment.prod.id
+  <span style="color: #9cdcfe;">transit_gateway_route_table_id</span> = aws_ec2_transit_gateway_route_table.prod.id
 }
 
-# Shared Services announces itself to BOTH Prod and Non-Prod RTs
-# This allows both environments to reach AD, logging, monitoring — but not each other
-resource "aws_ec2_transit_gateway_route_table_propagation" "shared_to_prod_rt" {
-  transit_gateway_attachment_id  = aws_ec2_transit_gateway_vpc_attachment.shared.id
-  transit_gateway_route_table_id = aws_ec2_transit_gateway_route_table.prod.id
+<span style="color: #6a9955;"># Shared Services announces itself to BOTH Prod and Non-Prod RTs</span>
+<span style="color: #6a9955;"># This allows both environments to reach AD, logging, monitoring — but not each other</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_ec2_transit_gateway_route_table_propagation"</span> <span style="color: #ce9178;">"shared_to_prod_rt"</span> {
+  <span style="color: #9cdcfe;">transit_gateway_attachment_id</span>  = aws_ec2_transit_gateway_vpc_attachment.shared.id
+  <span style="color: #9cdcfe;">transit_gateway_route_table_id</span> = aws_ec2_transit_gateway_route_table.prod.id
 }
 
-resource "aws_ec2_transit_gateway_route_table_propagation" "shared_to_non_prod_rt" {
-  transit_gateway_attachment_id  = aws_ec2_transit_gateway_vpc_attachment.shared.id
-  transit_gateway_route_table_id = aws_ec2_transit_gateway_route_table.non_prod.id
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_ec2_transit_gateway_route_table_propagation"</span> <span style="color: #ce9178;">"shared_to_non_prod_rt"</span> {
+  <span style="color: #9cdcfe;">transit_gateway_attachment_id</span>  = aws_ec2_transit_gateway_vpc_attachment.shared.id
+  <span style="color: #9cdcfe;">transit_gateway_route_table_id</span> = aws_ec2_transit_gateway_route_table.non_prod.id
 }</code></pre>
 
         <div style="background: var(--aws-highlight); padding: 20px; border-radius: 6px; border-left: 5px solid var(--aws-blue); margin: 32px 0;">
@@ -335,153 +335,153 @@ resource "aws_ec2_transit_gateway_route_table_propagation" "shared_to_non_prod_r
         <h3>Sharing TGW Across Accounts — AWS RAM</h3>
         <p>In a multi-account AWS Organisation, you create one TGW in a central Networking account and share it with all other accounts via Resource Access Manager:</p>
 
-        <pre><code># In the Networking account
-resource "aws_ram_resource_share" "tgw" {
-  name                      = "org-tgw-share"
-  allow_external_principals = false   # Restrict to AWS Organisation only
+        <pre><code><span style="color: #6a9955;"># In the Networking account</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_ram_resource_share"</span> <span style="color: #ce9178;">"tgw"</span> {
+  <span style="color: #9cdcfe;">name</span>                      = <span style="color: #ce9178;">"org-tgw-share"</span>
+  <span style="color: #9cdcfe;">allow_external_principals</span> = <span style="color: #569cd6;">false</span>   <span style="color: #6a9955;"># Restrict to AWS Organisation only</span>
 
-  tags = { Name = "tgw-ram-share" }
+  <span style="color: #9cdcfe;">tags</span> = { Name = <span style="color: #ce9178;">"tgw-ram-share"</span> }
 }
 
-resource "aws_ram_resource_association" "tgw" {
-  resource_arn       = aws_ec2_transit_gateway.main.arn
-  resource_share_arn = aws_ram_resource_share.tgw.arn
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_ram_resource_association"</span> <span style="color: #ce9178;">"tgw"</span> {
+  <span style="color: #9cdcfe;">resource_arn</span>       = aws_ec2_transit_gateway.main.arn
+  <span style="color: #9cdcfe;">resource_share_arn</span> = aws_ram_resource_share.tgw.arn
 }
 
-# Share with the entire AWS Organisation
-resource "aws_ram_principal_association" "org" {
-  principal          = data.aws_organizations_organization.main.arn
-  resource_share_arn = aws_ram_resource_share.tgw.arn
+<span style="color: #6a9955;"># Share with the entire AWS Organisation</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_ram_principal_association"</span> <span style="color: #ce9178;">"org"</span> {
+  <span style="color: #9cdcfe;">principal</span>          = <span style="color: #569cd6;">data</span>.aws_organizations_organization.main.arn
+  <span style="color: #9cdcfe;">resource_share_arn</span> = aws_ram_resource_share.tgw.arn
 }
 
-# In any spoke account — attaches to the shared TGW
-resource "aws_ec2_transit_gateway_vpc_attachment" "spoke" {
-  subnet_ids         = aws_subnet.private[*].id
-  transit_gateway_id = var.shared_tgw_id   # ID from Networking account
-  vpc_id             = aws_vpc.main.id
+<span style="color: #6a9955;"># In any spoke account — attaches to the shared TGW</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_ec2_transit_gateway_vpc_attachment"</span> <span style="color: #ce9178;">"spoke"</span> {
+  <span style="color: #9cdcfe;">subnet_ids</span>         = aws_subnet.private[*].id
+  <span style="color: #9cdcfe;">transit_gateway_id</span> = var.shared_tgw_id   <span style="color: #6a9955;"># ID from Networking account</span>
+  <span style="color: #9cdcfe;">vpc_id</span>             = aws_vpc.main.id
 
-  tags = { Name = "spoke-attachment-${var.account_name}" }
+  <span style="color: #9cdcfe;">tags</span> = { Name = <span style="color: #ce9178;">"spoke-attachment-${var.account_name}"</span> }
 }</code></pre>
 
         <h2>3. Advanced Pattern: Centralised Egress via TGW</h2>
         <p>This is the enterprise-standard pattern for controlling and auditing all outbound internet traffic from multiple VPCs through a <strong>single NAT Gateway</strong> in a dedicated Egress VPC.</p>
 
         <h3>Full Egress VPC Terraform</h3>
-        <pre><code># Egress VPC — the only VPC with an IGW
-resource "aws_vpc" "egress" {
-  cidr_block = "10.255.0.0/24"
-  tags       = { Name = "egress-vpc" }
+        <pre><code><span style="color: #6a9955;"># Egress VPC — the only VPC with an IGW</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_vpc"</span> <span style="color: #ce9178;">"egress"</span> {
+  <span style="color: #9cdcfe;">cidr_block</span> = <span style="color: #ce9178;">"10.255.0.0/24"</span>
+  <span style="color: #9cdcfe;">tags</span>       = { Name = <span style="color: #ce9178;">"egress-vpc"</span> }
 }
 
-resource "aws_internet_gateway" "egress" {
-  vpc_id = aws_vpc.egress.id
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_internet_gateway"</span> <span style="color: #ce9178;">"egress"</span> {
+  <span style="color: #9cdcfe;">vpc_id</span> = aws_vpc.egress.id
 }
 
-resource "aws_nat_gateway" "egress" {
-  for_each      = toset(["eu-west-1a", "eu-west-1b", "eu-west-1c"])
-  allocation_id = aws_eip.egress[each.key].id
-  subnet_id     = aws_subnet.egress_public[each.key].id
-  tags          = { Name = "nat-gw-egress-${each.key}" }
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_nat_gateway"</span> <span style="color: #ce9178;">"egress"</span> {
+  <span style="color: #9cdcfe;">for_each</span>      = toset([<span style="color: #ce9178;">"eu-west-1a"</span>, <span style="color: #ce9178;">"eu-west-1b"</span>, <span style="color: #ce9178;">"eu-west-1c"</span>])
+  <span style="color: #9cdcfe;">allocation_id</span> = aws_eip.egress[each.key].id
+  <span style="color: #9cdcfe;">subnet_id</span>     = aws_subnet.egress_public[each.key].id
+  <span style="color: #9cdcfe;">tags</span>          = { Name = <span style="color: #ce9178;">"nat-gw-egress-${each.key}"</span> }
 }
 
-# Attach Egress VPC to TGW
-resource "aws_ec2_transit_gateway_vpc_attachment" "egress" {
-  subnet_ids         = aws_subnet.egress_private[*].id
-  transit_gateway_id = aws_ec2_transit_gateway.main.id
-  vpc_id             = aws_vpc.egress.id
-  appliance_mode_support = "enable"   # Critical for asymmetric flows
-  tags               = { Name = "tgw-attach-egress" }
+<span style="color: #6a9955;"># Attach Egress VPC to TGW</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_ec2_transit_gateway_vpc_attachment"</span> <span style="color: #ce9178;">"egress"</span> {
+  <span style="color: #9cdcfe;">subnet_ids</span>         = aws_subnet.egress_private[*].id
+  <span style="color: #9cdcfe;">transit_gateway_id</span> = aws_ec2_transit_gateway.main.id
+  <span style="color: #9cdcfe;">vpc_id</span>             = aws_vpc.egress.id
+  <span style="color: #9cdcfe;">appliance_mode_support</span> = <span style="color: #ce9178;">"enable"</span>   <span style="color: #6a9955;"># Critical for asymmetric flows</span>
+  <span style="color: #9cdcfe;">tags</span>               = { Name = <span style="color: #ce9178;">"tgw-attach-egress"</span> }
 }
 
-# In each spoke VPC's route table — default route points to TGW
-resource "aws_route" "spoke_default_via_tgw" {
-  route_table_id         = aws_route_table.spoke_private.id
-  destination_cidr_block = "0.0.0.0/0"
-  transit_gateway_id     = aws_ec2_transit_gateway.main.id
+<span style="color: #6a9955;"># In each spoke VPC's route table — default route points to TGW</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_route"</span> <span style="color: #ce9178;">"spoke_default_via_tgw"</span> {
+  <span style="color: #9cdcfe;">route_table_id</span>         = aws_route_table.spoke_private.id
+  <span style="color: #9cdcfe;">destination_cidr_block</span> = <span style="color: #ce9178;">"0.0.0.0/0"</span>
+  <span style="color: #9cdcfe;">transit_gateway_id</span>     = aws_ec2_transit_gateway.main.id
 }
 
-# In the TGW route table — default route points to Egress VPC attachment
-resource "aws_ec2_transit_gateway_route" "default_to_egress" {
-  destination_cidr_block         = "0.0.0.0/0"
-  transit_gateway_attachment_id  = aws_ec2_transit_gateway_vpc_attachment.egress.id
-  transit_gateway_route_table_id = aws_ec2_transit_gateway_route_table.prod.id
+<span style="color: #6a9955;"># In the TGW route table — default route points to Egress VPC attachment</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_ec2_transit_gateway_route"</span> <span style="color: #ce9178;">"default_to_egress"</span> {
+  <span style="color: #9cdcfe;">destination_cidr_block</span>         = <span style="color: #ce9178;">"0.0.0.0/0"</span>
+  <span style="color: #9cdcfe;">transit_gateway_attachment_id</span>  = aws_ec2_transit_gateway_vpc_attachment.egress.id
+  <span style="color: #9cdcfe;">transit_gateway_route_table_id</span> = aws_ec2_transit_gateway_route_table.prod.id
 }
 
-# In Egress VPC — route internet-bound traffic via NAT GW, return traffic via TGW
-resource "aws_route" "egress_return_to_spokes" {
-  route_table_id         = aws_route_table.egress_private.id
-  destination_cidr_block = "10.0.0.0/8"   # All spoke CIDRs
-  transit_gateway_id     = aws_ec2_transit_gateway.main.id
+<span style="color: #6a9955;"># In Egress VPC — route internet-bound traffic via NAT GW, return traffic via TGW</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_route"</span> <span style="color: #ce9178;">"egress_return_to_spokes"</span> {
+  <span style="color: #9cdcfe;">route_table_id</span>         = aws_route_table.egress_private.id
+  <span style="color: #9cdcfe;">destination_cidr_block</span> = <span style="color: #ce9178;">"10.0.0.0/8"</span>   <span style="color: #6a9955;"># All spoke CIDRs</span>
+  <span style="color: #9cdcfe;">transit_gateway_id</span>     = aws_ec2_transit_gateway.main.id
 }</code></pre>
 
         <h2>4. Advanced Pattern: Centralised Inspection via GWLB</h2>
         <p>For high-security workloads, all traffic may need to be inspected by a third-party firewall fleet. <strong>Gateway Load Balancer (GWLB)</strong> enables this transparently.</p>
 
         <h3>Full GWLB Infrastructure</h3>
-        <pre><code># Inspection VPC with GWLB
-resource "aws_lb" "inspection" {
-  name               = "inspection-gwlb"
-  load_balancer_type = "gateway"
-  subnets            = aws_subnet.inspection[*].id
+        <pre><code><span style="color: #6a9955;"># Inspection VPC with GWLB</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_lb"</span> <span style="color: #ce9178;">"inspection"</span> {
+  <span style="color: #9cdcfe;">name</span>               = <span style="color: #ce9178;">"inspection-gwlb"</span>
+  <span style="color: #9cdcfe;">load_balancer_type</span> = <span style="color: #ce9178;">"gateway"</span>
+  <span style="color: #9cdcfe;">subnets</span>            = aws_subnet.inspection[*].id
 
-  tags = { Name = "gwlb-inspection" }
+  <span style="color: #9cdcfe;">tags</span> = { Name = <span style="color: #ce9178;">"gwlb-inspection"</span> }
 }
 
-resource "aws_lb_target_group" "firewalls" {
-  name        = "firewall-targets"
-  port        = 6081    # GENEVE protocol — GWLB uses this for encapsulation
-  protocol    = "GENEVE"
-  vpc_id      = aws_vpc.inspection.id
-  target_type = "instance"
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_lb_target_group"</span> <span style="color: #ce9178;">"firewalls"</span> {
+  <span style="color: #9cdcfe;">name</span>        = <span style="color: #ce9178;">"firewall-targets"</span>
+  <span style="color: #9cdcfe;">port</span>        = <span style="color: #b5cea8;">6081</span>    <span style="color: #6a9955;"># GENEVE protocol — GWLB uses this for encapsulation</span>
+  <span style="color: #9cdcfe;">protocol</span>    = <span style="color: #ce9178;">"GENEVE"</span>
+  <span style="color: #9cdcfe;">vpc_id</span>      = aws_vpc.inspection.id
+  <span style="color: #9cdcfe;">target_type</span> = <span style="color: #ce9178;">"instance"</span>
 
   health_check {
-    port     = 80
-    protocol = "HTTP"
+    <span style="color: #9cdcfe;">port</span>     = <span style="color: #b5cea8;">80</span>
+    <span style="color: #9cdcfe;">protocol</span> = <span style="color: #ce9178;">"HTTP"</span>
   }
 }
 
-# VPC Endpoint Service — exposes GWLB to other VPCs via PrivateLink
-resource "aws_vpc_endpoint_service" "inspection" {
-  acceptance_required        = false
-  gateway_load_balancer_arns = [aws_lb.inspection.arn]
+<span style="color: #6a9955;"># VPC Endpoint Service — exposes GWLB to other VPCs via PrivateLink</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_vpc_endpoint_service"</span> <span style="color: #ce9178;">"inspection"</span> {
+  <span style="color: #9cdcfe;">acceptance_required</span>        = <span style="color: #569cd6;">false</span>
+  <span style="color: #9cdcfe;">gateway_load_balancer_arns</span> = [aws_lb.inspection.arn]
 
-  tags = { Name = "gwlb-endpoint-service" }
+  <span style="color: #9cdcfe;">tags</span> = { Name = <span style="color: #ce9178;">"gwlb-endpoint-service"</span> }
 }
 
-# In each spoke VPC — a GWLB endpoint that redirects traffic to inspection
-resource "aws_vpc_endpoint" "gwlb_spoke" {
-  vpc_id            = aws_vpc.spoke.id
-  service_name      = aws_vpc_endpoint_service.inspection.service_name
-  vpc_endpoint_type = "GatewayLoadBalancer"
-  subnet_ids        = aws_subnet.spoke_private[*].id
+<span style="color: #6a9955;"># In each spoke VPC — a GWLB endpoint that redirects traffic to inspection</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_vpc_endpoint"</span> <span style="color: #ce9178;">"gwlb_spoke"</span> {
+  <span style="color: #9cdcfe;">vpc_id</span>            = aws_vpc.spoke.id
+  <span style="color: #9cdcfe;">service_name</span>      = aws_vpc_endpoint_service.inspection.service_name
+  <span style="color: #9cdcfe;">vpc_endpoint_type</span> = <span style="color: #ce9178;">"GatewayLoadBalancer"</span>
+  <span style="color: #9cdcfe;">subnet_ids</span>        = aws_subnet.spoke_private[*].id
 
-  tags = { Name = "gwlb-endpoint-spoke" }
+  <span style="color: #9cdcfe;">tags</span> = { Name = <span style="color: #ce9178;">"gwlb-endpoint-spoke"</span> }
 }</code></pre>
 
         <h2>5. Inter-Region TGW Peering — Global Hub-and-Spoke</h2>
         <p>To connect VPCs across regions, you peer Transit Gateways together. Traffic flows entirely over the AWS private backbone.</p>
 
-        <pre><code># In eu-west-1
-resource "aws_ec2_transit_gateway_peering_attachment" "eu_to_us" {
-  transit_gateway_id      = aws_ec2_transit_gateway.eu.id
-  peer_transit_gateway_id = var.us_east_1_tgw_id
-  peer_region             = "us-east-1"
+        <pre><code><span style="color: #6a9955;"># In eu-west-1</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_ec2_transit_gateway_peering_attachment"</span> <span style="color: #ce9178;">"eu_to_us"</span> {
+  <span style="color: #9cdcfe;">transit_gateway_id</span>      = aws_ec2_transit_gateway.eu.id
+  <span style="color: #9cdcfe;">peer_transit_gateway_id</span> = var.us_east_1_tgw_id
+  <span style="color: #9cdcfe;">peer_region</span>             = <span style="color: #ce9178;">"us-east-1"</span>
 
-  tags = { Name = "tgw-peer-eu-to-us" }
+  <span style="color: #9cdcfe;">tags</span> = { Name = <span style="color: #ce9178;">"tgw-peer-eu-to-us"</span> }
 }
 
-# In us-east-1 — must be accepted
-resource "aws_ec2_transit_gateway_peering_attachment_accepter" "us" {
-  transit_gateway_attachment_id = var.peering_attachment_id
+<span style="color: #6a9955;"># In us-east-1 — must be accepted</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_ec2_transit_gateway_peering_attachment_accepter"</span> <span style="color: #ce9178;">"us"</span> {
+  <span style="color: #9cdcfe;">transit_gateway_attachment_id</span> = var.peering_attachment_id
 
-  tags = { Name = "tgw-peer-us-accepter" }
+  <span style="color: #9cdcfe;">tags</span> = { Name = <span style="color: #ce9178;">"tgw-peer-us-accepter"</span> }
 }
 
-# Static routes required — no propagation across TGW peering
-resource "aws_ec2_transit_gateway_route" "eu_to_us_cidrs" {
-  destination_cidr_block         = "10.100.0.0/16"   # US VPC CIDRs
-  transit_gateway_attachment_id  = aws_ec2_transit_gateway_peering_attachment.eu_to_us.id
-  transit_gateway_route_table_id = aws_ec2_transit_gateway_route_table.prod.id
+<span style="color: #6a9955;"># Static routes required — no propagation across TGW peering</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_ec2_transit_gateway_route"</span> <span style="color: #ce9178;">"eu_to_us_cidrs"</span> {
+  <span style="color: #9cdcfe;">destination_cidr_block</span>         = <span style="color: #ce9178;">"10.100.0.0/16"</span>   <span style="color: #6a9955;"># US VPC CIDRs</span>
+  <span style="color: #9cdcfe;">transit_gateway_attachment_id</span>  = aws_ec2_transit_gateway_peering_attachment.eu_to_us.id
+  <span style="color: #9cdcfe;">transit_gateway_route_table_id</span> = aws_ec2_transit_gateway_route_table.prod.id
 }</code></pre>
 
         <h2>6. Cost Deep-Dive — When Does TGW Actually Save Money?</h2>

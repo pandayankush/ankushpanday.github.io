@@ -175,15 +175,15 @@
           <li>Response comes back to the NAT Gateway, which <strong>translates back</strong> and forwards to your EC2.</li>
         </ol>
 
-        <pre><code># IaC Example — Terraform
-resource "aws_nat_gateway" "main" {
-  allocation_id = aws_eip.nat.id
-  subnet_id     = aws_subnet.public.id
-  tags          = { Name = "main-nat-gateway" }
-  depends_on    = [aws_internet_gateway.main]
+        <pre><code><span style="color: #6a9955;"># IaC Example — Terraform</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_nat_gateway"</span> <span style="color: #ce9178;">"main"</span> {
+  <span style="color: #9cdcfe;">allocation_id</span> = aws_eip.nat.id
+  <span style="color: #9cdcfe;">subnet_id</span>     = aws_subnet.public.id
+  <span style="color: #9cdcfe;">tags</span>          = { Name = <span style="color: #ce9178;">"main-nat-gateway"</span> }
+  <span style="color: #9cdcfe;">depends_on</span>    = [aws_internet_gateway.main]
 }
 
-    nat_gateway_id = aws_nat_gateway.main.id
+    <span style="color: #9cdcfe;">nat_gateway_id</span> = aws_nat_gateway.main.id
   }
 }</code></pre>
 
@@ -301,25 +301,25 @@ resource "aws_nat_gateway" "main" {
           </tbody>
         </table>
 
-        <pre style="background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 13px; border-left: 4px solid var(--aws-orange);"><code># High Availability Per-AZ NAT Gateway Pattern
-resource "aws_eip" "nat" {
-  for_each = toset(["eu-west-1a", "eu-west-1b", "eu-west-1c"])
-  domain   = "vpc"
-  tags     = { Name = "nat-eip-${each.key}" }
+        <pre style="background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 13px; border-left: 4px solid var(--aws-orange);"><code><span style="color: #6a9955;"># High Availability Per-AZ NAT Gateway Pattern</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_eip"</span> <span style="color: #ce9178;">"nat"</span> {
+  <span style="color: #9cdcfe;">for_each</span> = toset([<span style="color: #ce9178;">"eu-west-1a"</span>, <span style="color: #ce9178;">"eu-west-1b"</span>, <span style="color: #ce9178;">"eu-west-1c"</span>])
+  <span style="color: #9cdcfe;">domain</span>   = <span style="color: #ce9178;">"vpc"</span>
+  <span style="color: #9cdcfe;">tags</span>     = { Name = <span style="color: #ce9178;">"nat-eip-${each.key}"</span> }
 }
 
-resource "aws_nat_gateway" "az" {
-  for_each      = toset(["eu-west-1a", "eu-west-1b", "eu-west-1c"])
-  allocation_id = aws_eip.nat[each.key].id
-  subnet_id     = aws_subnet.public[each.key].id
-  tags          = { Name = "nat-gw-${each.key}" }
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_nat_gateway"</span> <span style="color: #ce9178;">"az"</span> {
+  <span style="color: #9cdcfe;">for_each</span>      = toset([<span style="color: #ce9178;">"eu-west-1a"</span>, <span style="color: #ce9178;">"eu-west-1b"</span>, <span style="color: #ce9178;">"eu-west-1c"</span>])
+  <span style="color: #9cdcfe;">allocation_id</span> = aws_eip.nat[each.key].id
+  <span style="color: #9cdcfe;">subnet_id</span>     = aws_subnet.public[each.key].id
+  <span style="color: #9cdcfe;">tags</span>          = { Name = <span style="color: #ce9178;">"nat-gw-${each.key}"</span> }
 }
 
-resource "aws_route" "private_nat" {
-  for_each               = toset(["eu-west-1a", "eu-west-1b", "eu-west-1c"])
-  route_table_id         = aws_route_table.private[each.key].id
-  destination_cidr_block = "0.0.0.0/0"
-  nat_gateway_id         = aws_nat_gateway.az[each.key].id
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_route"</span> <span style="color: #ce9178;">"private_nat"</span> {
+  <span style="color: #9cdcfe;">for_each</span>               = toset([<span style="color: #ce9178;">"eu-west-1a"</span>, <span style="color: #ce9178;">"eu-west-1b"</span>, <span style="color: #ce9178;">"eu-west-1c"</span>])
+  <span style="color: #9cdcfe;">route_table_id</span>         = aws_route_table.private[each.key].id
+  <span style="color: #9cdcfe;">destination_cidr_block</span> = <span style="color: #ce9178;">"0.0.0.0/0"</span>
+  <span style="color: #9cdcfe;">nat_gateway_id</span>         = aws_nat_gateway.az[each.key].id
 }</code></pre>
 
         <div style="background: var(--aws-highlight); padding: 24px; border-radius: 8px; border-left: 5px solid var(--aws-blue); margin: 32px 0;">
@@ -337,41 +337,41 @@ resource "aws_route" "private_nat" {
           <li>Accessing SaaS partners like Datadog, Snowflake, or Confluent Cloud privately.</li>
         </ul>
 
-        <pre><code># Terraform — Interface Endpoints
-resource "aws_vpc_endpoint" "interface" {
-  for_each            = local.interface_endpoints
-  vpc_id              = aws_vpc.main.id
-  service_name        = each.value
-  vpc_endpoint_type   = "Interface"
-  subnet_ids          = aws_subnet.private[*].id
-  security_group_ids  = [aws_security_group.vpc_endpoints.id]
-  private_dns_enabled = true # Makes existing DNS names resolve privately
+        <pre><code><span style="color: #6a9955;"># Terraform — Interface Endpoints</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_vpc_endpoint"</span> <span style="color: #ce9178;">"interface"</span> {
+  <span style="color: #9cdcfe;">for_each</span>            = local.interface_endpoints
+  <span style="color: #9cdcfe;">vpc_id</span>              = aws_vpc.main.id
+  <span style="color: #9cdcfe;">service_name</span>        = each.value
+  <span style="color: #9cdcfe;">vpc_endpoint_type</span>   = <span style="color: #ce9178;">"Interface"</span>
+  <span style="color: #9cdcfe;">subnet_ids</span>          = aws_subnet.private[*].id
+  <span style="color: #9cdcfe;">security_group_ids</span>  = [aws_security_group.vpc_endpoints.id]
+  <span style="color: #9cdcfe;">private_dns_enabled</span> = <span style="color: #569cd6;">true</span> <span style="color: #6a9955;"># Makes existing DNS names resolve privately</span>
 }</code></pre>
 
         <h2>3. VPC Gateway Endpoints — S3 & DynamoDB</h2>
         <p>VPC Gateway Endpoints are a specific, older type of VPC endpoint that provide private access to <strong>Amazon S3</strong> and <strong>Amazon DynamoDB</strong> only. Unlike Interface Endpoints, they work via <strong>route table entries</strong> and are **completely free**.</p>
 
-        <pre><code>resource "aws_vpc_endpoint" "s3" {
-  vpc_id            = aws_vpc.main.id
-  service_name      = "com.amazonaws.${var.region}.s3"
-  vpc_endpoint_type = "Gateway"
-  route_table_ids   = aws_route_table.private[*].id
+        <pre><code><span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_vpc_endpoint"</span> <span style="color: #ce9178;">"s3"</span> {
+  <span style="color: #9cdcfe;">vpc_id</span>            = aws_vpc.main.id
+  <span style="color: #9cdcfe;">service_name</span>      = <span style="color: #ce9178;">"com.amazonaws.${var.region}.s3"</span>
+  <span style="color: #9cdcfe;">vpc_endpoint_type</span> = <span style="color: #ce9178;">"Gateway"</span>
+  <span style="color: #9cdcfe;">route_table_ids</span>   = aws_route_table.private[*].id
 }</code></pre>
 
         <h4>Practical Security: Enforcement via S3 Bucket Policy</h4>
         <p>A common compliance requirement is to ensure data never leaves your network. You can enforce this by adding a condition to your S3 bucket policy that only allows access via your specific VPC Endpoint:</p>
         <pre style="background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 13px; border-left: 4px solid var(--aws-orange);"><code>{
-  "Version": "2012-10-17",
-  "Statement": [
+  <span style="color: #ce9178;">"Version"</span>: <span style="color: #ce9178;">"2012-10-17"</span>,
+  <span style="color: #ce9178;">"Statement"</span>: [
     {
-      "Sid": "Access-to-specific-VPCE-only",
-      "Effect": "Deny",
-      "Principal": "*",
-      "Action": "s3:*",
-      "Resource": ["arn:aws:s3:::my-secure-bucket/*"],
-      "Condition": {
-        "StringNotEquals": {
-          "aws:sourceVpce": "vpce-1a2b3c4d"
+      <span style="color: #ce9178;">"Sid"</span>: <span style="color: #ce9178;">"Access-to-specific-VPCE-only"</span>,
+      <span style="color: #ce9178;">"Effect"</span>: <span style="color: #ce9178;">"Deny"</span>,
+      <span style="color: #ce9178;">"Principal"</span>: <span style="color: #ce9178;">"*"</span>,
+      <span style="color: #ce9178;">"Action"</span>: <span style="color: #ce9178;">"s3:*"</span>,
+      <span style="color: #ce9178;">"Resource"</span>: [<span style="color: #ce9178;">"arn:aws:s3:::my-secure-bucket/*"</span>],
+      <span style="color: #ce9178;">"Condition"</span>: {
+        <span style="color: #ce9178;">"StringNotEquals"</span>: {
+          <span style="color: #ce9178;">"aws:sourceVpce"</span>: <span style="color: #ce9178;">"vpce-1a2b3c4d"</span>
         }
       }
     }
@@ -392,20 +392,20 @@ resource "aws_vpc_endpoint" "interface" {
           <p style="margin-bottom: 15px;">
             You can attach an <strong>Endpoint Policy</strong> to your Gateway Endpoint to restrict access to only specific buckets. For example, denying all access unless it comes through your specific VPC Endpoint ensures your sensitive data stays within your network boundary.
           </p>
-          <pre style="background: #232f3e; color: #f8f8f2; padding: 15px; border-radius: 4px; font-size: 12px; margin-bottom: 15px;"><code># S3 Bucket Policy enforcing VPC Endpoint access
-resource "aws_s3_bucket_policy" "enforce_vpce" {
-  bucket = aws_s3_bucket.sensitive_data.id
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Sid       = "Access-to-specific-VPCE-only"
-      Effect    = "Deny"
-      Principal = "*"
-      Action    = "s3:*"
-      Resource  = ["${aws_s3_bucket.sensitive_data.arn}/*"]
-      Condition = {
-        StringNotEquals = {
-          "aws:sourceVpce" = aws_vpc_endpoint.s3.id
+          <pre style="background: #232f3e; color: #f8f8f2; padding: 15px; border-radius: 4px; font-size: 12px; margin-bottom: 15px;"><code><span style="color: #6a9955;"># S3 Bucket Policy enforcing VPC Endpoint access</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_s3_bucket_policy"</span> <span style="color: #ce9178;">"enforce_vpce"</span> {
+  <span style="color: #9cdcfe;">bucket</span> = aws_s3_bucket.sensitive_data.id
+  <span style="color: #9cdcfe;">policy</span> = jsonencode({
+    <span style="color: #9cdcfe;">Version</span> = <span style="color: #ce9178;">"2012-10-17"</span>
+    <span style="color: #9cdcfe;">Statement</span> = [{
+      <span style="color: #9cdcfe;">Sid</span>       = <span style="color: #ce9178;">"Access-to-specific-VPCE-only"</span>
+      <span style="color: #9cdcfe;">Effect</span>    = <span style="color: #ce9178;">"Deny"</span>
+      <span style="color: #9cdcfe;">Principal</span> = <span style="color: #ce9178;">"*"</span>
+      <span style="color: #9cdcfe;">Action</span>    = <span style="color: #ce9178;">"s3:*"</span>
+      <span style="color: #9cdcfe;">Resource</span>  = [<span style="color: #ce9178;">"${aws_s3_bucket.sensitive_data.arn}/*"</span>]
+      <span style="color: #9cdcfe;">Condition</span> = {
+        <span style="color: #9cdcfe;">StringNotEquals</span> = {
+          <span style="color: #9cdcfe;"><span style="color: #ce9178;">"aws:sourceVpce"</span></span> = aws_vpc_endpoint.s3.id
         }
       }
     }]
@@ -429,23 +429,23 @@ resource "aws_s3_bucket_policy" "enforce_vpce" {
           <li><strong>Forgetting endpoints in fully private accounts:</strong> Engineers consistently fail ECS Fargate deployments in private subnets because of this gap.</li>
         </ul>
 
-        <pre style="background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 13px; border-left: 4px solid var(--aws-orange);"><code>locals {
-  required_endpoints = {
-    ecr_api = "com.amazonaws.${var.region}.ecr.api"
-    ecr_dkr = "com.amazonaws.${var.region}.ecr.dkr"
-    logs    = "com.amazonaws.${var.region}.logs"
-    ssm     = "com.amazonaws.${var.region}.ssm"
-    # ... and others like secretsmanager, kms, sts
+        <pre style="background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 13px; border-left: 4px solid var(--aws-orange);"><code><span style="color: #569cd6;">locals</span> {
+  <span style="color: #9cdcfe;">required_endpoints</span> = {
+    <span style="color: #9cdcfe;">ecr_api</span> = <span style="color: #ce9178;">"com.amazonaws.${var.region}.ecr.api"</span>
+    <span style="color: #9cdcfe;">ecr_dkr</span> = <span style="color: #ce9178;">"com.amazonaws.${var.region}.ecr.dkr"</span>
+    <span style="color: #9cdcfe;">logs</span>    = <span style="color: #ce9178;">"com.amazonaws.${var.region}.logs"</span>
+    <span style="color: #9cdcfe;">ssm</span>     = <span style="color: #ce9178;">"com.amazonaws.${var.region}.ssm"</span>
+    <span style="color: #6a9955;"># ... and others like secretsmanager, kms, sts</span>
   }
 }
 
-resource "aws_vpc_endpoint" "interface" {
-  for_each            = local.required_endpoints
-  vpc_id              = aws_vpc.main.id
-  service_name        = each.value
-  vpc_endpoint_type   = "Interface"
-  subnet_ids          = aws_subnet.private[*].id
-  private_dns_enabled = true
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_vpc_endpoint"</span> <span style="color: #ce9178;">"interface"</span> {
+  <span style="color: #9cdcfe;">for_each</span>            = local.required_endpoints
+  <span style="color: #9cdcfe;">vpc_id</span>              = aws_vpc.main.id
+  <span style="color: #9cdcfe;">service_name</span>        = each.value
+  <span style="color: #9cdcfe;">vpc_endpoint_type</span>   = <span style="color: #ce9178;">"Interface"</span>
+  <span style="color: #9cdcfe;">subnet_ids</span>          = aws_subnet.private[*].id
+  <span style="color: #9cdcfe;">private_dns_enabled</span> = <span style="color: #569cd6;">true</span>
 }</code></pre>
 
         <div style="background: var(--aws-highlight); padding: 20px; border-radius: 6px; border-left: 5px solid var(--aws-orange); margin-bottom: 30px;">

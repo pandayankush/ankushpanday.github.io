@@ -97,22 +97,22 @@
         <h3>The VPC DNS Server</h3>
         <p>Every VPC gets a built-in DNS server automatically. It lives at the <strong>VPC base CIDR + 2</strong> — always. For a VPC with CIDR <code>10.0.0.0/16</code>, the DNS server is at <code>10.0.0.2</code>. This is the <strong>Amazon Route 53 Resolver</strong>, and it handles all DNS queries from resources within the VPC.</p>
 
-        <pre style="background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 13px; border-left: 4px solid var(--aws-orange);"><code>EC2 (10.0.1.50) → DNS query → 10.0.0.2 (Route 53 Resolver)
+        <pre style="background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 13px; border-left: 4px solid var(--aws-orange);"><code>EC2 (<span style="color: #b5cea8;">10</span>.<span style="color: #b5cea8;">0</span>.<span style="color: #b5cea8;">1</span>.<span style="color: #b5cea8;">50</span>) → DNS query → <span style="color: #b5cea8;">10</span>.<span style="color: #b5cea8;">0</span>.<span style="color: #b5cea8;">0</span>.<span style="color: #b5cea8;">2</span> (Route <span style="color: #b5cea8;">53</span> Resolver)
                                     ↓
                          Is this a Private Hosted Zone?
                          ├── YES → Return private record
-                         └── NO → Forward to Route 53 public DNS
+                         └── NO → Forward to Route <span style="color: #b5cea8;">53</span> public DNS
                                         ↓
                               Return public record or NXDOMAIN</code></pre>
 
         <p>This is why <strong><code style="color: var(--aws-orange); background: #fff3e0; padding: 2px 6px; border-radius: 4px;">enableDnsSupport = true</code></strong> matters — without it, the <code>+2</code> resolver is disabled and all DNS queries from your VPC fail silently. And <code>enableDnsHostnames = true</code> ensures EC2 instances receive DNS hostnames (like <code>ip-10-0-1-50.eu-west-1.compute.internal</code>) rather than just IP addresses.</p>
 
-        <pre style="background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 13px; border-left: 4px solid var(--aws-orange);"><code>resource "aws_vpc" "main" {
-  cidr_block           = "10.0.0.0/16"
-  enable_dns_support   = true   # Enables the +2 resolver — NEVER disable this
-  enable_dns_hostnames = true   # Assigns DNS hostnames to EC2 instances
+        <pre style="background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 13px; border-left: 4px solid var(--aws-orange);"><code><span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_vpc"</span> <span style="color: #ce9178;">"main"</span> {
+  <span style="color: #9cdcfe;">cidr_block</span>           = <span style="color: #ce9178;">"10.0.0.0/16"</span>
+  <span style="color: #9cdcfe;">enable_dns_support</span>   = <span style="color: #569cd6;">true</span>   <span style="color: #6a9955;"># Enables the +2 resolver — NEVER disable this</span>
+  <span style="color: #9cdcfe;">enable_dns_hostnames</span> = <span style="color: #569cd6;">true</span>   <span style="color: #6a9955;"># Assigns DNS hostnames to EC2 instances</span>
 
-  tags = { Name = "main-vpc" }
+  <span style="color: #9cdcfe;">tags</span> = { Name = <span style="color: #ce9178;">"main-vpc"</span> }
 }</code></pre>
 
         <h3>The Resolution Order</h3>
@@ -130,33 +130,33 @@
         <h3>How It Works</h3>
         <p>A Public Hosted Zone is a container for DNS records that answer queries from the public internet. When you register a domain or delegate a subdomain to Route 53, AWS assigns four name servers to your zone. All public DNS resolvers worldwide learn to query those name servers for your domain.</p>
 
-        <pre style="background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 13px; border-left: 4px solid var(--aws-orange);"><code># Public Hosted Zone
-resource "aws_route53_zone" "public" {
-  name = "ankushpanday.com"
+        <pre style="background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 13px; border-left: 4px solid var(--aws-orange);"><code><span style="color: #6a9955;"># Public Hosted Zone</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_route53_zone"</span> <span style="color: #ce9178;">"public"</span> {
+  <span style="color: #9cdcfe;">name</span> = <span style="color: #ce9178;">"ankushpanday.com"</span>
 
-  tags = { Name = "public-zone-ankushpanday" }
+  <span style="color: #9cdcfe;">tags</span> = { Name = <span style="color: #ce9178;">"public-zone-ankushpanday"</span> }
 }
 
-# A Record — apex domain pointing to ALB
-resource "aws_route53_record" "apex" {
-  zone_id = aws_route53_zone.public.zone_id
-  name    = "ankushpanday.com"
-  type    = "A"
+<span style="color: #6a9955;"># A Record — apex domain pointing to ALB</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_route53_record"</span> <span style="color: #ce9178;">"apex"</span> {
+  <span style="color: #9cdcfe;">zone_id</span> = aws_route53_zone.public.zone_id
+  <span style="color: #9cdcfe;">name</span>    = <span style="color: #ce9178;">"ankushpanday.com"</span>
+  <span style="color: #9cdcfe;">type</span>    = <span style="color: #ce9178;">"A"</span>
 
   alias {
-    name                   = aws_lb.main.dns_name
-    zone_id                = aws_lb.main.zone_id
-    evaluate_target_health = true   # Enables health-check-based failover
+    <span style="color: #9cdcfe;">name</span>                   = aws_lb.main.dns_name
+    <span style="color: #9cdcfe;">zone_id</span>                = aws_lb.main.zone_id
+    <span style="color: #9cdcfe;">evaluate_target_health</span> = <span style="color: #569cd6;">true</span>   <span style="color: #6a9955;"># Enables health-check-based failover</span>
   }
 }
 
-# CNAME for www subdomain
-resource "aws_route53_record" "www" {
-  zone_id = aws_route53_zone.public.zone_id
-  name    = "www.ankushpanday.com"
-  type    = "CNAME"
-  ttl     = 300
-  records = ["ankushpanday.com"]
+<span style="color: #6a9955;"># CNAME for www subdomain</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_route53_record"</span> <span style="color: #ce9178;">"www"</span> {
+  <span style="color: #9cdcfe;">zone_id</span> = aws_route53_zone.public.zone_id
+  <span style="color: #9cdcfe;">name</span>    = <span style="color: #ce9178;">"www.ankushpanday.com"</span>
+  <span style="color: #9cdcfe;">type</span>    = <span style="color: #ce9178;">"CNAME"</span>
+  <span style="color: #9cdcfe;">ttl</span>     = <span style="color: #b5cea8;">300</span>
+  <span style="color: #9cdcfe;">records</span> = [<span style="color: #ce9178;">"ankushpanday.com"</span>]
 }</code></pre>
 
         <h3>Alias Records vs CNAME — The Important Distinction</h3>
@@ -180,37 +180,37 @@ resource "aws_route53_record" "www" {
         <h3>DNSSEC — Protecting Against DNS Spoofing</h3>
         <p>Route 53 supports DNSSEC signing for public hosted zones. This cryptographically signs your DNS records so resolvers can verify responses haven't been tampered with:</p>
 
-        <pre style="background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 13px; border-left: 4px solid var(--aws-orange);"><code># Enable DNSSEC signing
-resource "aws_route53_key_signing_key" "main" {
-  hosted_zone_id             = aws_route53_zone.public.id
-  key_management_service_arn = aws_kms_key.dnssec.arn
-  name                       = "dnssec-ksk"
+        <pre style="background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 13px; border-left: 4px solid var(--aws-orange);"><code><span style="color: #6a9955;"># Enable DNSSEC signing</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_route53_key_signing_key"</span> <span style="color: #ce9178;">"main"</span> {
+  <span style="color: #9cdcfe;">hosted_zone_id</span>             = aws_route53_zone.public.id
+  <span style="color: #9cdcfe;">key_management_service_arn</span> = aws_kms_key.dnssec.arn
+  <span style="color: #9cdcfe;">name</span>                       = <span style="color: #ce9178;">"dnssec-ksk"</span>
 }
 
-resource "aws_route53_hosted_zone_dnssec" "main" {
-  hosted_zone_id = aws_route53_key_signing_key.main.hosted_zone_id
-  depends_on     = [aws_route53_key_signing_key.main]
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_route53_hosted_zone_dnssec"</span> <span style="color: #ce9178;">"main"</span> {
+  <span style="color: #9cdcfe;">hosted_zone_id</span> = aws_route53_key_signing_key.main.hosted_zone_id
+  <span style="color: #9cdcfe;">depends_on</span>     = [aws_route53_key_signing_key.main]
 }
 
-# KMS key for DNSSEC — must be in us-east-1 regardless of your region
-resource "aws_kms_key" "dnssec" {
-  provider                 = aws.us_east_1   # DNSSEC KMS keys must be in us-east-1
-  customer_master_key_spec = "ECC_NIST_P256"
-  deletion_window_in_days  = 7
-  key_usage                = "KEY_AGREEMENT"
-  policy = jsonencode({
-    Statement = [
+<span style="color: #6a9955;"># KMS key for DNSSEC — must be in us-east-1 regardless of your region</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_kms_key"</span> <span style="color: #ce9178;">"dnssec"</span> {
+  <span style="color: #9cdcfe;"><span style="color: #569cd6;">provider</span></span>                 = aws.us_east_1   <span style="color: #6a9955;"># DNSSEC KMS keys must be in us-east-1</span>
+  <span style="color: #9cdcfe;">customer_master_key_spec</span> = <span style="color: #ce9178;">"ECC_NIST_P256"</span>
+  <span style="color: #9cdcfe;">deletion_window_in_days</span>  = <span style="color: #b5cea8;">7</span>
+  <span style="color: #9cdcfe;">key_usage</span>                = <span style="color: #ce9178;">"KEY_AGREEMENT"</span>
+  <span style="color: #9cdcfe;">policy</span> = jsonencode({
+    <span style="color: #9cdcfe;">Statement</span> = [
       {
-        Effect    = "Allow"
-        Principal = { Service = "dnssec-route53.amazonaws.com" }
-        Action    = ["kms:DescribeKey", "kms:GetPublicKey", "kms:Sign"]
-        Resource  = "*"
+        <span style="color: #9cdcfe;">Effect</span>    = <span style="color: #ce9178;">"Allow"</span>
+        <span style="color: #9cdcfe;">Principal</span> = { Service = <span style="color: #ce9178;">"dnssec-route53.amazonaws.com"</span> }
+        <span style="color: #9cdcfe;">Action</span>    = [<span style="color: #ce9178;">"kms:DescribeKey"</span>, <span style="color: #ce9178;">"kms:GetPublicKey"</span>, <span style="color: #ce9178;">"kms:Sign"</span>]
+        <span style="color: #9cdcfe;">Resource</span>  = <span style="color: #ce9178;">"*"</span>
       },
       {
-        Effect    = "Allow"
-        Principal = { AWS = "arn:aws:iam::${var.account_id}:root" }
-        Action    = "kms:*"
-        Resource  = "*"
+        <span style="color: #9cdcfe;">Effect</span>    = <span style="color: #ce9178;">"Allow"</span>
+        <span style="color: #9cdcfe;">Principal</span> = { AWS = <span style="color: #ce9178;">"arn:aws:iam::${var.account_id}:root"</span> }
+        <span style="color: #9cdcfe;">Action</span>    = <span style="color: #ce9178;">"kms:*"</span>
+        <span style="color: #9cdcfe;">Resource</span>  = <span style="color: #ce9178;">"*"</span>
       }
     ]
   })
@@ -226,65 +226,65 @@ resource "aws_kms_key" "dnssec" {
         <p>A Private Hosted Zone (PHZ) is a DNS namespace that only resolves within one or more associated VPCs. Resources outside those VPCs — including the public internet — get NXDOMAIN for names in your PHZ. This is how you implement internal service discovery without any exposure to the internet.</p>
 
         <pre style="background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 13px; border-left: 4px solid var(--aws-orange);"><code>From internet:       service.internal.company.com → NXDOMAIN
-From associated VPC: service.internal.company.com → 10.0.1.50 ✅</code></pre>
+From associated VPC: service.internal.company.com → <span style="color: #b5cea8;">10</span>.<span style="color: #b5cea8;">0</span>.<span style="color: #b5cea8;">1</span>.<span style="color: #b5cea8;">50</span> ✅</code></pre>
 
         <h3>Basic Private Hosted Zone</h3>
-        <pre style="background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 13px; border-left: 4px solid var(--aws-orange);"><code># Private Hosted Zone
-resource "aws_route53_zone" "private" {
-  name = "internal.company.com"
+        <pre style="background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 13px; border-left: 4px solid var(--aws-orange);"><code><span style="color: #6a9955;"># Private Hosted Zone</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_route53_zone"</span> <span style="color: #ce9178;">"private"</span> {
+  <span style="color: #9cdcfe;">name</span> = <span style="color: #ce9178;">"internal.company.com"</span>
 
   vpc {
-    vpc_id = aws_vpc.main.id   # Associate with your VPC
+    <span style="color: #9cdcfe;">vpc_id</span> = aws_vpc.main.id   <span style="color: #6a9955;"># Associate with your VPC</span>
   }
 
-  tags = { Name = "private-zone-internal" }
+  <span style="color: #9cdcfe;">tags</span> = { Name = <span style="color: #ce9178;">"private-zone-internal"</span> }
 }
 
-# Internal service record
-resource "aws_route53_record" "api_service" {
-  zone_id = aws_route53_zone.private.zone_id
-  name    = "api.internal.company.com"
-  type    = "A"
-  ttl     = 60   # Short TTL for internal services — allows fast failover
+<span style="color: #6a9955;"># Internal service record</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_route53_record"</span> <span style="color: #ce9178;">"api_service"</span> {
+  <span style="color: #9cdcfe;">zone_id</span> = aws_route53_zone.private.zone_id
+  <span style="color: #9cdcfe;">name</span>    = <span style="color: #ce9178;">"api.internal.company.com"</span>
+  <span style="color: #9cdcfe;">type</span>    = <span style="color: #ce9178;">"A"</span>
+  <span style="color: #9cdcfe;">ttl</span>     = <span style="color: #b5cea8;">60</span>   <span style="color: #6a9955;"># Short TTL for internal services — allows fast failover</span>
 
-  records = [aws_lb.internal_alb.dns_name]
+  <span style="color: #9cdcfe;">records</span> = [aws_lb.internal_alb.dns_name]
 }
 
-# Database endpoint
-resource "aws_route53_record" "db_primary" {
-  zone_id = aws_route53_zone.private.zone_id
-  name    = "db.internal.company.com"
-  type    = "CNAME"
-  ttl     = 60
-  records = [aws_db_instance.primary.address]
+<span style="color: #6a9955;"># Database endpoint</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_route53_record"</span> <span style="color: #ce9178;">"db_primary"</span> {
+  <span style="color: #9cdcfe;">zone_id</span> = aws_route53_zone.private.zone_id
+  <span style="color: #9cdcfe;">name</span>    = <span style="color: #ce9178;">"db.internal.company.com"</span>
+  <span style="color: #9cdcfe;">type</span>    = <span style="color: #ce9178;">"CNAME"</span>
+  <span style="color: #9cdcfe;">ttl</span>     = <span style="color: #b5cea8;">60</span>
+  <span style="color: #9cdcfe;">records</span> = [aws_db_instance.primary.address]
 }</code></pre>
 
         <h3>Associating a PHZ with Multiple VPCs</h3>
         <p>This is the pattern for shared internal DNS across multiple VPCs — and it's more complex than it looks:</p>
 
-        <pre style="background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 13px; border-left: 4px solid var(--aws-orange);"><code># Primary association is in the zone resource
-resource "aws_route53_zone" "private" {
-  name = "internal.company.com"
+        <pre style="background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 13px; border-left: 4px solid var(--aws-orange);"><code><span style="color: #6a9955;"># Primary association is in the zone resource</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_route53_zone"</span> <span style="color: #ce9178;">"private"</span> {
+  <span style="color: #9cdcfe;">name</span> = <span style="color: #ce9178;">"internal.company.com"</span>
 
   vpc {
-    vpc_id = aws_vpc.main.id
+    <span style="color: #9cdcfe;">vpc_id</span> = aws_vpc.main.id
   }
 }
 
-# Additional VPCs must be associated separately
-# IMPORTANT: If VPCs are in different accounts, the secondary account
-# must authorize the association before it can be made
-resource "aws_route53_vpc_association_authorization" "secondary" {
-  zone_id = aws_route53_zone.private.id
-  vpc_id  = aws_vpc.secondary.id   # VPC in another account
+<span style="color: #6a9955;"># Additional VPCs must be associated separately</span>
+<span style="color: #6a9955;"># IMPORTANT: If VPCs are in different accounts, the secondary account</span>
+<span style="color: #6a9955;"># must authorize the association before it can be made</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_route53_vpc_association_authorization"</span> <span style="color: #ce9178;">"secondary"</span> {
+  <span style="color: #9cdcfe;">zone_id</span> = aws_route53_zone.private.id
+  <span style="color: #9cdcfe;">vpc_id</span>  = aws_vpc.secondary.id   <span style="color: #6a9955;"># VPC in another account</span>
 }
 
-# In the secondary account — creates the actual association
-resource "aws_route53_zone_association" "secondary" {
-  zone_id = aws_route53_zone.private.id
-  vpc_id  = aws_vpc.secondary.id
+<span style="color: #6a9955;"># In the secondary account — creates the actual association</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_route53_zone_association"</span> <span style="color: #ce9178;">"secondary"</span> {
+  <span style="color: #9cdcfe;">zone_id</span> = aws_route53_zone.private.id
+  <span style="color: #9cdcfe;">vpc_id</span>  = aws_vpc.secondary.id
 
-  depends_on = [aws_route53_vpc_association_authorization.secondary]
+  <span style="color: #9cdcfe;">depends_on</span> = [aws_route53_vpc_association_authorization.secondary]
 }</code></pre>
 
         <div style="background: var(--aws-highlight); padding: 24px; border-left: 5px solid var(--aws-orange); margin-top: 40px; margin-bottom: 40px;">
@@ -295,22 +295,22 @@ resource "aws_route53_zone_association" "secondary" {
         <h3>Cross-Account PHZ Sharing via AWS RAM</h3>
         <p>For large organisations with many accounts, managing individual zone associations becomes unwieldy. AWS RAM lets you share PHZs across the organisation:</p>
 
-        <pre style="background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 13px; border-left: 4px solid var(--aws-orange);"><code># Share the PHZ via RAM (in the account that owns the zone)
-resource "aws_ram_resource_share" "dns" {
-  name                      = "shared-private-dns"
-  allow_external_principals = false
+        <pre style="background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 13px; border-left: 4px solid var(--aws-orange);"><code><span style="color: #6a9955;"># Share the PHZ via RAM (in the account that owns the zone)</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_ram_resource_share"</span> <span style="color: #ce9178;">"dns"</span> {
+  <span style="color: #9cdcfe;">name</span>                      = <span style="color: #ce9178;">"shared-private-dns"</span>
+  <span style="color: #9cdcfe;">allow_external_principals</span> = <span style="color: #569cd6;">false</span>
 
-  tags = { Name = "dns-ram-share" }
+  <span style="color: #9cdcfe;">tags</span> = { Name = <span style="color: #ce9178;">"dns-ram-share"</span> }
 }
 
-resource "aws_ram_resource_association" "phz" {
-  resource_arn       = aws_route53_zone.private.arn
-  resource_share_arn = aws_ram_resource_share.dns.arn
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_ram_resource_association"</span> <span style="color: #ce9178;">"phz"</span> {
+  <span style="color: #9cdcfe;">resource_arn</span>       = aws_route53_zone.private.arn
+  <span style="color: #9cdcfe;">resource_share_arn</span> = aws_ram_resource_share.dns.arn
 }
 
-resource "aws_ram_principal_association" "org" {
-  principal          = data.aws_organizations_organization.main.arn
-  resource_share_arn = aws_ram_resource_share.dns.arn
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_ram_principal_association"</span> <span style="color: #ce9178;">"org"</span> {
+  <span style="color: #9cdcfe;">principal</span>          = <span style="color: #569cd6;">data</span>.aws_organizations_organization.main.arn
+  <span style="color: #9cdcfe;">resource_share_arn</span> = aws_ram_resource_share.dns.arn
 }</code></pre>
 
         <h2>4. Route 53 Resolver Endpoints — Bridging AWS and On-Premises</h2>
@@ -327,116 +327,116 @@ resource "aws_ram_principal_association" "org" {
         <p><strong>Inbound Resolver Endpoint</strong> — on-premises DNS servers forward queries to this endpoint, which resolves them against your PHZs.</p>
         <p><strong>Outbound Resolver Endpoint</strong> — AWS resources forward queries for specific domains to your on-premises DNS server.</p>
 
-        <pre style="background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 13px; border-left: 4px solid var(--aws-orange);"><code>On-premises server → Inbound Endpoint → Route 53 Resolver → PHZ → IP returned
-AWS resource → Route 53 Resolver → Outbound Endpoint → Corporate DNS → IP returned</code></pre>
+        <pre style="background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 13px; border-left: 4px solid var(--aws-orange);"><code>On-premises server → Inbound Endpoint → Route <span style="color: #b5cea8;">53</span> Resolver → PHZ → IP returned
+AWS <span style="color: #569cd6;">resource</span> → Route <span style="color: #b5cea8;">53</span> Resolver → Outbound Endpoint → Corporate DNS → IP returned</code></pre>
 
         <h3>Full Resolver Endpoint Terraform</h3>
-        <pre style="background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 13px; border-left: 4px solid var(--aws-orange);"><code># Security group for resolver endpoints
-resource "aws_security_group" "resolver" {
-  name        = "resolver-endpoints-sg"
-  description = "DNS traffic for Route 53 Resolver Endpoints"
-  vpc_id      = aws_vpc.main.id
+        <pre style="background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 13px; border-left: 4px solid var(--aws-orange);"><code><span style="color: #6a9955;"># Security group for resolver endpoints</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_security_group"</span> <span style="color: #ce9178;">"resolver"</span> {
+  <span style="color: #9cdcfe;">name</span>        = <span style="color: #ce9178;">"resolver-endpoints-sg"</span>
+  <span style="color: #9cdcfe;">description</span> = <span style="color: #ce9178;">"DNS traffic for Route 53 Resolver Endpoints"</span>
+  <span style="color: #9cdcfe;">vpc_id</span>      = aws_vpc.main.id
 
   ingress {
-    from_port   = 53
-    to_port     = 53
-    protocol    = "tcp"
-    cidr_blocks = ["10.0.0.0/8"]   # All internal RFC1918 ranges
+    <span style="color: #9cdcfe;">from_port</span>   = <span style="color: #b5cea8;">53</span>
+    <span style="color: #9cdcfe;">to_port</span>     = <span style="color: #b5cea8;">53</span>
+    <span style="color: #9cdcfe;">protocol</span>    = <span style="color: #ce9178;">"tcp"</span>
+    <span style="color: #9cdcfe;">cidr_blocks</span> = [<span style="color: #ce9178;">"10.0.0.0/8"</span>]   <span style="color: #6a9955;"># All internal RFC1918 ranges</span>
   }
 
   ingress {
-    from_port   = 53
-    to_port     = 53
-    protocol    = "udp"
-    cidr_blocks = ["10.0.0.0/8"]
+    <span style="color: #9cdcfe;">from_port</span>   = <span style="color: #b5cea8;">53</span>
+    <span style="color: #9cdcfe;">to_port</span>     = <span style="color: #b5cea8;">53</span>
+    <span style="color: #9cdcfe;">protocol</span>    = <span style="color: #ce9178;">"udp"</span>
+    <span style="color: #9cdcfe;">cidr_blocks</span> = [<span style="color: #ce9178;">"10.0.0.0/8"</span>]
   }
 
   egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
+    <span style="color: #9cdcfe;">from_port</span>   = <span style="color: #b5cea8;">0</span>
+    <span style="color: #9cdcfe;">to_port</span>     = <span style="color: #b5cea8;">0</span>
+    <span style="color: #9cdcfe;">protocol</span>    = <span style="color: #ce9178;">"-1"</span>
+    <span style="color: #9cdcfe;">cidr_blocks</span> = [<span style="color: #ce9178;">"0.0.0.0/0"</span>]
   }
 
-  tags = { Name = "resolver-sg" }
+  <span style="color: #9cdcfe;">tags</span> = { Name = <span style="color: #ce9178;">"resolver-sg"</span> }
 }
 
-# Inbound Resolver Endpoint — on-premises can query AWS PHZs
-resource "aws_route53_resolver_endpoint" "inbound" {
-  name      = "inbound-resolver"
-  direction = "INBOUND"
+<span style="color: #6a9955;"># Inbound Resolver Endpoint — on-premises can query AWS PHZs</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_route53_resolver_endpoint"</span> <span style="color: #ce9178;">"inbound"</span> {
+  <span style="color: #9cdcfe;">name</span>      = <span style="color: #ce9178;">"inbound-resolver"</span>
+  <span style="color: #9cdcfe;">direction</span> = <span style="color: #ce9178;">"INBOUND"</span>
 
-  security_group_ids = [aws_security_group.resolver.id]
+  <span style="color: #9cdcfe;">security_group_ids</span> = [aws_security_group.resolver.id]
 
-  # Deploy one ENI per AZ for resilience
+  <span style="color: #6a9955;"># Deploy one ENI per AZ for resilience</span>
   ip_address {
-    subnet_id = aws_subnet.private["eu-west-1a"].id
+    <span style="color: #9cdcfe;">subnet_id</span> = aws_subnet.private[<span style="color: #ce9178;">"eu-west-1a"</span>].id
   }
 
   ip_address {
-    subnet_id = aws_subnet.private["eu-west-1b"].id
+    <span style="color: #9cdcfe;">subnet_id</span> = aws_subnet.private[<span style="color: #ce9178;">"eu-west-1b"</span>].id
   }
 
   ip_address {
-    subnet_id = aws_subnet.private["eu-west-1c"].id
+    <span style="color: #9cdcfe;">subnet_id</span> = aws_subnet.private[<span style="color: #ce9178;">"eu-west-1c"</span>].id
   }
 
-  tags = { Name = "inbound-resolver" }
+  <span style="color: #9cdcfe;">tags</span> = { Name = <span style="color: #ce9178;">"inbound-resolver"</span> }
 }
 
-# Outbound Resolver Endpoint — AWS can forward queries to on-premises DNS
-resource "aws_route53_resolver_endpoint" "outbound" {
-  name      = "outbound-resolver"
-  direction = "OUTBOUND"
+<span style="color: #6a9955;"># Outbound Resolver Endpoint — AWS can forward queries to on-premises DNS</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_route53_resolver_endpoint"</span> <span style="color: #ce9178;">"outbound"</span> {
+  <span style="color: #9cdcfe;">name</span>      = <span style="color: #ce9178;">"outbound-resolver"</span>
+  <span style="color: #9cdcfe;">direction</span> = <span style="color: #ce9178;">"OUTBOUND"</span>
 
-  security_group_ids = [aws_security_group.resolver.id]
+  <span style="color: #9cdcfe;">security_group_ids</span> = [aws_security_group.resolver.id]
 
   ip_address {
-    subnet_id = aws_subnet.private["eu-west-1a"].id
+    <span style="color: #9cdcfe;">subnet_id</span> = aws_subnet.private[<span style="color: #ce9178;">"eu-west-1a"</span>].id
   }
 
   ip_address {
-    subnet_id = aws_subnet.private["eu-west-1b"].id
+    <span style="color: #9cdcfe;">subnet_id</span> = aws_subnet.private[<span style="color: #ce9178;">"eu-west-1b"</span>].id
   }
 
   ip_address {
-    subnet_id = aws_subnet.private["eu-west-1c"].id
+    <span style="color: #9cdcfe;">subnet_id</span> = aws_subnet.private[<span style="color: #ce9178;">"eu-west-1c"</span>].id
   }
 
-  tags = { Name = "outbound-resolver" }
+  <span style="color: #9cdcfe;">tags</span> = { Name = <span style="color: #ce9178;">"outbound-resolver"</span> }
 }
 
-# Forwarding Rule — forward corp.company.com queries to on-premises DNS
-resource "aws_route53_resolver_rule" "corp_forward" {
-  domain_name          = "corp.company.com"
-  name                 = "forward-to-onprem"
-  rule_type            = "FORWARD"
-  resolver_endpoint_id = aws_route53_resolver_endpoint.outbound.id
+<span style="color: #6a9955;"># Forwarding Rule — forward corp.company.com queries to on-premises DNS</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_route53_resolver_rule"</span> <span style="color: #ce9178;">"corp_forward"</span> {
+  <span style="color: #9cdcfe;">domain_name</span>          = <span style="color: #ce9178;">"corp.company.com"</span>
+  <span style="color: #9cdcfe;">name</span>                 = <span style="color: #ce9178;">"forward-to-onprem"</span>
+  <span style="color: #9cdcfe;">rule_type</span>            = <span style="color: #ce9178;">"FORWARD"</span>
+  <span style="color: #9cdcfe;">resolver_endpoint_id</span> = aws_route53_resolver_endpoint.outbound.id
 
-  # Target your on-premises DNS servers — use two for resilience
+  <span style="color: #6a9955;"># Target your on-premises DNS servers — use two for resilience</span>
   target_ip {
-    ip   = "192.168.1.10"   # Primary corporate DNS
-    port = 53
+    <span style="color: #9cdcfe;">ip</span>   = <span style="color: #ce9178;">"192.168.1.10"</span>   <span style="color: #6a9955;"># Primary corporate DNS</span>
+    <span style="color: #9cdcfe;">port</span> = <span style="color: #b5cea8;">53</span>
   }
 
   target_ip {
-    ip   = "192.168.1.11"   # Secondary corporate DNS
-    port = 53
+    <span style="color: #9cdcfe;">ip</span>   = <span style="color: #ce9178;">"192.168.1.11"</span>   <span style="color: #6a9955;"># Secondary corporate DNS</span>
+    <span style="color: #9cdcfe;">port</span> = <span style="color: #b5cea8;">53</span>
   }
 
-  tags = { Name = "corp-forwarding-rule" }
+  <span style="color: #9cdcfe;">tags</span> = { Name = <span style="color: #ce9178;">"corp-forwarding-rule"</span> }
 }
 
-# Associate the rule with your VPC
-resource "aws_route53_resolver_rule_association" "corp" {
-  resolver_rule_id = aws_route53_resolver_rule.corp_forward.id
-  vpc_id           = aws_vpc.main.id
+<span style="color: #6a9955;"># Associate the rule with your VPC</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_route53_resolver_rule_association"</span> <span style="color: #ce9178;">"corp"</span> {
+  <span style="color: #9cdcfe;">resolver_rule_id</span> = aws_route53_resolver_rule.corp_forward.id
+  <span style="color: #9cdcfe;">vpc_id</span>           = aws_vpc.main.id
 }
 
-# Share the rule across the AWS Organisation via RAM
-resource "aws_ram_resource_association" "resolver_rule" {
-  resource_arn       = aws_route53_resolver_rule.corp_forward.arn
-  resource_share_arn = aws_ram_resource_share.dns.arn
+<span style="color: #6a9955;"># Share the rule across the AWS Organisation via RAM</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_ram_resource_association"</span> <span style="color: #ce9178;">"resolver_rule"</span> {
+  <span style="color: #9cdcfe;">resource_arn</span>       = aws_route53_resolver_rule.corp_forward.arn
+  <span style="color: #9cdcfe;">resource_share_arn</span> = aws_ram_resource_share.dns.arn
 }</code></pre>
 
         <div style="background: var(--aws-highlight); padding: 24px; border-left: 5px solid var(--aws-orange); margin-top: 40px; margin-bottom: 40px;">
@@ -448,140 +448,140 @@ resource "aws_ram_resource_association" "resolver_rule" {
         <p>After deploying the inbound endpoint, configure your corporate DNS server to forward AWS zone queries to the inbound endpoint IPs. The exact configuration depends on your DNS server:</p>
 
         <p><strong>BIND (named.conf):</strong></p>
-        <pre style="background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 13px; border-left: 4px solid var(--aws-orange);"><code>zone "internal.company.com" {
+        <pre style="background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 13px; border-left: 4px solid var(--aws-orange);"><code>zone <span style="color: #ce9178;">"internal.company.com"</span> {
     type forward;
     forwarders {
-        10.0.1.15;   # Inbound endpoint IP in eu-west-1a
-        10.0.2.15;   # Inbound endpoint IP in eu-west-1b
+        <span style="color: #b5cea8;">10</span>.<span style="color: #b5cea8;">0</span>.<span style="color: #b5cea8;">1</span>.<span style="color: #b5cea8;">15</span>;   <span style="color: #6a9955;"># Inbound endpoint IP in eu-west-1a</span>
+        <span style="color: #b5cea8;">10</span>.<span style="color: #b5cea8;">0</span>.<span style="color: #b5cea8;">2</span>.<span style="color: #b5cea8;">15</span>;   <span style="color: #6a9955;"># Inbound endpoint IP in eu-west-1b</span>
     };
     forward only;
 };</code></pre>
 
         <p><strong>Windows DNS (PowerShell):</strong></p>
         <pre style="background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 13px; border-left: 4px solid var(--aws-orange);"><code>Add-DnsServerConditionalForwarderZone `
-  -Name "internal.company.com" `
-  -MasterServers 10.0.1.15, 10.0.2.15 `
+  -Name <span style="color: #ce9178;">"internal.company.com"</span> `
+  -MasterServers <span style="color: #b5cea8;">10</span>.<span style="color: #b5cea8;">0</span>.<span style="color: #b5cea8;">1</span>.<span style="color: #b5cea8;">15</span>, <span style="color: #b5cea8;">10</span>.<span style="color: #b5cea8;">0</span>.<span style="color: #b5cea8;">2</span>.<span style="color: #b5cea8;">15</span> `
   -PassThru</code></pre>
 
         <h2>5. Route 53 Health Checks & Failover Routing</h2>
         <h3>How Health Checks Work</h3>
         <p>Route 53 health checkers are distributed globally across 15+ AWS edge locations. They independently probe your endpoints every 10 or 30 seconds. A health check fails when a configurable threshold of these checkers report failure — by default, 3 out of 5 checkers must fail before the health check is considered unhealthy.</p>
 
-        <pre style="background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 13px; border-left: 4px solid var(--aws-orange);"><code># HTTP health check against your primary ALB
-resource "aws_route53_health_check" "primary" {
-  fqdn              = "api.ankushpanday.com"
-  port              = 443
-  type              = "HTTPS"
-  resource_path     = "/health"
-  failure_threshold = 3        # 3 consecutive failures before unhealthy
-  request_interval  = 10       # Check every 10 seconds (fast — costs more)
+        <pre style="background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 13px; border-left: 4px solid var(--aws-orange);"><code><span style="color: #6a9955;"># HTTP health check against your primary ALB</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_route53_health_check"</span> <span style="color: #ce9178;">"primary"</span> {
+  <span style="color: #9cdcfe;">fqdn</span>              = <span style="color: #ce9178;">"api.ankushpanday.com"</span>
+  <span style="color: #9cdcfe;">port</span>              = <span style="color: #b5cea8;">443</span>
+  <span style="color: #9cdcfe;">type</span>              = <span style="color: #ce9178;">"HTTPS"</span>
+  <span style="color: #9cdcfe;">resource_path</span>     = <span style="color: #ce9178;">"/health"</span>
+  <span style="color: #9cdcfe;">failure_threshold</span> = <span style="color: #b5cea8;">3</span>        <span style="color: #6a9955;"># 3 consecutive failures before unhealthy</span>
+  <span style="color: #9cdcfe;">request_interval</span>  = <span style="color: #b5cea8;">10</span>       <span style="color: #6a9955;"># Check every 10 seconds (fast — costs more)</span>
 
-  tags = { Name = "primary-health-check" }
+  <span style="color: #9cdcfe;">tags</span> = { Name = <span style="color: #ce9178;">"primary-health-check"</span> }
 }
 
-# TCP health check for non-HTTP endpoints
-resource "aws_route53_health_check" "db_proxy" {
-  ip_address        = aws_db_proxy.main.endpoint
-  port              = 5432
-  type              = "TCP"
-  failure_threshold = 2
-  request_interval  = 30   # Standard interval — lower cost
+<span style="color: #6a9955;"># TCP health check for non-HTTP endpoints</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_route53_health_check"</span> <span style="color: #ce9178;">"db_proxy"</span> {
+  <span style="color: #9cdcfe;">ip_address</span>        = aws_db_proxy.main.endpoint
+  <span style="color: #9cdcfe;">port</span>              = <span style="color: #b5cea8;">5432</span>
+  <span style="color: #9cdcfe;">type</span>              = <span style="color: #ce9178;">"TCP"</span>
+  <span style="color: #9cdcfe;">failure_threshold</span> = <span style="color: #b5cea8;">2</span>
+  <span style="color: #9cdcfe;">request_interval</span>  = <span style="color: #b5cea8;">30</span>   <span style="color: #6a9955;"># Standard interval — lower cost</span>
 
-  tags = { Name = "db-proxy-health-check" }
+  <span style="color: #9cdcfe;">tags</span> = { Name = <span style="color: #ce9178;">"db-proxy-health-check"</span> }
 }
 
-# Calculated health check — aggregates multiple child checks
-resource "aws_route53_health_check" "composite" {
-  type                   = "CALCULATED"
-  child_health_threshold = 2   # At least 2 child checks must pass
-  child_healthchecks     = [
+<span style="color: #6a9955;"># Calculated health check — aggregates multiple child checks</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_route53_health_check"</span> <span style="color: #ce9178;">"composite"</span> {
+  <span style="color: #9cdcfe;">type</span>                   = <span style="color: #ce9178;">"CALCULATED"</span>
+  <span style="color: #9cdcfe;">child_health_threshold</span> = <span style="color: #b5cea8;">2</span>   <span style="color: #6a9955;"># At least 2 child checks must pass</span>
+  <span style="color: #9cdcfe;">child_healthchecks</span>     = [
     aws_route53_health_check.primary.id,
     aws_route53_health_check.db_proxy.id
   ]
 
-  tags = { Name = "composite-health-check" }
+  <span style="color: #9cdcfe;">tags</span> = { Name = <span style="color: #ce9178;">"composite-health-check"</span> }
 }</code></pre>
 
         <h3>Active-Passive Failover — Primary + Secondary Region</h3>
         <p>This is the most common enterprise pattern: a primary region handles all traffic, and a secondary region takes over if the primary becomes unhealthy:</p>
 
-        <pre style="background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 13px; border-left: 4px solid var(--aws-orange);"><code># PRIMARY record — eu-west-1 ALB (active)
-resource "aws_route53_record" "primary" {
-  zone_id = aws_route53_zone.public.zone_id
-  name    = "api.ankushpanday.com"
-  type    = "A"
+        <pre style="background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 13px; border-left: 4px solid var(--aws-orange);"><code><span style="color: #6a9955;"># PRIMARY record — eu-west-1 ALB (active)</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_route53_record"</span> <span style="color: #ce9178;">"primary"</span> {
+  <span style="color: #9cdcfe;">zone_id</span> = aws_route53_zone.public.zone_id
+  <span style="color: #9cdcfe;">name</span>    = <span style="color: #ce9178;">"api.ankushpanday.com"</span>
+  <span style="color: #9cdcfe;">type</span>    = <span style="color: #ce9178;">"A"</span>
   
-  set_identifier = "primary"
+  <span style="color: #9cdcfe;">set_identifier</span> = <span style="color: #ce9178;">"primary"</span>
 
   failover_routing_policy {
-    type = "PRIMARY"
+    <span style="color: #9cdcfe;">type</span> = <span style="color: #ce9178;">"PRIMARY"</span>
   }
 
   alias {
-    name                   = aws_lb.eu_west_1.dns_name
-    zone_id                = aws_lb.eu_west_1.zone_id
-    evaluate_target_health = true
+    <span style="color: #9cdcfe;">name</span>                   = aws_lb.eu_west_1.dns_name
+    <span style="color: #9cdcfe;">zone_id</span>                = aws_lb.eu_west_1.zone_id
+    <span style="color: #9cdcfe;">evaluate_target_health</span> = <span style="color: #569cd6;">true</span>
   }
 
-  health_check_id = aws_route53_health_check.primary.id
+  <span style="color: #9cdcfe;">health_check_id</span> = aws_route53_health_check.primary.id
 }
 
-# SECONDARY record — us-east-1 ALB (passive, receives traffic only on failover)
-resource "aws_route53_record" "secondary" {
-  zone_id = aws_route53_zone.public.zone_id
-  name    = "api.ankushpanday.com"
-  type    = "A"
+<span style="color: #6a9955;"># SECONDARY record — us-east-1 ALB (passive, receives traffic only on failover)</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_route53_record"</span> <span style="color: #ce9178;">"secondary"</span> {
+  <span style="color: #9cdcfe;">zone_id</span> = aws_route53_zone.public.zone_id
+  <span style="color: #9cdcfe;">name</span>    = <span style="color: #ce9178;">"api.ankushpanday.com"</span>
+  <span style="color: #9cdcfe;">type</span>    = <span style="color: #ce9178;">"A"</span>
 
-  set_identifier = "secondary"
+  <span style="color: #9cdcfe;">set_identifier</span> = <span style="color: #ce9178;">"secondary"</span>
 
   failover_routing_policy {
-    type = "SECONDARY"
+    <span style="color: #9cdcfe;">type</span> = <span style="color: #ce9178;">"SECONDARY"</span>
   }
 
   alias {
-    name                   = aws_lb.us_east_1.dns_name
-    zone_id                = aws_lb.us_east_1.zone_id
-    evaluate_target_health = true
+    <span style="color: #9cdcfe;">name</span>                   = aws_lb.us_east_1.dns_name
+    <span style="color: #9cdcfe;">zone_id</span>                = aws_lb.us_east_1.zone_id
+    <span style="color: #9cdcfe;">evaluate_target_health</span> = <span style="color: #569cd6;">true</span>
   }
-  # No health_check_id on secondary — Route 53 always keeps this as fallback
+  <span style="color: #6a9955;"># No health_check_id on secondary — Route 53 always keeps this as fallback</span>
 }</code></pre>
 
         <h3>Weighted Routing — Blue/Green & Canary Deployments</h3>
         <p>Weighted routing distributes traffic by percentage. This is the Route 53-native way to do canary deployments or gradual traffic shifting during blue/green deployments:</p>
 
-        <pre style="background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 13px; border-left: 4px solid var(--aws-orange);"><code># Blue environment — 90% of traffic
-resource "aws_route53_record" "blue" {
-  zone_id        = aws_route53_zone.public.zone_id
-  name           = "api.ankushpanday.com"
-  type           = "A"
-  set_identifier = "blue"
+        <pre style="background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 13px; border-left: 4px solid var(--aws-orange);"><code><span style="color: #6a9955;"># Blue environment — 90% of traffic</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_route53_record"</span> <span style="color: #ce9178;">"blue"</span> {
+  <span style="color: #9cdcfe;">zone_id</span>        = aws_route53_zone.public.zone_id
+  <span style="color: #9cdcfe;">name</span>           = <span style="color: #ce9178;">"api.ankushpanday.com"</span>
+  <span style="color: #9cdcfe;">type</span>           = <span style="color: #ce9178;">"A"</span>
+  <span style="color: #9cdcfe;">set_identifier</span> = <span style="color: #ce9178;">"blue"</span>
 
   weighted_routing_policy {
-    weight = 90
+    <span style="color: #9cdcfe;">weight</span> = <span style="color: #b5cea8;">90</span>
   }
 
   alias {
-    name                   = aws_lb.blue.dns_name
-    zone_id                = aws_lb.blue.zone_id
-    evaluate_target_health = true
+    <span style="color: #9cdcfe;">name</span>                   = aws_lb.blue.dns_name
+    <span style="color: #9cdcfe;">zone_id</span>                = aws_lb.blue.zone_id
+    <span style="color: #9cdcfe;">evaluate_target_health</span> = <span style="color: #569cd6;">true</span>
   }
 }
 
-# Green environment — 10% canary traffic
-resource "aws_route53_record" "green" {
-  zone_id        = aws_route53_zone.public.zone_id
-  name           = "api.ankushpanday.com"
-  type            = "A"
-  set_identifier = "green"
+<span style="color: #6a9955;"># Green environment — 10% canary traffic</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_route53_record"</span> <span style="color: #ce9178;">"green"</span> {
+  <span style="color: #9cdcfe;">zone_id</span>        = aws_route53_zone.public.zone_id
+  <span style="color: #9cdcfe;">name</span>           = <span style="color: #ce9178;">"api.ankushpanday.com"</span>
+  <span style="color: #9cdcfe;">type</span>            = <span style="color: #ce9178;">"A"</span>
+  <span style="color: #9cdcfe;">set_identifier</span> = <span style="color: #ce9178;">"green"</span>
 
   weighted_routing_policy {
-    weight = 10
+    <span style="color: #9cdcfe;">weight</span> = <span style="color: #b5cea8;">10</span>
   }
 
   alias {
-    name                   = aws_lb.green.dns_name
-    zone_id                = aws_lb.green.zone_id
-    evaluate_target_health = true
+    <span style="color: #9cdcfe;">name</span>                   = aws_lb.green.dns_name
+    <span style="color: #9cdcfe;">zone_id</span>                = aws_lb.green.zone_id
+    <span style="color: #9cdcfe;">evaluate_target_health</span> = <span style="color: #569cd6;">true</span>
   }
 }</code></pre>
 
@@ -593,44 +593,44 @@ resource "aws_route53_record" "green" {
         <h3>Latency-Based Routing — Serve from the Nearest Region</h3>
         <p>Latency routing directs users to the AWS region with the lowest measured network latency — not geographic proximity, but actual measured round-trip time:</p>
 
-        <pre style="background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 13px; border-left: 4px solid var(--aws-orange);"><code># eu-west-1 — serves European users
-resource "aws_route53_record" "eu" {
-  zone_id        = aws_route53_zone.public.zone_id
-  name           = "api.ankushpanday.com"
-  type           = "A"
-  set_identifier = "eu-west-1"
+        <pre style="background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 13px; border-left: 4px solid var(--aws-orange);"><code><span style="color: #6a9955;"># eu-west-1 — serves European users</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_route53_record"</span> <span style="color: #ce9178;">"eu"</span> {
+  <span style="color: #9cdcfe;">zone_id</span>        = aws_route53_zone.public.zone_id
+  <span style="color: #9cdcfe;">name</span>           = <span style="color: #ce9178;">"api.ankushpanday.com"</span>
+  <span style="color: #9cdcfe;">type</span>           = <span style="color: #ce9178;">"A"</span>
+  <span style="color: #9cdcfe;">set_identifier</span> = <span style="color: #ce9178;">"eu-west-1"</span>
 
   latency_routing_policy {
-    region = "eu-west-1"
+    <span style="color: #9cdcfe;">region</span> = <span style="color: #ce9178;">"eu-west-1"</span>
   }
 
   alias {
-    name                   = aws_lb.eu.dns_name
-    zone_id                = aws_lb.eu.zone_id
-    evaluate_target_health = true
+    <span style="color: #9cdcfe;">name</span>                   = aws_lb.eu.dns_name
+    <span style="color: #9cdcfe;">zone_id</span>                = aws_lb.eu.zone_id
+    <span style="color: #9cdcfe;">evaluate_target_health</span> = <span style="color: #569cd6;">true</span>
   }
 
-  health_check_id = aws_route53_health_check.eu.id
+  <span style="color: #9cdcfe;">health_check_id</span> = aws_route53_health_check.eu.id
 }
 
-# us-east-1 — serves North American users
-resource "aws_route53_record" "us" {
-  zone_id        = aws_route53_zone.public.zone_id
-  name           = "api.ankushpanday.com"
-  type           = "A"
-  set_identifier = "us-east-1"
+<span style="color: #6a9955;"># us-east-1 — serves North American users</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_route53_record"</span> <span style="color: #ce9178;">"us"</span> {
+  <span style="color: #9cdcfe;">zone_id</span>        = aws_route53_zone.public.zone_id
+  <span style="color: #9cdcfe;">name</span>           = <span style="color: #ce9178;">"api.ankushpanday.com"</span>
+  <span style="color: #9cdcfe;">type</span>           = <span style="color: #ce9178;">"A"</span>
+  <span style="color: #9cdcfe;">set_identifier</span> = <span style="color: #ce9178;">"us-east-1"</span>
 
   latency_routing_policy {
-    region = "us-east-1"
+    <span style="color: #9cdcfe;">region</span> = <span style="color: #ce9178;">"us-east-1"</span>
   }
 
   alias {
-    name                   = aws_lb.us.dns_name
-    zone_id                = aws_lb.us.zone_id
-    evaluate_target_health = true
+    <span style="color: #9cdcfe;">name</span>                   = aws_lb.us.dns_name
+    <span style="color: #9cdcfe;">zone_id</span>                = aws_lb.us.zone_id
+    <span style="color: #9cdcfe;">evaluate_target_health</span> = <span style="color: #569cd6;">true</span>
   }
 
-  health_check_id = aws_route53_health_check.us.id
+  <span style="color: #9cdcfe;">health_check_id</span> = aws_route53_health_check.us.id
 }</code></pre>
 
         <div style="background: var(--aws-highlight); padding: 24px; border-left: 5px solid var(--aws-orange); margin-top: 40px; margin-bottom: 40px;">
@@ -654,27 +654,27 @@ Spoke Account VPCs
 ├── RAM-shared Resolver Rule applied to VPC
 └── RAM-shared PHZ associated with VPC</code></pre>
 
-        <pre style="background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 13px; border-left: 4px solid var(--aws-orange);"><code># In the DNS account — share resolver rules org-wide
-resource "aws_ram_resource_share" "dns_central" {
-  name                      = "central-dns-share"
-  allow_external_principals = false
-  tags                      = { Name = "central-dns-ram" }
+        <pre style="background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 13px; border-left: 4px solid var(--aws-orange);"><code><span style="color: #6a9955;"># In the DNS account — share resolver rules org-wide</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_ram_resource_share"</span> <span style="color: #ce9178;">"dns_central"</span> {
+  <span style="color: #9cdcfe;">name</span>                      = <span style="color: #ce9178;">"central-dns-share"</span>
+  <span style="color: #9cdcfe;">allow_external_principals</span> = <span style="color: #569cd6;">false</span>
+  <span style="color: #9cdcfe;">tags</span>                      = { Name = <span style="color: #ce9178;">"central-dns-ram"</span> }
 }
 
-resource "aws_ram_resource_association" "forwarding_rule" {
-  resource_arn       = aws_route53_resolver_rule.corp_forward.arn
-  resource_share_arn = aws_ram_resource_share.dns_central.arn
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_ram_resource_association"</span> <span style="color: #ce9178;">"forwarding_rule"</span> {
+  <span style="color: #9cdcfe;">resource_arn</span>       = aws_route53_resolver_rule.corp_forward.arn
+  <span style="color: #9cdcfe;">resource_share_arn</span> = aws_ram_resource_share.dns_central.arn
 }
 
-resource "aws_ram_principal_association" "org_dns" {
-  principal          = data.aws_organizations_organization.main.arn
-  resource_share_arn = aws_ram_resource_share.dns_central.arn
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_ram_principal_association"</span> <span style="color: #ce9178;">"org_dns"</span> {
+  <span style="color: #9cdcfe;">principal</span>          = <span style="color: #569cd6;">data</span>.aws_organizations_organization.main.arn
+  <span style="color: #9cdcfe;">resource_share_arn</span> = aws_ram_resource_share.dns_central.arn
 }
 
-# In each spoke account — associate the shared rule with the local VPC
-resource "aws_route53_resolver_rule_association" "spoke" {
-  resolver_rule_id = var.shared_resolver_rule_id   # From DNS account via RAM
-  vpc_id           = aws_vpc.spoke.id
+<span style="color: #6a9955;"># In each spoke account — associate the shared rule with the local VPC</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_route53_resolver_rule_association"</span> <span style="color: #ce9178;">"spoke"</span> {
+  <span style="color: #9cdcfe;">resolver_rule_id</span> = var.shared_resolver_rule_id   <span style="color: #6a9955;"># From DNS account via RAM</span>
+  <span style="color: #9cdcfe;">vpc_id</span>           = aws_vpc.spoke.id
 }</code></pre>
 
         <div style="background: var(--aws-highlight); padding: 24px; border-left: 5px solid var(--aws-orange); margin-top: 40px; margin-bottom: 40px;">
@@ -707,7 +707,7 @@ resource "aws_route53_resolver_rule_association" "spoke" {
 
         <h3>Cost Trap: High-Volume PHZ Queries</h3>
         <p>For a service handling 100M internal DNS queries/month:</p>
-        <pre style="background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 13px; border-left: 4px solid var(--aws-orange);"><code>100M queries × $0.40/million = $40/month per PHZ</code></pre>
+        <pre style="background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 13px; border-left: 4px solid var(--aws-orange);"><code>100M queries × $<span style="color: #b5cea8;">0</span>.<span style="color: #b5cea8;">40</span>/million = $<span style="color: #b5cea8;">40</span>/month per PHZ</code></pre>
         <p>If you have 20 PHZs, that's $800/month in query charges alone. Strategies to reduce this:</p>
         <ul>
           <li>Increase DNS TTL for stable records (e.g., database endpoints that rarely change) from 60s to 300s</li>
@@ -721,7 +721,7 @@ resource "aws_route53_resolver_rule_association" "spoke" {
 
 Do you need DNS only within your VPC(s)?
 └── YES → Private Hosted Zone
-    ├── Single VPC? → Associate directly in zone resource
+    ├── Single VPC? → Associate directly in zone <span style="color: #569cd6;">resource</span>
     ├── Multiple VPCs, same account? → aws_route53_zone_association
     └── Multiple accounts? → RAM share or cross-account association
 
@@ -759,52 +759,52 @@ Do you need traffic distribution?
         <h3>Mistake 5: Not Enabling Query Logging for PHZs</h3>
         <p>You cannot debug DNS resolution issues without query logs. Enable them — the S3 storage cost for DNS logs is negligible compared to the debugging value:</p>
 
-        <pre style="background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 13px; border-left: 4px solid var(--aws-orange);"><code>resource "aws_route53_resolver_query_log_config" "main" {
-  name            = "vpc-dns-query-logs"
-  destination_arn = aws_s3_bucket.dns_logs.arn
+        <pre style="background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 13px; border-left: 4px solid var(--aws-orange);"><code><span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_route53_resolver_query_log_config"</span> <span style="color: #ce9178;">"main"</span> {
+  <span style="color: #9cdcfe;">name</span>            = <span style="color: #ce9178;">"vpc-dns-query-logs"</span>
+  <span style="color: #9cdcfe;">destination_arn</span> = aws_s3_bucket.dns_logs.arn
 }
 
-resource "aws_route53_resolver_query_log_config_association" "main" {
-  resolver_query_log_config_id = aws_route53_resolver_query_log_config.main.id
-  resource_id                  = aws_vpc.main.id
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_route53_resolver_query_log_config_association"</span> <span style="color: #ce9178;">"main"</span> {
+  <span style="color: #9cdcfe;">resolver_query_log_config_id</span> = aws_route53_resolver_query_log_config.main.id
+  <span style="color: #9cdcfe;">resource_id</span>                  = aws_vpc.main.id
 }</code></pre>
 
         <h3>Mistake 6: Split-Horizon DNS Not Planned Upfront</h3>
         <p>Split-horizon means the same domain name resolves to different IPs depending on where the query originates — a private IP from within your VPC, a public IP from the internet. This is a very common requirement (e.g., <code>api.company.com</code> → <code>10.0.1.50</code> internally, <code>52.x.x.x</code> externally) and is implemented by having both a public and private hosted zone for the same domain. Plan for this at zone creation time — retrofitting it is painful.</p>
 
-        <pre style="background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 13px; border-left: 4px solid var(--aws-orange);"><code># Public zone — internet sees this
-resource "aws_route53_zone" "public" {
-  name = "api.company.com"
+        <pre style="background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 13px; border-left: 4px solid var(--aws-orange);"><code><span style="color: #6a9955;"># Public zone — internet sees this</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_route53_zone"</span> <span style="color: #ce9178;">"public"</span> {
+  <span style="color: #9cdcfe;">name</span> = <span style="color: #ce9178;">"api.company.com"</span>
 }
 
-# Private zone — VPC sees this (same name, different records)
-resource "aws_route53_zone" "private_split" {
-  name = "api.company.com"
+<span style="color: #6a9955;"># Private zone — VPC sees this (same name, different records)</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_route53_zone"</span> <span style="color: #ce9178;">"private_split"</span> {
+  <span style="color: #9cdcfe;">name</span> = <span style="color: #ce9178;">"api.company.com"</span>
 
   vpc {
-    vpc_id = aws_vpc.main.id
+    <span style="color: #9cdcfe;">vpc_id</span> = aws_vpc.main.id
   }
 }
 
-# Public record → ALB public DNS
-resource "aws_route53_record" "public_api" {
-  zone_id = aws_route53_zone.public.zone_id
-  name    = "api.company.com"
-  type    = "A"
+<span style="color: #6a9955;"># Public record → ALB public DNS</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_route53_record"</span> <span style="color: #ce9178;">"public_api"</span> {
+  <span style="color: #9cdcfe;">zone_id</span> = aws_route53_zone.public.zone_id
+  <span style="color: #9cdcfe;">name</span>    = <span style="color: #ce9178;">"api.company.com"</span>
+  <span style="color: #9cdcfe;">type</span>    = <span style="color: #ce9178;">"A"</span>
   alias {
-    name                   = aws_lb.public.dns_name
-    zone_id                = aws_lb.public.zone_id
-    evaluate_target_health = true
+    <span style="color: #9cdcfe;">name</span>                   = aws_lb.public.dns_name
+    <span style="color: #9cdcfe;">zone_id</span>                = aws_lb.public.zone_id
+    <span style="color: #9cdcfe;">evaluate_target_health</span> = <span style="color: #569cd6;">true</span>
   }
 }
 
-# Private record → internal ALB private IP
-resource "aws_route53_record" "private_api" {
-  zone_id = aws_route53_zone.private_split.zone_id
-  name    = "api.company.com"
-  type    = "A"
-  ttl     = 60
-  records = [aws_lb.internal.dns_name]
+<span style="color: #6a9955;"># Private record → internal ALB private IP</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_route53_record"</span> <span style="color: #ce9178;">"private_api"</span> {
+  <span style="color: #9cdcfe;">zone_id</span> = aws_route53_zone.private_split.zone_id
+  <span style="color: #9cdcfe;">name</span>    = <span style="color: #ce9178;">"api.company.com"</span>
+  <span style="color: #9cdcfe;">type</span>    = <span style="color: #ce9178;">"A"</span>
+  <span style="color: #9cdcfe;">ttl</span>     = <span style="color: #b5cea8;">60</span>
+  <span style="color: #9cdcfe;">records</span> = [aws_lb.internal.dns_name]
 }</code></pre>
 
         <h2>Architecture Decision Matrix</h2>

@@ -45,6 +45,10 @@
       <a href="#profile" class="sidebar-item active">
         <i class="fa-solid fa-user icon"></i> Profile Summary
       </a>
+      <a href="#projects" class="sidebar-item">
+        <i class="fa-solid fa-rocket icon"></i> Featured Projects
+        <span class="sidebar-badge" style="background: var(--aws-orange);">2</span>
+      </a>
       <a href="#experience" class="sidebar-item">
         <i class="fa-solid fa-briefcase icon"></i> Work Experience
         <span class="sidebar-badge">4</span>
@@ -130,6 +134,76 @@
             <br><br>
             Beyond infrastructure delivery, I work closely with cross-functional teams and stakeholders to translate requirements into well-architected cloud solutions. My background spans Kubernetes (EKS/AKS), GitOps with ArgoCD and Helm, Terraform, CI/CD automation, and containerised microservices architectures.
           </p>
+        </div>
+      </section>
+
+      <!-- FEATURED PROJECTS -->
+      <section class="section-card" id="projects">
+        <div class="section-card-header">
+          <h2><i class="fa-solid fa-rocket icon"></i> Featured Projects & Impact</h2>
+        </div>
+        <div class="section-card-body">
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px;">
+            
+            <!-- Project 1 -->
+            <div style="background: var(--aws-white); border: 1px solid var(--aws-border); border-radius: 8px; padding: 24px; position: relative; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
+              <div style="position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: var(--aws-orange);"></div>
+              <h3 style="margin-top: 0; color: var(--aws-text); font-size: 18px; margin-bottom: 4px;">Enterprise Cloud & Container Platforms</h3>
+              <p style="font-size: 13px; color: var(--aws-blue); font-weight: 600; margin-bottom: 16px;">Rabobank • Amazon EKS, ECS & GitOps</p>
+              <p style="font-size: 14px; color: var(--aws-text-light); line-height: 1.6; margin-bottom: 24px;">
+                Architected a mission-critical fraud detection platform on EKS and led the migration of legacy apps to ECS. Implemented GitOps with ArgoCD, achieving sub-second latency and automated security compliance.
+              </p>
+              
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <div style="background: #f8f9fa; padding: 16px; border-radius: 6px; border: 1px solid var(--aws-border); text-align: center;">
+                  <div style="font-size: 28px; font-weight: 800; color: var(--aws-orange);">33</div>
+                  <div style="font-size: 11px; text-transform: uppercase; color: var(--aws-text-light); font-weight: 700; margin-top: 4px; letter-spacing: 0.5px;">Microservices</div>
+                </div>
+                <div style="background: #f8f9fa; padding: 16px; border-radius: 6px; border: 1px solid var(--aws-border); text-align: center;">
+                  <div style="font-size: 28px; font-weight: 800; color: var(--aws-blue);">99.95%</div>
+                  <div style="font-size: 11px; text-transform: uppercase; color: var(--aws-text-light); font-weight: 700; margin-top: 4px; letter-spacing: 0.5px;">Uptime</div>
+                </div>
+                <div style="background: #f8f9fa; padding: 16px; border-radius: 6px; border: 1px solid var(--aws-border); text-align: center;">
+                  <div style="font-size: 28px; font-weight: 800; color: var(--aws-blue);">100+</div>
+                  <div style="font-size: 11px; text-transform: uppercase; color: var(--aws-text-light); font-weight: 700; margin-top: 4px; letter-spacing: 0.5px;">Weekly Deploys</div>
+                </div>
+                <div style="background: #f8f9fa; padding: 16px; border-radius: 6px; border: 1px solid var(--aws-border); text-align: center;">
+                  <div style="font-size: 28px; font-weight: 800; color: var(--aws-orange);">35%</div>
+                  <div style="font-size: 11px; text-transform: uppercase; color: var(--aws-text-light); font-weight: 700; margin-top: 4px; letter-spacing: 0.5px;">Cost Savings</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Project 2 -->
+            <div style="background: var(--aws-white); border: 1px solid var(--aws-border); border-radius: 8px; padding: 24px; position: relative; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
+              <div style="position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: var(--aws-blue);"></div>
+              <h3 style="margin-top: 0; color: var(--aws-text); font-size: 18px; margin-bottom: 4px;">AWS Infrastructure Migration</h3>
+              <p style="font-size: 13px; color: var(--aws-blue); font-weight: 600; margin-bottom: 16px;">WCC Group • Terraform & ECS Fargate</p>
+              <p style="font-size: 14px; color: var(--aws-text-light); line-height: 1.6; margin-bottom: 24px;">
+                Architected and deployed highly scalable AWS environments from scratch using Terraform. Migrated legacy workloads to ECS Fargate and optimized CI/CD pipelines with Jenkins and Ansible.
+              </p>
+              
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <div style="background: #f8f9fa; padding: 16px; border-radius: 6px; border: 1px solid var(--aws-border); text-align: center;">
+                  <div style="font-size: 28px; font-weight: 800; color: var(--aws-blue);">15+</div>
+                  <div style="font-size: 11px; text-transform: uppercase; color: var(--aws-text-light); font-weight: 700; margin-top: 4px; letter-spacing: 0.5px;">Prod Systems Migrated</div>
+                </div>
+                <div style="background: #f8f9fa; padding: 16px; border-radius: 6px; border: 1px solid var(--aws-border); text-align: center;">
+                  <div style="font-size: 28px; font-weight: 800; color: var(--aws-orange);">25%</div>
+                  <div style="font-size: 11px; text-transform: uppercase; color: var(--aws-text-light); font-weight: 700; margin-top: 4px; letter-spacing: 0.5px;">Annual Cost Savings</div>
+                </div>
+                <div style="background: #f8f9fa; padding: 16px; border-radius: 6px; border: 1px solid var(--aws-border); text-align: center;">
+                  <div style="font-size: 28px; font-weight: 800; color: var(--aws-orange);">30%</div>
+                  <div style="font-size: 11px; text-transform: uppercase; color: var(--aws-text-light); font-weight: 700; margin-top: 4px; letter-spacing: 0.5px;">Less Maintenance</div>
+                </div>
+                <div style="background: #f8f9fa; padding: 16px; border-radius: 6px; border: 1px solid var(--aws-border); text-align: center;">
+                  <div style="font-size: 28px; font-weight: 800; color: var(--aws-blue);"><span style="font-size: 16px;">8h</span>&rarr;<span style="font-size: 24px;">5h</span></div>
+                  <div style="font-size: 11px; text-transform: uppercase; color: var(--aws-text-light); font-weight: 700; margin-top: 4px; letter-spacing: 0.5px;">Environment Setup</div>
+                </div>
+              </div>
+            </div>
+            
+          </div>
         </div>
       </section>
 

@@ -59,9 +59,9 @@
       <header class="blog-header">
         <h1 style="font-size: 32px; color: var(--aws-text); margin-bottom: 16px; line-height: 1.2;">Direct Connect vs Site-to-Site VPN vs Client VPN</h1>
         <div style="display: flex; gap: 12px; align-items: center; color: var(--aws-text-light); font-size: 14px; flex-wrap: wrap;">
-          <span>May 3, 2026</span>
+          <span>May 4, 2026</span>
           <span>•</span>
-          <span>20 min read</span>
+          <span>25 min read</span>
           <span class="tag blue">Networking</span>
           <span class="tag purple">Architecture</span>
         </div>
@@ -73,13 +73,836 @@
         </p>
         <img src="../../images/aws-hybrid-connectivity-vpn-direct-connect.png" alt="Direct Connect vs VPNs Architecture" style="display: block; max-width: 85%; margin: 0 auto 32px auto; border-radius: 8px; border: 1px solid var(--aws-border); opacity: 0.8;">
 
-        <div style="background: var(--aws-highlight); padding: 40px; text-align: center; border-radius: 8px; border: 1px dashed var(--aws-border); margin: 40px 0;">
-          <i class="fa-solid fa-person-digging" style="font-size: 48px; color: var(--aws-orange); margin-bottom: 20px;"></i>
-          <h3 style="margin-bottom: 10px; color: var(--aws-text);">Content in Development</h3>
-          <p style="color: var(--aws-text-light); max-width: 500px; margin: 0 auto;">I am currently drafting this deep dive into AWS Direct Connect, Site-to-Site VPN, and Client VPN. Check back soon for the full technical breakdown, complete with Terraform examples and hybrid connectivity architectures.</p>
-        </div>
         
-        <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--aws-border);">
+        <h2 style="margin-top: 40px; font-size: 26px; color: var(--aws-text); border-bottom: 2px solid var(--aws-orange); display: inline-block; padding-bottom: 4px; margin-bottom: 24px;">TL;DR Comparison</h2>
+        
+        <div style="overflow-x: auto; margin-bottom: 30px;">
+          <table class="compare-table" style="width: 100%; border-collapse: collapse; text-align: left;">
+            <thead>
+              <tr style="background: var(--aws-blue); color: white;">
+                <th style="padding: 12px; border: 1px solid var(--aws-border);">Feature</th>
+                <th style="padding: 12px; border: 1px solid var(--aws-border);">AWS Direct Connect</th>
+                <th style="padding: 12px; border: 1px solid var(--aws-border);">Site-to-Site VPN</th>
+                <th style="padding: 12px; border: 1px solid var(--aws-border);">Client VPN</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);"><strong>Connection type</strong></td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">Dedicated physical line</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">IPSec tunnel over internet</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">TLS tunnel per user</td>
+              </tr>
+              <tr>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);"><strong>Who connects</strong></td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">Data center / office</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">Network to network</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">Individual users/devices</td>
+              </tr>
+              <tr>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);"><strong>Bandwidth</strong></td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">1 Gbps – 100 Gbps</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">Up to 1.25 Gbps per tunnel</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">Up to 10 Gbps aggregate</td>
+              </tr>
+              <tr>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);"><strong>Latency</strong></td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">Consistent, low (~1-5ms)</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">Variable (internet-dependent)</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">Variable (internet-dependent)</td>
+              </tr>
+              <tr>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);"><strong>Encryption</strong></td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">Optional (MACsec)</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">Always (AES-256)</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">Always (TLS 1.2+)</td>
+              </tr>
+              <tr>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);"><strong>Setup time</strong></td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">Weeks to months</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">Minutes to hours</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">Hours</td>
+              </tr>
+              <tr>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);"><strong>Cost</strong></td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">$$$ (port + data transfer)</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">$ (hourly + data transfer)</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">$$ (per connection hour)</td>
+              </tr>
+              <tr>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);"><strong>BGP routing</strong></td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">✅ Required</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">✅ Optional (static or BGP)</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">❌ Not applicable</td>
+              </tr>
+              <tr>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);"><strong>High availability</strong></td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">Active/Active or Active/Passive</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">Dual tunnels per connection</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">Multi-AZ endpoints</td>
+              </tr>
+              <tr>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);"><strong>Best for</strong></td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">Production enterprise workloads</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">Dev/test, DR, VPN backup</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">Remote workforce, contractors</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2 style="margin-top: 40px; font-size: 26px; color: var(--aws-text); border-bottom: 2px solid var(--aws-orange); display: inline-block; padding-bottom: 4px; margin-bottom: 24px;">Introduction</h2>
+        <p style="margin-bottom: 20px;">Every enterprise AWS journey eventually reaches the hybrid connectivity question: how do your on-premises systems, data centers, and remote workers securely connect to your AWS infrastructure?</p>
+        <p style="margin-bottom: 20px;">There are three AWS-native answers — <strong>Direct Connect, Site-to-Site VPN, and Client VPN</strong>. They are not interchangeable. Using Site-to-Site VPN for a production database replication workload will give you unpredictable latency and jitter. Using Direct Connect for a small dev team's remote access will cost 10x what you need to spend. And running neither in high availability will give you an outage at the worst possible time.</p>
+        <p style="margin-bottom: 20px;">In this post we go deep on all three — how each works at the protocol level, when each is the right choice, how to build them properly in Terraform, how to combine them for true resilience, and what each actually costs.</p>
+
+        <h2 style="margin-top: 40px; font-size: 26px; color: var(--aws-text); border-bottom: 2px solid var(--aws-orange); display: inline-block; padding-bottom: 4px; margin-bottom: 24px;">1. AWS Direct Connect — The Dedicated Private Line</h2>
+        <h3 style="margin-top: 32px; font-size: 22px; color: var(--aws-blue); margin-bottom: 16px;">How It Works</h3>
+        <p style="margin-bottom: 20px;">Direct Connect is a dedicated physical network connection between your on-premises data center and an AWS Direct Connect location (a colocation facility). Your traffic flows over a private line — never touching the public internet.</p>
+
+        <div style="background: #1e1e1e; padding: 16px; border-radius: 6px; margin-bottom: 24px; overflow-x: auto; border: 1px solid #333;">
+          <pre style="margin: 0; color: #d4d4d4; font-family: monospace; font-size: 13px;"><code>Your Data Center
+    → Your Router
+        → Cross-connect (physical cable in the DX location)
+            → AWS Direct Connect Router
+                → AWS Backbone
+                    → Your VPC / TGW</code></pre>
+        </div>
+
+        <p style="margin-bottom: 20px;">The connection is established using <strong>BGP (Border Gateway Protocol)</strong> — the same routing protocol that runs the internet. Your router and the AWS router exchange route advertisements over the BGP session, so routes are learned dynamically rather than configured statically.</p>
+
+        <h3 style="margin-top: 32px; font-size: 22px; color: var(--aws-blue); margin-bottom: 16px;">Virtual Interfaces — The Three Types</h3>
+        <p style="margin-bottom: 20px;">A physical Direct Connect port is shared across multiple logical connections via <strong>Virtual Interfaces (VIFs)</strong>. Understanding the three VIF types is fundamental:</p>
+
+        <div style="overflow-x: auto; margin-bottom: 30px;">
+          <table class="compare-table" style="width: 100%; border-collapse: collapse; text-align: left;">
+            <thead>
+              <tr style="background: var(--aws-blue); color: white;">
+                <th style="padding: 12px; border: 1px solid var(--aws-border);">VIF Type</th>
+                <th style="padding: 12px; border: 1px solid var(--aws-border);">Routes to</th>
+                <th style="padding: 12px; border: 1px solid var(--aws-border);">Use case</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);"><strong>Private VIF</strong></td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">Single VPC via VGW</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">Direct access to one VPC</td>
+              </tr>
+              <tr>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);"><strong>Transit VIF</strong></td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">TGW</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">Access to many VPCs via Transit Gateway</td>
+              </tr>
+              <tr>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);"><strong>Public VIF</strong></td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">All AWS public IPs globally</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">Access to AWS public services (S3, DynamoDB) without internet</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p style="margin-bottom: 20px;">For enterprise multi-VPC architectures, <strong>Transit VIF &rarr; TGW</strong> is always the right answer. Private VIF forces one VIF per VPC — that doesn't scale.</p>
+
+        <h3 style="margin-top: 32px; font-size: 22px; color: var(--aws-blue); margin-bottom: 16px;">Direct Connect Gateway — Multi-Region Access</h3>
+        <p style="margin-bottom: 20px;">A Direct Connect Gateway (DXGW) lets a single DX connection reach VPCs in <strong>multiple AWS regions</strong> — without separate connections per region:</p>
+
+        <div style="background: #1e1e1e; padding: 16px; border-radius: 6px; margin-bottom: 24px; overflow-x: auto; border: 1px solid #333;">
+          <pre style="margin: 0; color: #d4d4d4; font-family: monospace; font-size: 13px;"><code>Data Center → DX Connection → DXGW → TGW eu-west-1 → EU VPCs
+                                    → TGW us-east-1 → US VPCs
+                                    → TGW ap-southeast-1 → APAC VPCs</code></pre>
+        </div>
+
+        <div style="background: #1e1e1e; padding: 16px; border-radius: 6px; margin-bottom: 24px; overflow-x: auto; border: 1px solid #333;">
+          <pre style="margin: 0; color: #d4d4d4; font-family: monospace; font-size: 13px;"><code><span style="color: #6a9955;"># Direct Connect Gateway</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_dx_gateway"</span> <span style="color: #ce9178;">"main"</span> {
+  <span style="color: #9cdcfe;">name</span>            = <span style="color: #ce9178;">"org-dx-gateway"</span>
+  <span style="color: #9cdcfe;">amazon_side_asn</span> = <span style="color: #ce9178;">"64512"</span>
+}
+
+<span style="color: #6a9955;"># Associate DXGW with TGW in eu-west-1</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_dx_gateway_association"</span> <span style="color: #ce9178;">"eu_tgw"</span> {
+  <span style="color: #9cdcfe;">dx_gateway_id</span>         = aws_dx_gateway.main.id
+  <span style="color: #9cdcfe;">associated_gateway_id</span> = aws_ec2_transit_gateway.eu.id
+
+  <span style="color: #6a9955;"># Prefixes your TGW will advertise back to on-premises via BGP</span>
+  <span style="color: #9cdcfe;">allowed_prefixes</span> = [
+    <span style="color: #ce9178;">"10.0.0.0/8"</span>,      <span style="color: #6a9955;"># All internal VPC CIDRs</span>
+    <span style="color: #ce9178;">"172.16.0.0/12"</span>,
+  ]
+}
+
+<span style="color: #6a9955;"># Associate DXGW with TGW in us-east-1</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_dx_gateway_association"</span> <span style="color: #ce9178;">"us_tgw"</span> {
+  <span style="color: #9cdcfe;">dx_gateway_id</span>         = aws_dx_gateway.main.id
+  <span style="color: #9cdcfe;">associated_gateway_id</span> = aws_ec2_transit_gateway.us.id
+
+  <span style="color: #9cdcfe;">allowed_prefixes</span> = [
+    <span style="color: #ce9178;">"10.0.0.0/8"</span>,
+    <span style="color: #ce9178;">"172.16.0.0/12"</span>,
+  ]
+}</code></pre>
+        </div>
+
+        <h3 style="margin-top: 32px; font-size: 22px; color: var(--aws-blue); margin-bottom: 16px;">Hosted vs Dedicated Connections</h3>
+        <div style="overflow-x: auto; margin-bottom: 30px;">
+          <table class="compare-table" style="width: 100%; border-collapse: collapse; text-align: left;">
+            <thead>
+              <tr style="background: var(--aws-blue); color: white;">
+                <th style="padding: 12px; border: 1px solid var(--aws-border);"></th>
+                <th style="padding: 12px; border: 1px solid var(--aws-border);">Dedicated Connection</th>
+                <th style="padding: 12px; border: 1px solid var(--aws-border);">Hosted Connection</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);"><strong>Bandwidth</strong></td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">1G, 10G, 100G</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">50M – 10G</td>
+              </tr>
+              <tr>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);"><strong>Port ownership</strong></td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">You own the port</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">AWS Partner owns the port</td>
+              </tr>
+              <tr>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);"><strong>Lead time</strong></td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">Longer (physical provisioning)</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">Faster (partner pre-provisioned)</td>
+              </tr>
+              <tr>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);"><strong>VIF limit</strong></td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">50 VIFs per port</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">1 VIF per hosted connection</td>
+              </tr>
+              <tr>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);"><strong>Cost</strong></td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">Higher fixed</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">Pay-as-you-go</td>
+              </tr>
+              <tr>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);"><strong>Best for</strong></td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">Large enterprise, predictable high bandwidth</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">Getting started, variable needs</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p style="margin-bottom: 20px;">For most enterprises, start with a <strong>Hosted Connection</strong> via an AWS Partner to validate the DX use case — then migrate to a Dedicated Connection once bandwidth and ROI are proven.</p>
+
+        <h3 style="margin-top: 32px; font-size: 22px; color: var(--aws-blue); margin-bottom: 16px;">MACsec — Layer 2 Encryption</h3>
+        <p style="margin-bottom: 20px;">By default, Direct Connect is <strong>not encrypted</strong> — it's a private line but not cryptographically protected. For regulated industries (financial services, healthcare), enable MACsec (IEEE 802.1AE) for hardware-level Layer 2 encryption:</p>
+
+        <div style="background: #1e1e1e; padding: 16px; border-radius: 6px; margin-bottom: 24px; overflow-x: auto; border: 1px solid #333;">
+          <pre style="margin: 0; color: #d4d4d4; font-family: monospace; font-size: 13px;"><code><span style="color: #6a9955;"># MACsec key — must be pre-shared with your router</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_dx_macsec_key_association"</span> <span style="color: #ce9178;">"main"</span> {
+  <span style="color: #9cdcfe;">connection_id</span> = aws_dx_connection.main.id
+  <span style="color: #9cdcfe;">ckn</span>           = var.macsec_ckn   <span style="color: #6a9955;"># Connectivity Association Key Name (hex)</span>
+  <span style="color: #9cdcfe;">cak</span>           = var.macsec_cak   <span style="color: #6a9955;"># Connectivity Association Key (hex)</span>
+}
+
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_dx_connection"</span> <span style="color: #ce9178;">"main"</span> {
+  <span style="color: #9cdcfe;">name</span>            = <span style="color: #ce9178;">"prod-dx-connection"</span>
+  <span style="color: #9cdcfe;">bandwidth</span>       = <span style="color: #ce9178;">"10Gbps"</span>
+  <span style="color: #9cdcfe;">location</span>        = <span style="color: #ce9178;">"EqAM2"</span>   <span style="color: #6a9955;"># Equinix Amsterdam — AWS DX location code</span>
+  <span style="color: #9cdcfe;">request_macsec</span>  = <span style="color: #569cd6;">true</span>       <span style="color: #6a9955;"># Request MACsec capability on the port</span>
+
+  <span style="color: #9cdcfe;">tags</span> = { Name = <span style="color: #ce9178;">"prod-dx-10g"</span> }
+}</code></pre>
+        </div>
+
+        <div style="background: var(--aws-highlight); padding: 16px; border-left: 4px solid var(--aws-orange); margin-bottom: 24px;">
+          <h4 style="font-size: 14px; margin-bottom: 8px; color: var(--aws-orange);">Architect's Note</h4>
+          <p style="font-size: 13px; margin-bottom: 0;">MACsec is only available on <strong>Dedicated Connections</strong> of 10 Gbps and above. It is not available on Hosted Connections. For maximum security, combine MACsec (Layer 2) with IPSec over the DX Public VIF (Layer 3) — a dual-layer encryption pattern used in financial services.</p>
+        </div>
+
+        <h3 style="margin-top: 32px; font-size: 22px; color: var(--aws-blue); margin-bottom: 16px;">High Availability — Always Two Connections</h3>
+        <p style="margin-bottom: 20px;">A single Direct Connect connection is a single point of failure at the physical layer. AWS recommends — and enterprises should always implement — one of these HA patterns:</p>
+
+        <p style="margin-bottom: 10px;"><strong>Pattern 1: Dual DX (Maximum Resilience)</strong></p>
+        <div style="background: #1e1e1e; padding: 16px; border-radius: 6px; margin-bottom: 24px; overflow-x: auto; border: 1px solid #333;">
+          <pre style="margin: 0; color: #d4d4d4; font-family: monospace; font-size: 13px;"><code>Data Center Router A → DX Location 1 → AWS
+Data Center Router B → DX Location 2 → AWS (different DX location)</code></pre>
+        </div>
+
+        <p style="margin-bottom: 10px;"><strong>Pattern 2: DX Primary + VPN Backup (Cost-Optimised)</strong></p>
+        <div style="background: #1e1e1e; padding: 16px; border-radius: 6px; margin-bottom: 24px; overflow-x: auto; border: 1px solid #333;">
+          <pre style="margin: 0; color: #d4d4d4; font-family: monospace; font-size: 13px;"><code>Data Center → DX Connection (primary, all traffic)
+Data Center → Site-to-Site VPN (backup, activates on DX failure via BGP)</code></pre>
+        </div>
+
+        <p style="margin-bottom: 20px;">Pattern 2 is the most common enterprise choice. The VPN sits idle (minimum cost) and BGP automatically fails traffic over if the DX BGP session drops:</p>
+
+        <div style="background: #1e1e1e; padding: 16px; border-radius: 6px; margin-bottom: 24px; overflow-x: auto; border: 1px solid #333;">
+          <pre style="margin: 0; color: #d4d4d4; font-family: monospace; font-size: 13px;"><code><span style="color: #6a9955;"># Primary: DX with higher BGP priority (lower MED value)</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_dx_transit_virtual_interface"</span> <span style="color: #ce9178;">"primary"</span> {
+  <span style="color: #9cdcfe;">connection_id</span>    = aws_dx_connection.main.id
+  <span style="color: #9cdcfe;">name</span>             = <span style="color: #ce9178;">"transit-vif-primary"</span>
+  <span style="color: #9cdcfe;">vlan</span>             = <span style="color: #b5cea8;">100</span>
+  <span style="color: #9cdcfe;">address_family</span>   = <span style="color: #ce9178;">"ipv4"</span>
+  <span style="color: #9cdcfe;">bgp_asn</span>          = <span style="color: #b5cea8;">65000</span>   <span style="color: #6a9955;"># Your on-premises ASN</span>
+  <span style="color: #9cdcfe;">dx_gateway_id</span>    = aws_dx_gateway.main.id
+
+  <span style="color: #6a9955;"># BGP community to set lower MED — preferred route</span>
+  <span style="color: #9cdcfe;">bgp_auth_key</span> = var.bgp_auth_key
+}
+
+<span style="color: #6a9955;"># Backup: VPN with lower BGP priority (higher MED value)</span>
+<span style="color: #6a9955;"># Traffic only flows here if DX BGP session drops</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_vpn_connection"</span> <span style="color: #ce9178;">"backup"</span> {
+  <span style="color: #9cdcfe;">vpn_gateway_id</span>      = aws_vpn_gateway.main.id
+  <span style="color: #9cdcfe;">customer_gateway_id</span> = aws_customer_gateway.main.id
+  <span style="color: #9cdcfe;">type</span>                = <span style="color: #ce9178;">"ipsec.1"</span>
+  <span style="color: #9cdcfe;">static_routes_only</span>  = <span style="color: #569cd6;">false</span>   <span style="color: #6a9955;"># Use BGP</span>
+
+  <span style="color: #9cdcfe;">tags</span> = { Name = <span style="color: #ce9178;">"dx-backup-vpn"</span> }
+}</code></pre>
+        </div>
+
+        <h2 style="margin-top: 40px; font-size: 26px; color: var(--aws-text); border-bottom: 2px solid var(--aws-orange); display: inline-block; padding-bottom: 4px; margin-bottom: 24px;">2. Site-to-Site VPN — Encrypted Network-to-Network Connectivity</h2>
+        <h3 style="margin-top: 32px; font-size: 22px; color: var(--aws-blue); margin-bottom: 16px;">How It Works</h3>
+        <p style="margin-bottom: 20px;">Site-to-Site VPN creates an <strong>IPSec encrypted tunnel</strong> between your on-premises network and AWS. Unlike Direct Connect, traffic flows over the public internet — but is cryptographically protected with AES-256 encryption.</p>
+        <p style="margin-bottom: 20px;">AWS always provisions <strong>two tunnels per VPN connection</strong> — each terminating in a different AWS AZ. Both tunnels should be configured on your customer gateway device for redundancy:</p>
+
+        <div style="background: #1e1e1e; padding: 16px; border-radius: 6px; margin-bottom: 24px; overflow-x: auto; border: 1px solid #333;">
+          <pre style="margin: 0; color: #d4d4d4; font-family: monospace; font-size: 13px;"><code>On-Premises Router (Customer Gateway)
+    → Tunnel 1 → AWS VPN Endpoint AZ-a
+    → Tunnel 2 → AWS VPN Endpoint AZ-b (standby)</code></pre>
+        </div>
+
+        <h3 style="margin-top: 32px; font-size: 22px; color: var(--aws-blue); margin-bottom: 16px;">Full Site-to-Site VPN Terraform</h3>
+        <div style="background: #1e1e1e; padding: 16px; border-radius: 6px; margin-bottom: 24px; overflow-x: auto; border: 1px solid #333;">
+          <pre style="margin: 0; color: #d4d4d4; font-family: monospace; font-size: 13px;"><code><span style="color: #6a9955;"># Customer Gateway — represents your on-premises router</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_customer_gateway"</span> <span style="color: #ce9178;">"main"</span> {
+  <span style="color: #9cdcfe;">bgp_asn</span>    = <span style="color: #b5cea8;">65000</span>          <span style="color: #6a9955;"># Your on-premises BGP ASN</span>
+  <span style="color: #9cdcfe;">ip_address</span> = <span style="color: #ce9178;">"203.0.113.1"</span>  <span style="color: #6a9955;"># Your public IP address (static)</span>
+  <span style="color: #9cdcfe;">type</span>       = <span style="color: #ce9178;">"ipsec.1"</span>
+
+  <span style="color: #9cdcfe;">tags</span> = { Name = <span style="color: #ce9178;">"onprem-customer-gateway"</span> }
+}
+
+<span style="color: #6a9955;"># VPN Gateway — AWS side, attached to your VPC</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_vpn_gateway"</span> <span style="color: #ce9178;">"main"</span> {
+  <span style="color: #9cdcfe;">vpc_id</span>          = aws_vpc.main.id
+  <span style="color: #9cdcfe;">amazon_side_asn</span> = <span style="color: #b5cea8;">64512</span>
+
+  <span style="color: #9cdcfe;">tags</span> = { Name = <span style="color: #ce9178;">"vpc-vpn-gateway"</span> }
+}
+
+<span style="color: #6a9955;"># Enable route propagation — VGW automatically adds on-prem routes to route tables</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_vpn_gateway_route_propagation"</span> <span style="color: #ce9178;">"private"</span> {
+  <span style="color: #9cdcfe;">vpn_gateway_id</span> = aws_vpn_gateway.main.id
+  <span style="color: #9cdcfe;">route_table_id</span> = aws_route_table.private.id
+}
+
+<span style="color: #6a9955;"># VPN Connection — creates two IPSec tunnels automatically</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_vpn_connection"</span> <span style="color: #ce9178;">"main"</span> {
+  <span style="color: #9cdcfe;">vpn_gateway_id</span>      = aws_vpn_gateway.main.id
+  <span style="color: #9cdcfe;">customer_gateway_id</span> = aws_customer_gateway.main.id
+  <span style="color: #9cdcfe;">type</span>                = <span style="color: #ce9178;">"ipsec.1"</span>
+  <span style="color: #9cdcfe;">static_routes_only</span>  = <span style="color: #569cd6;">false</span>   <span style="color: #6a9955;"># Use BGP for dynamic routing</span>
+
+  <span style="color: #6a9955;"># Tunnel 1 configuration</span>
+  <span style="color: #9cdcfe;">tunnel1_inside_cidr</span>   = <span style="color: #ce9178;">"169.254.10.0/30"</span>    <span style="color: #6a9955;"># Link-local for BGP peering</span>
+  <span style="color: #9cdcfe;">tunnel1_psk</span>           = var.tunnel1_psk       <span style="color: #6a9955;"># Pre-shared key</span>
+  <span style="color: #9cdcfe;">tunnel1_ike_versions</span>  = [<span style="color: #ce9178;">"ikev2"</span>]             <span style="color: #6a9955;"># Always prefer IKEv2</span>
+  <span style="color: #9cdcfe;">tunnel1_phase1_encryption_algorithms</span> = [<span style="color: #ce9178;">"AES256"</span>]
+  <span style="color: #9cdcfe;">tunnel1_phase2_encryption_algorithms</span> = [<span style="color: #ce9178;">"AES256"</span>]
+
+  <span style="color: #6a9955;"># Tunnel 2 configuration</span>
+  <span style="color: #9cdcfe;">tunnel2_inside_cidr</span>   = <span style="color: #ce9178;">"169.254.11.0/30"</span>
+  <span style="color: #9cdcfe;">tunnel2_psk</span>           = var.tunnel2_psk
+  <span style="color: #9cdcfe;">tunnel2_ike_versions</span>  = [<span style="color: #ce9178;">"ikev2"</span>]
+  <span style="color: #9cdcfe;">tunnel2_phase1_encryption_algorithms</span> = [<span style="color: #ce9178;">"AES256"</span>]
+  <span style="color: #9cdcfe;">tunnel2_phase2_encryption_algorithms</span> = [<span style="color: #ce9178;">"AES256"</span>]
+
+  <span style="color: #9cdcfe;">tags</span> = { Name = <span style="color: #ce9178;">"onprem-to-aws-vpn"</span> }
+}
+
+<span style="color: #6a9955;"># Static route if not using BGP</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_vpn_connection_route"</span> <span style="color: #ce9178;">"onprem"</span> {
+  <span style="color: #9cdcfe;">destination_cidr_block</span> = <span style="color: #ce9178;">"192.168.0.0/16"</span>   <span style="color: #6a9955;"># Your on-premises CIDR</span>
+  <span style="color: #9cdcfe;">vpn_connection_id</span>      = aws_vpn_connection.main.id
+}</code></pre>
+        </div>
+
+        <h3 style="margin-top: 32px; font-size: 22px; color: var(--aws-blue); margin-bottom: 16px;">Accelerated Site-to-Site VPN — Global Accelerator Integration</h3>
+        <p style="margin-bottom: 20px;">Standard VPN routes traffic through the nearest AWS edge location, then across the internet to your on-premises router. <strong>Accelerated VPN</strong> uses AWS Global Accelerator anycast IPs as entry points — traffic from your router enters the AWS global backbone at the nearest edge location and stays on the private backbone all the way to the VPN endpoint:</p>
+
+        <div style="background: #1e1e1e; padding: 16px; border-radius: 6px; margin-bottom: 24px; overflow-x: auto; border: 1px solid #333;">
+          <pre style="margin: 0; color: #d4d4d4; font-family: monospace; font-size: 13px;"><code><span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_vpn_connection"</span> <span style="color: #ce9178;">"accelerated"</span> {
+  <span style="color: #9cdcfe;">vpn_gateway_id</span>      = aws_vpn_gateway.main.id
+  <span style="color: #9cdcfe;">customer_gateway_id</span> = aws_customer_gateway.main.id
+  <span style="color: #9cdcfe;">type</span>                = <span style="color: #ce9178;">"ipsec.1"</span>
+  <span style="color: #9cdcfe;">enable_acceleration</span> = <span style="color: #569cd6;">true</span>   <span style="color: #6a9955;"># Enables Global Accelerator integration</span>
+
+  <span style="color: #9cdcfe;">tags</span> = { Name = <span style="color: #ce9178;">"accelerated-vpn"</span> }
+}</code></pre>
+        </div>
+
+        <div style="background: var(--aws-highlight); padding: 16px; border-left: 4px solid var(--aws-orange); margin-bottom: 24px;">
+          <h4 style="font-size: 14px; margin-bottom: 8px; color: var(--aws-orange);">When to use Accelerated VPN</h4>
+          <p style="font-size: 13px; margin-bottom: 0;">If your on-premises location is geographically distant from the AWS region (e.g., data center in Southeast Asia connecting to eu-west-1), Accelerated VPN can reduce latency by 30-50% compared to standard VPN. Cost: additional $0.025/hour + Global Accelerator data transfer rates.</p>
+        </div>
+
+        <h3 style="margin-top: 32px; font-size: 22px; color: var(--aws-blue); margin-bottom: 16px;">VPN to TGW — Enterprise Pattern</h3>
+        <p style="margin-bottom: 20px;">For multi-VPC environments, attach the VPN to TGW instead of a VPC-level VGW:</p>
+
+        <div style="background: #1e1e1e; padding: 16px; border-radius: 6px; margin-bottom: 24px; overflow-x: auto; border: 1px solid #333;">
+          <pre style="margin: 0; color: #d4d4d4; font-family: monospace; font-size: 13px;"><code><span style="color: #6a9955;"># Attach VPN directly to TGW</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_vpn_connection"</span> <span style="color: #ce9178;">"tgw"</span> {
+  <span style="color: #9cdcfe;">transit_gateway_id</span>  = aws_ec2_transit_gateway.main.id
+  <span style="color: #9cdcfe;">customer_gateway_id</span> = aws_customer_gateway.main.id
+  <span style="color: #9cdcfe;">type</span>                = <span style="color: #ce9178;">"ipsec.1"</span>
+  <span style="color: #9cdcfe;">static_routes_only</span>  = <span style="color: #569cd6;">false</span>
+
+  <span style="color: #9cdcfe;">tags</span> = { Name = <span style="color: #ce9178;">"tgw-vpn-connection"</span> }
+}
+
+<span style="color: #6a9955;"># TGW route table association for VPN attachment</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_ec2_transit_gateway_route_table_association"</span> <span style="color: #ce9178;">"vpn"</span> {
+  <span style="color: #9cdcfe;">transit_gateway_attachment_id</span>  = aws_vpn_connection.tgw.transit_gateway_attachment_id
+  <span style="color: #9cdcfe;">transit_gateway_route_table_id</span> = aws_ec2_transit_gateway_route_table.hybrid.id
+}
+
+<span style="color: #6a9955;"># VPN propagates its routes into the TGW route table</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_ec2_transit_gateway_route_table_propagation"</span> <span style="color: #ce9178;">"vpn"</span> {
+  <span style="color: #9cdcfe;">transit_gateway_attachment_id</span>  = aws_vpn_connection.tgw.transit_gateway_attachment_id
+  <span style="color: #9cdcfe;">transit_gateway_route_table_id</span> = aws_ec2_transit_gateway_route_table.hybrid.id
+}</code></pre>
+        </div>
+
+        <h2 style="margin-top: 40px; font-size: 26px; color: var(--aws-text); border-bottom: 2px solid var(--aws-orange); display: inline-block; padding-bottom: 4px; margin-bottom: 24px;">3. Client VPN — Remote User Access</h2>
+        <h3 style="margin-top: 32px; font-size: 22px; color: var(--aws-blue); margin-bottom: 16px;">How It Works</h3>
+        <p style="margin-bottom: 20px;">Client VPN is a managed OpenVPN service that allows <strong>individual users and devices</strong> to connect to your AWS VPC from anywhere. Unlike Site-to-Site VPN which connects networks, Client VPN connects people.</p>
+        <p style="margin-bottom: 20px;">Each user installs the AWS VPN Client (or any OpenVPN-compatible client) on their laptop or device. After authentication, the client gets a private IP from the Client VPN address pool and can reach resources in your VPC as if they were on the corporate network.</p>
+
+        <div style="background: #1e1e1e; padding: 16px; border-radius: 6px; margin-bottom: 24px; overflow-x: auto; border: 1px solid #333;">
+          <pre style="margin: 0; color: #d4d4d4; font-family: monospace; font-size: 13px;"><code>User Laptop (anywhere)
+    → TLS 1.2+ encrypted tunnel
+        → Client VPN Endpoint (ENI in your VPC)
+            → Your VPC resources / TGW / on-premises</code></pre>
+        </div>
+
+        <h3 style="margin-top: 32px; font-size: 22px; color: var(--aws-blue); margin-bottom: 16px;">Authentication Options</h3>
+        <p style="margin-bottom: 20px;">Client VPN supports three authentication methods — often combined for MFA:</p>
+
+        <div style="overflow-x: auto; margin-bottom: 30px;">
+          <table class="compare-table" style="width: 100%; border-collapse: collapse; text-align: left;">
+            <thead>
+              <tr style="background: var(--aws-blue); color: white;">
+                <th style="padding: 12px; border: 1px solid var(--aws-border);">Method</th>
+                <th style="padding: 12px; border: 1px solid var(--aws-border);">How it works</th>
+                <th style="padding: 12px; border: 1px solid var(--aws-border);">Best for</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);"><strong>Active Directory</strong></td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">Users authenticate with AD credentials via AWS Directory Service</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">Enterprises with existing AD</td>
+              </tr>
+              <tr>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);"><strong>Certificate-based (mutual TLS)</strong></td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">Client and server exchange certificates</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">Contractors, device-level auth</td>
+              </tr>
+              <tr>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);"><strong>SAML / Federated SSO</strong></td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">Integrates with Okta, Azure AD, etc.</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">Modern identity platforms</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 style="margin-top: 32px; font-size: 22px; color: var(--aws-blue); margin-bottom: 16px;">Full Client VPN Terraform — Certificate Authentication</h3>
+        <div style="background: #1e1e1e; padding: 16px; border-radius: 6px; margin-bottom: 24px; overflow-x: auto; border: 1px solid #333;">
+          <pre style="margin: 0; color: #d4d4d4; font-family: monospace; font-size: 13px;"><code><span style="color: #6a9955;"># Client VPN Endpoint</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_ec2_client_vpn_endpoint"</span> <span style="color: #ce9178;">"main"</span> {
+  <span style="color: #9cdcfe;">description</span>            = <span style="color: #ce9178;">"Remote access VPN"</span>
+  <span style="color: #9cdcfe;">server_certificate_arn</span> = aws_acm_certificate.server.arn
+  <span style="color: #9cdcfe;">client_cidr_block</span>      = <span style="color: #ce9178;">"10.100.0.0/16"</span>   <span style="color: #6a9955;"># IP pool for connected clients</span>
+  <span style="color: #9cdcfe;">vpc_id</span>                 = aws_vpc.main.id
+  <span style="color: #9cdcfe;">self_service_portal</span>    = <span style="color: #ce9178;">"enabled"</span>           <span style="color: #6a9955;"># Users can download config themselves</span>
+
+  <span style="color: #6a9955;"># Split tunnel — only VPC traffic goes through VPN, internet goes direct</span>
+  <span style="color: #9cdcfe;">split_tunnel</span> = <span style="color: #569cd6;">true</span>   <span style="color: #6a9955;"># ← Critical for performance and cost</span>
+
+  <span style="color: #569cd6;">authentication_options</span> {
+    <span style="color: #9cdcfe;">type</span>                       = <span style="color: #ce9178;">"certificate-authentication"</span>
+    <span style="color: #9cdcfe;">root_certificate_chain_arn</span> = aws_acm_certificate.client_root.arn
+  }
+
+  <span style="color: #6a9955;"># Mutual TLS — both client and server present certificates</span>
+  <span style="color: #569cd6;">authentication_options</span> {
+    <span style="color: #9cdcfe;">type</span> = <span style="color: #ce9178;">"federated-authentication"</span>
+    <span style="color: #9cdcfe;">saml_provider_arn</span> = aws_iam_saml_provider.okta.arn   <span style="color: #6a9955;"># Optional: add SSO</span>
+  }
+
+  <span style="color: #569cd6;">connection_log_options</span> {
+    <span style="color: #9cdcfe;">enabled</span>               = <span style="color: #569cd6;">true</span>
+    <span style="color: #9cdcfe;">cloudwatch_log_group</span>  = aws_cloudwatch_log_group.vpn.name
+    <span style="color: #9cdcfe;">cloudwatch_log_stream</span> = aws_cloudwatch_log_stream.vpn.name
+  }
+
+  <span style="color: #9cdcfe;">dns_servers</span> = [
+    <span style="color: #ce9178;">"10.0.0.2"</span>,   <span style="color: #6a9955;"># VPC DNS resolver — resolves Private Hosted Zones</span>
+  ]
+
+  <span style="color: #9cdcfe;">tags</span> = { Name = <span style="color: #ce9178;">"client-vpn-endpoint"</span> }
+}
+
+<span style="color: #6a9955;"># Associate endpoint with subnets — one per AZ for HA</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_ec2_client_vpn_network_association"</span> <span style="color: #ce9178;">"az_a"</span> {
+  <span style="color: #9cdcfe;">client_vpn_endpoint_id</span> = aws_ec2_client_vpn_endpoint.main.id
+  <span style="color: #9cdcfe;">subnet_id</span>              = aws_subnet.private[<span style="color: #ce9178;">"eu-west-1a"</span>].id
+}
+
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_ec2_client_vpn_network_association"</span> <span style="color: #ce9178;">"az_b"</span> {
+  <span style="color: #9cdcfe;">client_vpn_endpoint_id</span> = aws_ec2_client_vpn_endpoint.main.id
+  <span style="color: #9cdcfe;">subnet_id</span>              = aws_subnet.private[<span style="color: #ce9178;">"eu-west-1b"</span>].id
+}
+
+<span style="color: #6a9955;"># Authorization rule — which CIDR ranges connected clients can reach</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_ec2_client_vpn_authorization_rule"</span> <span style="color: #ce9178;">"vpc_access"</span> {
+  <span style="color: #9cdcfe;">client_vpn_endpoint_id</span> = aws_ec2_client_vpn_endpoint.main.id
+  <span style="color: #9cdcfe;">target_network_cidr</span>    = aws_vpc.main.cidr_block   <span style="color: #6a9955;"># Access to VPC</span>
+  <span style="color: #9cdcfe;">authorize_all_groups</span>   = <span style="color: #569cd6;">false</span>
+  <span style="color: #9cdcfe;">access_group_id</span>        = var.vpn_users_ad_group_id  <span style="color: #6a9955;"># Restrict to AD group</span>
+}
+
+<span style="color: #6a9955;"># Allow access to on-premises via TGW</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_ec2_client_vpn_authorization_rule"</span> <span style="color: #ce9178;">"onprem_access"</span> {
+  <span style="color: #9cdcfe;">client_vpn_endpoint_id</span> = aws_ec2_client_vpn_endpoint.main.id
+  <span style="color: #9cdcfe;">target_network_cidr</span>    = <span style="color: #ce9178;">"192.168.0.0/16"</span>   <span style="color: #6a9955;"># On-premises CIDR</span>
+  <span style="color: #9cdcfe;">authorize_all_groups</span>   = <span style="color: #569cd6;">false</span>
+  <span style="color: #9cdcfe;">access_group_id</span>        = var.vpn_admin_group_id   <span style="color: #6a9955;"># Admins only</span>
+}
+
+<span style="color: #6a9955;"># Route — send VPC traffic through the VPN endpoint</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_ec2_client_vpn_route"</span> <span style="color: #ce9178;">"vpc"</span> {
+  <span style="color: #9cdcfe;">client_vpn_endpoint_id</span> = aws_ec2_client_vpn_endpoint.main.id
+  <span style="color: #9cdcfe;">destination_cidr_block</span> = aws_vpc.main.cidr_block
+  <span style="color: #9cdcfe;">target_vpc_subnet_id</span>   = aws_subnet.private[<span style="color: #ce9178;">"eu-west-1a"</span>].id
+}</code></pre>
+        </div>
+
+        <h3 style="margin-top: 32px; font-size: 22px; color: var(--aws-blue); margin-bottom: 16px;">Split Tunnel vs Full Tunnel — The Most Impactful Choice</h3>
+        <div style="background: #1e1e1e; padding: 16px; border-radius: 6px; margin-bottom: 24px; overflow-x: auto; border: 1px solid #333;">
+          <pre style="margin: 0; color: #d4d4d4; font-family: monospace; font-size: 13px;"><code>Split Tunnel (split_tunnel = true):
+User → VPN tunnel → VPC resources only
+User → Direct internet → All other internet traffic
+
+Full Tunnel (split_tunnel = false):
+User → VPN tunnel → ALL traffic (VPC + internet)
+                        ↓
+                  NAT Gateway in your VPC → Internet</code></pre>
+        </div>
+
+        <p style="margin-bottom: 20px;"><strong>Always use split tunnel in production.</strong> Full tunnel routes all user internet traffic through your VPC NAT Gateway — this generates massive NAT Gateway data processing charges ($0.045/GB) and creates a bandwidth bottleneck. For a 100-user team each browsing 5 GB/day of internet traffic: <code>100 &times; 5 GB &times; $0.045 &times; 30 days = $675/month</code> in unnecessary NAT charges.</p>
+
+        <h2 style="margin-top: 40px; font-size: 26px; color: var(--aws-text); border-bottom: 2px solid var(--aws-orange); display: inline-block; padding-bottom: 4px; margin-bottom: 24px;">4. Advanced Pattern: Full Hybrid Architecture</h2>
+        <p style="margin-bottom: 20px;">This is the enterprise-standard pattern combining all three — DX as primary, VPN as backup, Client VPN for remote users — all terminating at a central TGW:</p>
+
+        <div style="background: #1e1e1e; padding: 16px; border-radius: 6px; margin-bottom: 24px; overflow-x: auto; border: 1px solid #333;">
+          <pre style="margin: 0; color: #d4d4d4; font-family: monospace; font-size: 13px;"><code>On-Premises DC ──── Direct Connect (primary) ────┐
+                                                  ├──→ TGW ──→ All VPCs
+On-Premises DC ──── Site-to-Site VPN (backup) ───┘      ↑
+                                                         │
+Remote Users ────── Client VPN ──────────────────────────┘</code></pre>
+        </div>
+
+        <div style="background: #1e1e1e; padding: 16px; border-radius: 6px; margin-bottom: 24px; overflow-x: auto; border: 1px solid #333;">
+          <pre style="margin: 0; color: #d4d4d4; font-family: monospace; font-size: 13px;"><code><span style="color: #6a9955;"># TGW with dedicated route table for hybrid connectivity</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_ec2_transit_gateway_route_table"</span> <span style="color: #ce9178;">"hybrid"</span> {
+  <span style="color: #9cdcfe;">transit_gateway_id</span> = aws_ec2_transit_gateway.main.id
+  <span style="color: #9cdcfe;">tags</span>               = { Name = <span style="color: #ce9178;">"tgw-rt-hybrid"</span> }
+}
+
+<span style="color: #6a9955;"># DX Transit VIF — primary path</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_dx_transit_virtual_interface"</span> <span style="color: #ce9178;">"primary"</span> {
+  <span style="color: #9cdcfe;">connection_id</span>  = aws_dx_connection.main.id
+  <span style="color: #9cdcfe;">name</span>           = <span style="color: #ce9178;">"transit-vif-primary"</span>
+  <span style="color: #9cdcfe;">vlan</span>           = <span style="color: #b5cea8;">100</span>
+  <span style="color: #9cdcfe;">address_family</span> = <span style="color: #ce9178;">"ipv4"</span>
+  <span style="color: #9cdcfe;">bgp_asn</span>        = <span style="color: #b5cea8;">65000</span>
+  <span style="color: #9cdcfe;">dx_gateway_id</span>  = aws_dx_gateway.main.id
+
+  <span style="color: #9cdcfe;">tags</span> = { Name = <span style="color: #ce9178;">"dx-transit-vif"</span> }
+}
+
+<span style="color: #6a9955;"># BGP preference: DX is preferred (lower MED = preferred)</span>
+<span style="color: #6a9955;"># When DX goes down, BGP withdraws its routes and VPN routes take over</span>
+<span style="color: #6a9955;"># This failover is automatic — no manual intervention needed</span>
+
+<span style="color: #6a9955;"># CloudWatch alarm for DX BGP session monitoring</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_cloudwatch_metric_alarm"</span> <span style="color: #ce9178;">"dx_bgp_down"</span> {
+  <span style="color: #9cdcfe;">alarm_name</span>          = <span style="color: #ce9178;">"dx-bgp-session-down"</span>
+  <span style="color: #9cdcfe;">comparison_operator</span> = <span style="color: #ce9178;">"LessThanThreshold"</span>
+  <span style="color: #9cdcfe;">evaluation_periods</span>  = <span style="color: #b5cea8;">2</span>
+  <span style="color: #9cdcfe;">metric_name</span>         = <span style="color: #ce9178;">"VirtualInterfaceBpsIngress"</span>
+  <span style="color: #9cdcfe;">namespace</span>           = <span style="color: #ce9178;">"AWS/DX"</span>
+  <span style="color: #9cdcfe;">period</span>              = <span style="color: #b5cea8;">60</span>
+  <span style="color: #9cdcfe;">statistic</span>           = <span style="color: #ce9178;">"Sum"</span>
+  <span style="color: #9cdcfe;">threshold</span>           = <span style="color: #b5cea8;">1000</span>   <span style="color: #6a9955;"># Alert if no traffic for 60s</span>
+  <span style="color: #9cdcfe;">alarm_description</span>   = <span style="color: #ce9178;">"DX BGP session may be down — check VPN failover"</span>
+
+  <span style="color: #9cdcfe;">dimensions</span> = {
+    <span style="color: #9cdcfe;">VirtualInterfaceId</span> = aws_dx_transit_virtual_interface.primary.id
+  }
+
+  <span style="color: #9cdcfe;">alarm_actions</span> = [aws_sns_topic.network_alerts.arn]
+}</code></pre>
+        </div>
+
+        <h2 style="margin-top: 40px; font-size: 26px; color: var(--aws-text); border-bottom: 2px solid var(--aws-orange); display: inline-block; padding-bottom: 4px; margin-bottom: 24px;">5. Cost Deep-Dive</h2>
+        
+        <h3 style="margin-top: 32px; font-size: 22px; color: var(--aws-blue); margin-bottom: 16px;">Direct Connect Costs</h3>
+        <div style="overflow-x: auto; margin-bottom: 30px;">
+          <table class="compare-table" style="width: 100%; border-collapse: collapse; text-align: left;">
+            <thead>
+              <tr style="background: var(--aws-blue); color: white;">
+                <th style="padding: 12px; border: 1px solid var(--aws-border);">Component</th>
+                <th style="padding: 12px; border: 1px solid var(--aws-border);">Cost (eu-west-1)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">Dedicated port — 1 Gbps</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">~$216/month</td>
+              </tr>
+              <tr>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">Dedicated port — 10 Gbps</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">~$1,620/month</td>
+              </tr>
+              <tr>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">Hosted connection — 100 Mbps</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">~$18/month</td>
+              </tr>
+              <tr>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">Data transfer out (DX)</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">$0.02/GB (vs $0.09/GB internet)</td>
+              </tr>
+              <tr>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">DX Gateway</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">Free</td>
+              </tr>
+              <tr>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">Transit VIF</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">Free</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div style="background: var(--aws-highlight); padding: 16px; border-left: 4px solid var(--aws-orange); margin-bottom: 24px;">
+          <h4 style="font-size: 14px; margin-bottom: 8px; color: var(--aws-orange);">The DX ROI calculation</h4>
+          <p style="font-size: 13px; margin-bottom: 0;">At 10 TB/month outbound transfer: Internet = <code>10,000 &times; $0.09 = $900</code>. DX = <code>10,000 &times; $0.02 = $200</code> + port cost. At 1 Gbps hosted: $200 + $216 = $416 — saving $484/month. At 100+ TB/month the ROI becomes compelling very quickly.</p>
+        </div>
+
+        <h3 style="margin-top: 32px; font-size: 22px; color: var(--aws-blue); margin-bottom: 16px;">Site-to-Site VPN Costs</h3>
+        <div style="overflow-x: auto; margin-bottom: 30px;">
+          <table class="compare-table" style="width: 100%; border-collapse: collapse; text-align: left;">
+            <thead>
+              <tr style="background: var(--aws-blue); color: white;">
+                <th style="padding: 12px; border: 1px solid var(--aws-border);">Component</th>
+                <th style="padding: 12px; border: 1px solid var(--aws-border);">Cost</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">VPN connection</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">$0.05/hour (~$36/month)</td>
+              </tr>
+              <tr>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">Data transfer out</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">Standard AWS rates ($0.09/GB first 10TB)</td>
+              </tr>
+              <tr>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">Accelerated VPN</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">Additional $0.025/hour + GA transfer rates</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 style="margin-top: 32px; font-size: 22px; color: var(--aws-blue); margin-bottom: 16px;">Client VPN Costs</h3>
+        <div style="overflow-x: auto; margin-bottom: 30px;">
+          <table class="compare-table" style="width: 100%; border-collapse: collapse; text-align: left;">
+            <thead>
+              <tr style="background: var(--aws-blue); color: white;">
+                <th style="padding: 12px; border: 1px solid var(--aws-border);">Component</th>
+                <th style="padding: 12px; border: 1px solid var(--aws-border);">Cost</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">Endpoint association</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">$0.10/hour per subnet association</td>
+              </tr>
+              <tr>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">Active connections</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">$0.05/hour per connection</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p style="margin-bottom: 10px;"><strong>Client VPN cost example — 50 remote users, 8h/day, 22 days/month:</strong></p>
+        <div style="background: #1e1e1e; padding: 16px; border-radius: 6px; margin-bottom: 24px; overflow-x: auto; border: 1px solid #333;">
+          <pre style="margin: 0; color: #d4d4d4; font-family: monospace; font-size: 13px;"><code>Endpoint (2 AZ associations): 2 × $0.10 × 730h      = $146.00/month (fixed)
+Active connections:            50 × $0.05 × 8h × 22d = $440.00/month
+Total:                                                  ~$586/month</code></pre>
+        </div>
+
+        <p style="margin-bottom: 20px;">For small teams (&lt;10 users), Client VPN's fixed endpoint cost makes it expensive per-user. Consider AWS WorkSpaces or a self-managed OpenVPN on EC2 for very small teams.</p>
+
+        <h2 style="margin-top: 40px; font-size: 26px; color: var(--aws-text); border-bottom: 2px solid var(--aws-orange); display: inline-block; padding-bottom: 4px; margin-bottom: 24px;">6. The Decision Framework</h2>
+        <div style="background: #1e1e1e; padding: 16px; border-radius: 6px; margin-bottom: 24px; overflow-x: auto; border: 1px solid #333;">
+          <pre style="margin: 0; color: #d4d4d4; font-family: monospace; font-size: 13px;"><code>Connecting a data center or office network to AWS?
+├── Need guaranteed bandwidth + consistent latency?
+│   └── Direct Connect
+│       ├── Multiple VPCs / regions? → Transit VIF + DXGW + TGW
+│       ├── Single VPC? → Private VIF + VGW
+│       └── Need AWS public services privately? → Public VIF
+├── Need quick setup / dev-test / backup?
+│   └── Site-to-Site VPN
+│       ├── Multi-VPC? → Attach to TGW
+│       ├── Single VPC? → VGW
+│       └── Far from AWS region? → Enable acceleration
+└── Want maximum resilience?
+    └── Direct Connect (primary) + Site-to-Site VPN (backup via BGP failover)
+
+Connecting individual users or devices?
+└── Client VPN
+    ├── Corporate workforce → AD or SAML/SSO authentication
+    ├── Contractors → Certificate-based (mutual TLS)
+    ├── Access to internet too? → Split tunnel (always)
+    └── Access to on-premises via AWS? → Route via TGW
+
+What about cost?
+├── <10 TB/month transfer → VPN (DX ROI not yet justified)
+├── >10 TB/month transfer → Evaluate DX ROI
+├── Need <10ms predictable latency → DX (mandatory)
+└── Budget-constrained + low traffic → Hosted Connection or VPN</code></pre>
+        </div>
+
+        <h2 style="margin-top: 40px; font-size: 26px; color: var(--aws-text); border-bottom: 2px solid var(--aws-orange); display: inline-block; padding-bottom: 4px; margin-bottom: 24px;">7. Common Mistakes & Anti-Patterns</h2>
+        
+        <h3 style="margin-top: 32px; font-size: 20px; color: var(--aws-blue); margin-bottom: 12px;">Mistake 1: Single Direct Connect Connection</h3>
+        <p style="margin-bottom: 20px;">One DX connection = one physical cable = one point of failure. AWS SLA for DX is 99.99% only with redundant connections. Always pair DX with a VPN backup at minimum, or dual DX connections in different locations for maximum resilience.</p>
+
+        <h3 style="margin-top: 24px; font-size: 20px; color: var(--aws-blue); margin-bottom: 12px;">Mistake 2: Not Using BGP on Site-to-Site VPN</h3>
+        <p style="margin-bottom: 20px;"><code>static_routes_only = true</code> means you manually manage routes — add a new subnet and you must manually add a route. BGP (<code>static_routes_only = false</code>) propagates routes automatically and enables automatic failover. Always use BGP unless your on-premises router genuinely doesn't support it.</p>
+
+        <h3 style="margin-top: 24px; font-size: 20px; color: var(--aws-blue); margin-bottom: 12px;">Mistake 3: Full Tunnel Client VPN in Production</h3>
+        <p style="margin-bottom: 20px;">Full tunnel routes all user internet traffic through your VPC NAT Gateway. For a 100-user remote team this can generate $500-1,000/month in unnecessary NAT charges. Always use <code>split_tunnel = true</code> — direct internet traffic goes direct, only VPC-bound traffic uses the tunnel.</p>
+
+        <h3 style="margin-top: 24px; font-size: 20px; color: var(--aws-blue); margin-bottom: 12px;">Mistake 4: Single-AZ Client VPN Endpoint</h3>
+        <p style="margin-bottom: 20px;">A Client VPN endpoint associated with only one subnet means an AZ failure disconnects all remote users. Associate with at least two subnets in different AZs — the additional cost is one more $0.10/hour endpoint association ($73/month).</p>
+
+        <h3 style="margin-top: 24px; font-size: 20px; color: var(--aws-blue); margin-bottom: 12px;">Mistake 5: No CloudWatch Monitoring on DX BGP Sessions</h3>
+        <p style="margin-bottom: 20px;">DX BGP session drops are silent without monitoring. If your DX fails and VPN backup doesn't engage, production traffic drops with no alerting. Always set up CloudWatch alarms on <code>VirtualInterfaceBpsIngress</code> — if it drops to zero, your BGP session is likely down.</p>
+
+        <h3 style="margin-top: 24px; font-size: 20px; color: var(--aws-blue); margin-bottom: 12px;">Mistake 6: Forgetting VPN Route Propagation</h3>
+        <p style="margin-bottom: 20px;">After creating a VPN connection to a VGW, on-premises routes won't automatically appear in your VPC route tables unless you enable <code>aws_vpn_gateway_route_propagation</code>. Engineers who skip this wonder why VPN is "connected" but traffic isn't flowing.</p>
+
+        <div style="background: #1e1e1e; padding: 16px; border-radius: 6px; margin-bottom: 24px; overflow-x: auto; border: 1px solid #333;">
+          <pre style="margin: 0; color: #d4d4d4; font-family: monospace; font-size: 13px;"><code><span style="color: #6a9955;"># Easy to forget — without this, VPN routes don't reach your subnets</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_vpn_gateway_route_propagation"</span> <span style="color: #ce9178;">"private"</span> {
+  <span style="color: #9cdcfe;">vpn_gateway_id</span> = aws_vpn_gateway.main.id
+  <span style="color: #9cdcfe;">route_table_id</span> = aws_route_table.private.id
+}</code></pre>
+        </div>
+
+        <h2 style="margin-top: 40px; font-size: 26px; color: var(--aws-text); border-bottom: 2px solid var(--aws-orange); display: inline-block; padding-bottom: 4px; margin-bottom: 24px;">Architecture Decision Matrix</h2>
+        <div style="overflow-x: auto; margin-bottom: 30px;">
+          <table class="compare-table" style="width: 100%; border-collapse: collapse; text-align: left;">
+            <thead>
+              <tr style="background: var(--aws-blue); color: white;">
+                <th style="padding: 12px; border: 1px solid var(--aws-border);">Requirement</th>
+                <th style="padding: 12px; border: 1px solid var(--aws-border);">Direct Connect</th>
+                <th style="padding: 12px; border: 1px solid var(--aws-border);">Site-to-Site VPN</th>
+                <th style="padding: 12px; border: 1px solid var(--aws-border);">Client VPN</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">Data center → AWS</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">✅ Best choice</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">✅ Alternative</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">❌ Wrong tool</td>
+              </tr>
+              <tr>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">Individual users → AWS</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">❌ Wrong tool</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">❌ Wrong tool</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">✅ Best choice</td>
+              </tr>
+              <tr>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">Consistent low latency</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">✅ Yes</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">❌ Variable</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">❌ Variable</td>
+              </tr>
+              <tr>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">Setup in minutes</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">❌ Weeks</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">✅ Yes</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">✅ Hours</td>
+              </tr>
+              <tr>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">High bandwidth (>1Gbps)</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">✅ Up to 100Gbps</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">⚠️ Up to 1.25Gbps</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">❌ Per-user</td>
+              </tr>
+              <tr>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">Always encrypted</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">⚠️ Optional (MACsec)</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">✅ Always (AES-256)</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">✅ Always (TLS)</td>
+              </tr>
+              <tr>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">Multi-VPC via TGW</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">✅ Transit VIF</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">✅ TGW attachment</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">✅ Via TGW</td>
+              </tr>
+              <tr>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">On-premises failover</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">✅ Active/Active</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">✅ BGP backup</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">❌ N/A</td>
+              </tr>
+              <tr>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">Low cost entry point</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">❌ Expensive</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">✅ Cheapest</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">⚠️ Medium</td>
+              </tr>
+              <tr>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">Compliance (no internet)</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">✅ Fully private</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">❌ Internet-based</td>
+                <td style="padding: 12px; border: 1px solid var(--aws-border);">❌ Internet-based</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div style="background: var(--aws-highlight); padding: 24px; border-radius: 8px; border: 1px solid var(--aws-border); margin: 40px 0; text-align: center;">
+          <i class="fa-solid fa-scale-balanced" style="font-size: 32px; color: var(--aws-orange); margin-bottom: 16px;"></i>
+          <h3 style="font-size: 18px; color: var(--aws-text); margin-bottom: 12px;">The Golden Rule</h3>
+          <p style="font-size: 15px; color: var(--aws-text-light); font-style: italic; margin-bottom: 0;">
+            "Direct Connect for production workloads that need consistent latency, high bandwidth, or regulatory requirements for private connectivity. Site-to-Site VPN for everything else that connects a network — backup for DX, dev/test environments, and quick hybrid connectivity. Client VPN for people, never for network-to-network. And always build in redundancy — a single connection of any type is not a production architecture."
+          </p>
+        </div>
+
+<div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--aws-border);">
           <span style="font-weight: 700; color: var(--aws-text-light); margin-right: 12px; font-size: 13px;">Tags:</span>
           <span class="tag">#AWS</span> <span class="tag">#Networking</span> <span class="tag">#DirectConnect</span> <span class="tag">#VPN</span> <span class="tag">#HybridCloud</span>
         </div>

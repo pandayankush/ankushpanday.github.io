@@ -122,25 +122,25 @@
 
         <h4>2. Transit Gateway (TGW): The Central Hub</h4>
         <p>AWS Transit Gateway acts as a regional network hub. For enterprise-scale management, we combine TGW with AWS RAM for multi-account sharing and dedicated route tables for isolation.</p>
-        <pre style="background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 13px; border-left: 4px solid var(--aws-orange);"><code># Create the Gateway
-resource "aws_ec2_transit_gateway" "main" {
-  description = "Organization Central Hub"
+        <pre style="background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 13px; border-left: 4px solid var(--aws-orange);"><code><span style="color: #6a9955;"># Create the Gateway</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_ec2_transit_gateway"</span> <span style="color: #ce9178;">"main"</span> {
+  <span style="color: #9cdcfe;">description</span> = <span style="color: #ce9178;">"Organization Central Hub"</span>
 }
 
-# Create an Isolated Route Table
-resource "aws_ec2_transit_gateway_route_table" "isolated" {
-  transit_gateway_id = aws_ec2_transit_gateway.main.id
+<span style="color: #6a9955;"># Create an Isolated Route Table</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_ec2_transit_gateway_route_table"</span> <span style="color: #ce9178;">"isolated"</span> {
+  <span style="color: #9cdcfe;">transit_gateway_id</span> = aws_ec2_transit_gateway.main.id
 }
 
-# Share via Resource Access Manager (RAM)
-resource "aws_ram_resource_share" "tgw_share" {
-  name                      = "tgw-share"
-  allow_external_principals = false
+<span style="color: #6a9955;"># Share via Resource Access Manager (RAM)</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_ram_resource_share"</span> <span style="color: #ce9178;">"tgw_share"</span> {
+  <span style="color: #9cdcfe;">name</span>                      = <span style="color: #ce9178;">"tgw-share"</span>
+  <span style="color: #9cdcfe;">allow_external_principals</span> = <span style="color: #569cd6;">false</span>
 }
 
-resource "aws_ram_resource_association" "tgw" {
-  resource_arn       = aws_ec2_transit_gateway.main.arn
-  resource_share_arn = aws_ram_resource_share.tgw_share.arn
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_ram_resource_association"</span> <span style="color: #ce9178;">"tgw"</span> {
+  <span style="color: #9cdcfe;">resource_arn</span>       = aws_ec2_transit_gateway.main.arn
+  <span style="color: #9cdcfe;">resource_share_arn</span> = aws_ram_resource_share.tgw_share.arn
 }</code></pre>
 
         <h4>Association vs Propagation — The Most Confused Concept</h4>
@@ -151,19 +151,19 @@ resource "aws_ram_resource_association" "tgw" {
           <li><strong>Propagation (The Announcement):</strong> <em>"Which route tables should automatically learn this attachment's CIDR?"</em> Think of this as the attachment <strong>announcing its address</strong>. When a VPC is propagated into a route table, that table automatically gets a route pointing to that VPC's range.</li>
         </ul>
 
-        <pre style="background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 13px; border-left: 4px solid var(--aws-orange);"><code># Prod VPC: Associated with Prod RT (read), Propagated into Prod RT (write)
-resource "aws_ec2_transit_gateway_route_table_association" "prod_vpc" {
-  transit_gateway_attachment_id  = aws_ec2_transit_gateway_vpc_attachment.prod.id
-  transit_gateway_route_table_id = aws_ec2_transit_gateway_route_table.prod.id
+        <pre style="background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 13px; border-left: 4px solid var(--aws-orange);"><code><span style="color: #6a9955;"># Prod VPC: Associated with Prod RT (read), Propagated into Prod RT (write)</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_ec2_transit_gateway_route_table_association"</span> <span style="color: #ce9178;">"prod_vpc"</span> {
+  <span style="color: #9cdcfe;">transit_gateway_attachment_id</span>  = aws_ec2_transit_gateway_vpc_attachment.prod.id
+  <span style="color: #9cdcfe;">transit_gateway_route_table_id</span> = aws_ec2_transit_gateway_route_table.prod.id
 }
 
-resource "aws_ec2_transit_gateway_route_table_propagation" "prod_vpc" {
-  transit_gateway_attachment_id  = aws_ec2_transit_gateway_vpc_attachment.prod.id
-  transit_gateway_route_table_id = aws_ec2_transit_gateway_route_table.prod.id
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_ec2_transit_gateway_route_table_propagation"</span> <span style="color: #ce9178;">"prod_vpc"</span> {
+  <span style="color: #9cdcfe;">transit_gateway_attachment_id</span>  = aws_ec2_transit_gateway_vpc_attachment.prod.id
+  <span style="color: #9cdcfe;">transit_gateway_route_table_id</span> = aws_ec2_transit_gateway_route_table.prod.id
 }
 
-# Isolation: Non-prod will never learn the prod CIDR unless we propagate it there.
-# Traffic is blocked at the TGW layer—Security Groups never even see the packet.</code></pre>
+<span style="color: #6a9955;"># Isolation: Non-prod will never learn the prod CIDR unless we propagate it there.</span>
+<span style="color: #6a9955;"># Traffic is blocked at the TGW layer—Security Groups never even see the packet.</span></code></pre>
 
         <div style="background: var(--aws-highlight); padding: 20px; border-radius: 6px; border-left: 5px solid var(--aws-blue); margin: 32px 0;">
           <p style="font-weight: 700; margin-bottom: 8px;">The Mental Model:</p>
@@ -284,7 +284,15 @@ resource "aws_ec2_transit_gateway_route_table_propagation" "prod_vpc" {
             <li><strong>Path B: Private NAT Gateway (Network-Level)</strong> — Best for full connectivity. It translates your traffic into a <em>non-overlapping</em> internal range before it hits the Transit Gateway, allowing overlapping VPCs to talk without a full re-IP project.</li>
           </ul>
         </div>
-        <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--aws-border);">
+        
+        <div style="background: var(--aws-highlight); padding: 24px; border-radius: 8px; border: 1px solid var(--aws-border); margin: 40px 0; text-align: center;">
+          <i class="fa-solid fa-diagram-project" style="font-size: 32px; color: var(--aws-orange); margin-bottom: 16px;"></i>
+          <h3 style="font-size: 18px; color: var(--aws-text); margin-bottom: 12px;">The Golden Rule</h3>
+          <p style="font-size: 15px; color: var(--aws-text-light); font-style: italic; margin-bottom: 0;">
+            "VPC design is not set in stone, but it's hard to change later. Use VPC Flow Logs for visibility, implement secondary CIDRs only when necessary, and always prefer PrivateLink or VPC Endpoints over NAT Gateways for internal AWS service communication to save costs and improve security."
+          </p>
+        </div>
+<div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--aws-border);">
           <span style="font-weight: 700; color: var(--aws-text-light); margin-right: 12px; font-size: 13px;">Tags:</span>
           <span class="tag">#AWS</span> <span class="tag">#TransitGateway</span> <span class="tag">#HybridCloud</span> <span class="tag">#DirectConnect</span> <span class="tag">#Anycast</span> <span class="tag">#PrivateLink</span> <span class="tag">#CloudArchitecture</span>
         </div>

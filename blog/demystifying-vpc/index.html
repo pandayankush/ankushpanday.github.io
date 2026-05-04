@@ -146,44 +146,44 @@
 
         <h4>Provisioning with Infrastructure as Code (Terraform)</h4>
         <p>In modern cloud engineering, we never create VPCs via the console. Here is the standard "Golden Template" for a multi-AZ VPC using Terraform:</p>
-        <pre style="background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 13px; border-left: 4px solid var(--aws-orange);"><code>module "vpc" {
-  source  = "terraform-aws-modules/vpc/aws"
-  version = "5.0.0"
+        <pre style="background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 13px; border-left: 4px solid var(--aws-orange);"><code><span style="color: #569cd6;">module</span> <span style="color: #ce9178;">"vpc"</span> {
+  <span style="color: #9cdcfe;">source</span>  = <span style="color: #ce9178;">"terraform-aws-modules/vpc/aws"</span>
+  <span style="color: #9cdcfe;">version</span> = <span style="color: #ce9178;">"5.0.0"</span>
 
-  name = "production-vpc"
-  cidr = "10.0.0.0/16"
+  <span style="color: #9cdcfe;">name</span> = <span style="color: #ce9178;">"production-vpc"</span>
+  <span style="color: #9cdcfe;">cidr</span> = <span style="color: #ce9178;">"10.0.0.0/16"</span>
 
-  azs             = ["eu-west-1a", "eu-west-1b", "eu-west-1c"]
-  private_subnets = ["10.0.1.0/24", "10.0.2.0/24", "10.0.3.0/24"]
-  public_subnets  = ["10.0.101.0/24", "10.0.102.0/24", "10.0.103.0/24"]
+  <span style="color: #9cdcfe;">azs</span>             = [<span style="color: #ce9178;">"eu-west-1a"</span>, <span style="color: #ce9178;">"eu-west-1b"</span>, <span style="color: #ce9178;">"eu-west-1c"</span>]
+  <span style="color: #9cdcfe;">private_subnets</span> = [<span style="color: #ce9178;">"10.0.1.0/24"</span>, <span style="color: #ce9178;">"10.0.2.0/24"</span>, <span style="color: #ce9178;">"10.0.3.0/24"</span>]
+  <span style="color: #9cdcfe;">public_subnets</span>  = [<span style="color: #ce9178;">"10.0.101.0/24"</span>, <span style="color: #ce9178;">"10.0.102.0/24"</span>, <span style="color: #ce9178;">"10.0.103.0/24"</span>]
 
-  enable_nat_gateway     = true
-  single_nat_gateway     = false
-  one_nat_gateway_per_az = true # Provisions one NAT Gateway per AZ, eliminating cross-AZ charges and single points of failure
-  enable_dns_hostnames = true
-  enable_dns_support   = true
+  <span style="color: #9cdcfe;">enable_nat_gateway</span>     = <span style="color: #569cd6;">true</span>
+  <span style="color: #9cdcfe;">single_nat_gateway</span>     = <span style="color: #569cd6;">false</span>
+  <span style="color: #9cdcfe;">one_nat_gateway_per_az</span> = <span style="color: #569cd6;">true</span> <span style="color: #6a9955;"># Provisions one NAT Gateway per AZ, eliminating cross-AZ charges and single points of failure</span>
+  <span style="color: #9cdcfe;">enable_dns_hostnames</span> = <span style="color: #569cd6;">true</span>
+  <span style="color: #9cdcfe;">enable_dns_support</span>   = <span style="color: #569cd6;">true</span>
 
-  tags = {
-    Environment = "production"
-    Owner       = "Architecture-Team"
+  <span style="color: #9cdcfe;">tags</span> = {
+    <span style="color: #9cdcfe;">Environment</span> = <span style="color: #ce9178;">"production"</span>
+    <span style="color: #9cdcfe;">Owner</span>       = <span style="color: #ce9178;">"Architecture-Team"</span>
   }
-} # End of Module Block</code></pre>
+} <span style="color: #6a9955;"># End of Module Block</span></code></pre>
 
         <p><strong>Under the Hood:</strong> While modules are great, an architect should understand the raw resources. Here is the manual breakdown of what that module is doing:</p>
-        <pre style="background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 13px; border-left: 4px solid var(--aws-orange);"><code>resource "aws_vpc" "main" {
-  cidr_block           = "10.0.0.0/16"
-  enable_dns_support   = true
-  enable_dns_hostnames = true
+        <pre style="background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 13px; border-left: 4px solid var(--aws-orange);"><code><span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_vpc"</span> <span style="color: #ce9178;">"main"</span> {
+  <span style="color: #9cdcfe;">cidr_block</span>           = <span style="color: #ce9178;">"10.0.0.0/16"</span>
+  <span style="color: #9cdcfe;">enable_dns_support</span>   = <span style="color: #569cd6;">true</span>
+  <span style="color: #9cdcfe;">enable_dns_hostnames</span> = <span style="color: #569cd6;">true</span>
 }
 
-resource "aws_subnet" "private" {
-  vpc_id            = aws_vpc.main.id
-  cidr_block        = "10.0.1.0/24"
-  availability_zone = "eu-west-1a"
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_subnet"</span> <span style="color: #ce9178;">"private"</span> {
+  <span style="color: #9cdcfe;">vpc_id</span>            = aws_vpc.main.id
+  <span style="color: #9cdcfe;">cidr_block</span>        = <span style="color: #ce9178;">"10.0.1.0/24"</span>
+  <span style="color: #9cdcfe;">availability_zone</span> = <span style="color: #ce9178;">"eu-west-1a"</span>
 }
 
-resource "aws_internet_gateway" "igw" {
-  vpc_id = aws_vpc.main.id
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_internet_gateway"</span> <span style="color: #ce9178;">"igw"</span> {
+  <span style="color: #9cdcfe;">vpc_id</span> = aws_vpc.main.id
 }</code></pre>
 
         <h4>Public vs. Private Subnets: The "Internet Gateway" Rule</h4>
@@ -205,14 +205,14 @@ FROM vpc_flow_logs
 WHERE action = 'ACCEPT'
 GROUP BY srcaddr, dstaddr
 ORDER BY total_bytes DESC
-LIMIT 10;
+LIMIT <span style="color: #b5cea8;">10</span>;
 
 -- Top talkers by source IP (useful for detecting noisy or compromised instances)
 SELECT srcaddr, COUNT(*) as request_count 
 FROM flow_logs 
 GROUP BY srcaddr 
 ORDER BY request_count DESC 
-LIMIT 10;</code></pre>
+LIMIT <span style="color: #b5cea8;">10</span>;</code></pre>
           <li><strong>The REJECT Action:</strong> This is your primary debugging tool. If an application is failing, check if NACLs are rejecting packets before blaming the code.</li>
         </ul>
 
@@ -260,7 +260,15 @@ LIMIT 10;</code></pre>
             <li><strong>Flow Logs:</strong> Enable VPC Flow Logs for every critical environment to ensure full visibility for debugging.</li>
           </ul>
         </div>
-        <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--aws-border);">
+        
+        <div style="background: var(--aws-highlight); padding: 24px; border-radius: 8px; border: 1px solid var(--aws-border); margin: 40px 0; text-align: center;">
+          <i class="fa-solid fa-cloud" style="font-size: 32px; color: var(--aws-orange); margin-bottom: 16px;"></i>
+          <h3 style="font-size: 18px; color: var(--aws-text); margin-bottom: 12px;">The Golden Rule</h3>
+          <p style="font-size: 15px; color: var(--aws-text-light); font-style: italic; margin-bottom: 0;">
+            "Build your VPC with the future in mind. Always use non-overlapping CIDRs, design for multi-AZ high availability from day one, and keep your public subnets as small as possible. The most secure VPC is the one where your resources have no direct route to the internet unless absolutely necessary."
+          </p>
+        </div>
+<div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--aws-border);">
           <span style="font-weight: 700; color: var(--aws-text-light); margin-right: 12px; font-size: 13px;">Tags:</span>
           <span class="tag">#AWS</span> <span class="tag">#VPC</span> <span class="tag">#Networking</span> <span class="tag">#FlowLogs</span> <span class="tag">#Athena</span> <span class="tag">#DNS</span> <span class="tag">#Terraform</span>
         </div>

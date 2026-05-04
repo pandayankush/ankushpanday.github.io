@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <!-- SEO PRIMARY -->
+  <title>AWS Network Firewall vs Security Groups vs NACLs | Ankush Panday</title>
+  <meta name="description" content="Mastering AWS network security: A deep dive into Network Firewall, Security Groups, and NACLs. Learn the DevSecOps approach to layered defense.">
+  <link rel="stylesheet" href="../../style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    .blog-page-container { max-width: 900px; margin: 100px auto 40px auto; padding: 0 20px; min-height: calc(100vh - 200px); }
+    .blog-content-card { background: var(--aws-white); border: 1px solid var(--aws-border); border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+    .blog-header { background: #f8f9fa; padding: 40px; border-bottom: 1px solid var(--aws-border); }
+    .blog-body { padding: 40px; line-height: 1.8; font-size: 16px; color: var(--aws-text); }
+    .author-card { display: flex; gap: 20px; align-items: center; padding: 30px; background: #fcfcfc; border-top: 1px solid var(--aws-border); margin-top: 40px; }
+    .author-img { width: 60px; height: 60px; border-radius: 50%; background: var(--aws-highlight); display: flex; align-items: center; justify-content: center; font-size: 24px; color: var(--aws-orange); border: 1px solid var(--aws-border); }
+    .nav-links { display: flex; justify-content: space-between; margin-top: 40px; padding: 20px 0; border-top: 1px solid var(--aws-border); }
+    .nav-link { text-decoration: none; color: var(--aws-blue); font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 8px; }
+    .tag { display: inline-block; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: 600; margin-right: 8px; }
+    .tag.blue { background: #e7f2fa; color: #0073bb; }
+    .tag.purple { background: #f2e7fa; color: #6b3fa0; }
+  </style>
+</head>
+<body>
+
+  <nav class="aws-topnav">
+    <a href="../../index.html" class="logo">
+      <i class="fa-solid fa-cloud" style="color: var(--aws-orange); font-size: 20px;"></i>
+      <span>Ankush Panday</span>
+    </a>
+    <div class="nav-links-top">
+      <a href="../../index.html">Home</a>
+      <a href="../index.html">Blog</a>
+    </div>
+  </nav>
+
+  <div class="blog-page-container">
+    <a href="../index.html" class="nav-link" style="margin-bottom: 24px;"><i class="fa-solid fa-arrow-left"></i> Back to Blog</a>
+    
+    <article class="blog-content-card">
+      <header class="blog-header">
+        <h1 style="font-size: 32px; color: var(--aws-text); margin-bottom: 16px; line-height: 1.2;">AWS Network Firewall vs Security Groups vs NACLs</h1>
+        <div style="display: flex; gap: 12px; align-items: center; color: var(--aws-text-light); font-size: 14px; flex-wrap: wrap;">
+          <span>Coming Soon</span>
+          <span>•</span>
+          <span>20 min read</span>
+          <span class="tag blue">Security</span>
+          <span class="tag purple">DevSecOps</span>
+        </div>
+      </header>
+
+      <div class="blog-body">
+        <p style="font-style: italic; color: var(--aws-text-light); margin-bottom: 30px; border-left: 4px solid var(--aws-orange); padding-left: 15px;">
+          <strong>AWS Networking Series | Part 7</strong> — Building secure, cost-optimised, cloud-native infrastructure on AWS
+        </p>
+
+        <div style="background: var(--aws-highlight); padding: 40px; text-align: center; border-radius: 8px; border: 1px dashed var(--aws-border); margin: 40px 0;">
+          <i class="fa-solid fa-person-digging" style="font-size: 48px; color: var(--aws-orange); margin-bottom: 20px;"></i>
+          <h3 style="margin-bottom: 10px; color: var(--aws-text);">Content in Development</h3>
+          <p style="color: var(--aws-text-light); max-width: 500px; margin: 0 auto;">
+            I am currently drafting the final chapter of the Networking foundation series. This deep dive will cover the DevSecOps approach to layered network security, extending the Gateway Load Balancer patterns from Part 4 and providing a complete decision framework for Network Firewall, Security Groups, and NACLs.
+          </p>
+        </div>
+        
+        <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--aws-border);">
+          <span style="font-weight: 700; color: var(--aws-text-light); margin-right: 12px; font-size: 13px;">Tags:</span>
+          <span class="tag">#AWS</span> <span class="tag">#Security</span> <span class="tag">#NetworkFirewall</span> <span class="tag">#DevSecOps</span> <span class="tag">#CloudSecurity</span>
+        </div>
+      </div>
+
+      <div class="author-card">
+        <div class="author-img"><i class="fa-solid fa-user-tie"></i></div>
+        <div>
+          <h4 style="margin: 0 0 8px 0; color: var(--aws-text);">Ankush Panday</h4>
+          <p style="margin: 0; font-size: 14px; color: var(--aws-text-light);">Specializing in highly scalable AWS infrastructure and automated quality engineering.</p>
+          <a href="https://www.linkedin.com/in/ankush-panday-39b97824/" target="_blank" style="display: inline-block; margin-top: 10px; color: var(--aws-blue); text-decoration: none; font-size: 13px; font-weight: 600;">Connect on LinkedIn <i class="fa-solid fa-external-link" style="font-size: 10px;"></i></a>
+        </div>
+      </div>
+    </article>
+
+    <div class="nav-links">
+      <a href="../direct-connect-vs-vpn/index.html" class="nav-link"><i class="fa-solid fa-arrow-left"></i> Previous: Direct Connect vs VPNs</a>
+      <span></span>
+    </div>
+  </div>
+
+  <footer class="aws-footer">
+    Built for Performance. Architected for the Cloud. &bull; &copy; 2026 <span>Ankush Panday</span>
+  </footer>
+
+</body>
+</html>

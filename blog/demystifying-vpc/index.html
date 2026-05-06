@@ -54,11 +54,16 @@
     .blog-content-card { background: var(--aws-white); border: 1px solid var(--aws-border); border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
     .blog-header { background: #f8f9fa; padding: 40px; border-bottom: 1px solid var(--aws-border); }
     .blog-body { padding: 40px; line-height: 1.8; font-size: 16px; color: var(--aws-text); }
+    .blog-body h2 { margin-top: 48px; font-size: 26px; color: var(--aws-text); border-bottom: 2px solid var(--aws-orange); display: inline-block; padding-bottom: 4px; margin-bottom: 24px; }
     .blog-body h4 { margin-top: 32px; font-size: 20px; color: var(--aws-blue); margin-bottom: 16px; }
     .blog-body p { margin-bottom: 20px; }
     .blog-body ul { margin-bottom: 24px; padding-left: 24px; }
     .blog-body li { margin-bottom: 12px; color: var(--aws-text-light); }
     .blog-body strong { color: var(--aws-text); }
+
+    .pitfall-card { background: #fcfcfc; border: 1px solid var(--aws-border); border-left: 4px solid #d13212; border-radius: 6px; padding: 20px 24px; margin-bottom: 16px; }
+    .pitfall-card strong { color: #d13212; font-size: 15px; }
+    .pitfall-card p { margin: 8px 0 0 0; font-size: 15px; color: var(--aws-text-light); line-height: 1.7; }
     
     .author-card { display: flex; gap: 20px; align-items: center; padding: 30px; background: #fcfcfc; border-top: 1px solid var(--aws-border); }
     .author-img { width: 80px; height: 80px; border-radius: 50%; background: var(--aws-highlight); display: flex; align-items: center; justify-content: center; font-size: 30px; color: var(--aws-orange); border: 2px solid var(--aws-border); }
@@ -264,26 +269,38 @@ LIMIT <span style="color: #b5cea8;">10</span>;</code></pre>
           </ul>
         </div>
 
-        <h2>Common Pitfalls & Production Lessons Learned</h2>
+        <h2 id="pitfalls"><i class="fa-solid fa-triangle-exclamation" style="color: #d13212; font-size: 22px; margin-right: 8px;"></i>Common Pitfalls & Production Lessons Learned</h2>
         <p>These are the mistakes that appear repeatedly in real AWS environments — including during migrations, audits, and post-incident reviews.</p>
 
-        <p><strong>Pitfall 1: Choosing a CIDR that's too small</strong><br>
-        Starting with a <code>/24</code> or <code>/23</code> feels sufficient early on. Six months later you're out of IPs and scrambling to add secondary CIDRs — which don't work with all services and create routing complexity. Always start with at least a <code>/16</code> for production VPCs. You can't resize the primary CIDR, only add secondary ones.</p>
+        <div class="pitfall-card">
+          <strong>Pitfall 1: Choosing a CIDR that's too small</strong>
+          <p>Starting with a <code>/24</code> or <code>/23</code> feels sufficient early on. Six months later you're out of IPs and scrambling to add secondary CIDRs — which don't work with all services and create routing complexity. Always start with at least a <code>/16</code> for production VPCs. You can't resize the primary CIDR, only add secondary ones.</p>
+        </div>
 
-        <p><strong>Pitfall 2: Overlapping CIDRs across environments</strong><br>
-        Using <code>10.0.0.0/16</code> for dev, <code>10.0.0.0/16</code> for staging, and <code>10.0.0.0/16</code> for prod is extremely common and completely blocks you from ever peering those environments or connecting them via TGW. Plan your IP space org-wide from Day 1 — a simple spreadsheet tracking which CIDR belongs to which account/environment saves enormous pain later.</p>
+        <div class="pitfall-card">
+          <strong>Pitfall 2: Overlapping CIDRs across environments</strong>
+          <p>Using <code>10.0.0.0/16</code> for dev, <code>10.0.0.0/16</code> for staging, and <code>10.0.0.0/16</code> for prod is extremely common and completely blocks you from ever peering those environments or connecting them via TGW. Plan your IP space org-wide from Day 1 — a simple spreadsheet tracking which CIDR belongs to which account/environment saves enormous pain later.</p>
+        </div>
 
-        <p><strong>Pitfall 3: Disabling DNS support or DNS hostnames</strong><br>
-        Setting <code>enable_dns_support = false</code> breaks all AWS service endpoint resolution inside your VPC. Setting <code>enable_dns_hostnames = false</code> means your EC2 instances get no DNS names — SSM Session Manager, CodeDeploy, and many other services silently fail. Both should always be <code>true</code>.</p>
+        <div class="pitfall-card">
+          <strong>Pitfall 3: Disabling DNS support or DNS hostnames</strong>
+          <p>Setting <code>enable_dns_support = false</code> breaks all AWS service endpoint resolution inside your VPC. Setting <code>enable_dns_hostnames = false</code> means your EC2 instances get no DNS names — SSM Session Manager, CodeDeploy, and many other services silently fail. Both should always be <code>true</code>.</p>
+        </div>
 
-        <p><strong>Pitfall 4: Putting everything in public subnets</strong><br>
-        A common shortcut to avoid NAT Gateway costs. Databases, application servers, and internal APIs should never have public IPs. If cost is the concern — use VPC Gateway Endpoints for S3/DynamoDB (free) and Interface Endpoints for other AWS services rather than routing everything via NAT or, worse, exposing it publicly.</p>
+        <div class="pitfall-card">
+          <strong>Pitfall 4: Putting everything in public subnets</strong>
+          <p>A common shortcut to avoid NAT Gateway costs. Databases, application servers, and internal APIs should never have public IPs. If cost is the concern — use VPC Gateway Endpoints for S3/DynamoDB (free) and Interface Endpoints for other AWS services rather than routing everything via NAT or, worse, exposing it publicly.</p>
+        </div>
 
-        <p><strong>Pitfall 5: One NAT Gateway for all AZs</strong><br>
-        Deploying a single NAT Gateway to save the ~$32/month per AZ introduces two problems: cross-AZ data transfer charges ($0.01/GB each way) that can exceed the savings at scale, and a single point of failure that takes down internet egress for your entire VPC if that AZ has issues. Always use <code>one_nat_gateway_per_az = true</code> in production.</p>
+        <div class="pitfall-card">
+          <strong>Pitfall 5: One NAT Gateway for all AZs</strong>
+          <p>Deploying a single NAT Gateway to save the ~$32/month per AZ introduces two problems: cross-AZ data transfer charges ($0.01/GB each way) that can exceed the savings at scale, and a single point of failure that takes down internet egress for your entire VPC if that AZ has issues. Always use <code>one_nat_gateway_per_az = true</code> in production.</p>
+        </div>
 
-        <p><strong>Pitfall 6: No VPC Flow Logs from the start</strong><br>
-        Flow Logs feel optional until you're debugging a mysterious connectivity failure at 2am or responding to a security incident. Retroactively enabling them doesn't give you the history you need. Enable them from Day 1, send to S3 for long-term retention, and use Athena for querying. The cost is minimal — typically under $5/month for a standard workload.</p>
+        <div class="pitfall-card">
+          <strong>Pitfall 6: No VPC Flow Logs from the start</strong>
+          <p>Flow Logs feel optional until you're debugging a mysterious connectivity failure at 2am or responding to a security incident. Retroactively enabling them doesn't give you the history you need. Enable them from Day 1, send to S3 for long-term retention, and use Athena for querying. The cost is minimal — typically under $5/month for a standard workload.</p>
+        </div>
         
         <div style="background: var(--aws-highlight); padding: 24px; border-radius: 8px; border: 1px solid var(--aws-border); margin: 40px 0; text-align: center;">
           <i class="fa-solid fa-cloud" style="font-size: 32px; color: var(--aws-orange); margin-bottom: 16px;"></i>

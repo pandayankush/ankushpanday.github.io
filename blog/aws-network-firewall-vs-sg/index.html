@@ -7,15 +7,43 @@
   <!-- SEO PRIMARY -->
   <title>AWS Network Firewall vs Security Groups vs NACLs | Ankush Panday</title>
   <meta name="description" content="Mastering AWS network security: A deep dive into Network Firewall, Security Groups, and NACLs. Learn the DevSecOps approach to layered defense.">
+  <meta name="keywords" content="AWS, Network Firewall, Security Groups, NACLs, VPC, Security, CloudArchitecture, DevSecOps">
+  <link rel="canonical" href="https://www.ankushpanday.com/blog/aws-network-firewall-vs-sg/">
+
+  <!-- OPEN GRAPH -->
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://www.ankushpanday.com/blog/aws-network-firewall-vs-sg/">
+  <meta property="og:title" content="AWS Network Firewall vs Security Groups vs NACLs — Layered Network Security Done Right">
+  <meta property="og:description" content="Security Groups and NACLs are free and solve 80% of use cases. But for regulated industries, AWS Network Firewall fills the gap.">
+  <meta property="og:image" content="https://www.ankushpanday.com/images/aws-network-firewall-security-groups-nacl.png">
+
   <link rel="stylesheet" href="../../style.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     .blog-page-container { max-width: 900px; margin: 100px auto 40px auto; padding: 0 20px; min-height: calc(100vh - 200px); }
+    .back-btn { display: inline-flex; align-items: center; gap: 8px; color: var(--aws-blue); text-decoration: none; font-weight: 500; margin-bottom: 24px; }
     .blog-content-card { background: var(--aws-white); border: 1px solid var(--aws-border); border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
     .blog-header { background: #f8f9fa; padding: 40px; border-bottom: 1px solid var(--aws-border); }
     .blog-body { padding: 40px; line-height: 1.8; font-size: 16px; color: var(--aws-text); }
-    .author-card { display: flex; gap: 20px; align-items: center; padding: 30px; background: #fcfcfc; border-top: 1px solid var(--aws-border); margin-top: 40px; }
-    .author-img { width: 60px; height: 60px; border-radius: 50%; background: var(--aws-highlight); display: flex; align-items: center; justify-content: center; font-size: 24px; color: var(--aws-orange); border: 1px solid var(--aws-border); }
+    .blog-body h2 { margin-top: 48px; font-size: 26px; color: var(--aws-text); border-bottom: 2px solid var(--aws-orange); display: inline-block; padding-bottom: 4px; margin-bottom: 24px; }
+    .blog-body h3 { margin-top: 32px; font-size: 22px; color: var(--aws-blue); margin-bottom: 16px; }
+    .blog-body h4 { margin-top: 24px; font-size: 18px; color: var(--aws-text); font-weight: 700; }
+    .blog-body p { margin-bottom: 20px; }
+    .blog-body ul, .blog-body ol { margin-bottom: 24px; padding-left: 24px; }
+    .blog-body li { margin-bottom: 12px; }
+    .blog-body strong { color: var(--aws-text); }
+    .blog-body blockquote { font-style: italic; color: var(--aws-text-light); margin: 30px 0; border-left: 4px solid var(--aws-orange); padding-left: 15px; background: #fcfcfc; padding: 20px; }
+    
+    .compare-table { width: 100%; border-collapse: collapse; text-align: left; margin-bottom: 30px; font-size: 14px; }
+    .compare-table th { background: var(--aws-blue); color: white; padding: 12px; border: 1px solid var(--aws-border); }
+    .compare-table td { padding: 12px; border: 1px solid var(--aws-border); }
+    .compare-table tr:nth-child(even) { background: #f9f9f9; }
+
+    .code-block { background: #1e1e1e; padding: 16px; border-radius: 6px; margin-bottom: 24px; overflow-x: auto; border: 1px solid #333; }
+    .code-block pre { margin: 0; color: #d4d4d4; font-family: monospace; font-size: 13px; }
+    
+    .author-card { display: flex; gap: 20px; align-items: center; padding: 30px; background: #fcfcfc; border-top: 1px solid var(--aws-border); }
+    .author-img { width: 80px; height: 80px; border-radius: 50%; background: var(--aws-highlight); display: flex; align-items: center; justify-content: center; font-size: 30px; color: var(--aws-orange); border: 2px solid var(--aws-border); }
     .nav-links { display: flex; justify-content: space-between; margin-top: 40px; padding: 20px 0; border-top: 1px solid var(--aws-border); }
     .nav-link { text-decoration: none; color: var(--aws-blue); font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 8px; }
     .tag { display: inline-block; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: 600; margin-right: 8px; }
@@ -30,22 +58,22 @@
       <i class="fa-solid fa-cloud" style="color: var(--aws-orange); font-size: 20px;"></i>
       <span>Ankush Panday</span>
     </a>
-    <div class="nav-links-top">
-      <a href="../../index.html">Home</a>
-      <a href="../index.html">Blog</a>
+    <div class="nav-spacer"></div>
+    <div class="nav-icons">
+      <a href="../../index.html" class="nav-icon-btn">Portfolio Home</a>
     </div>
   </nav>
 
   <div class="blog-page-container">
-    <a href="../index.html" class="nav-link" style="margin-bottom: 24px;"><i class="fa-solid fa-arrow-left"></i> Back to Blog</a>
+    <a href="../index.html" class="back-btn"><i class="fa-solid fa-arrow-left"></i> Back to Blog Hub</a>
     
     <article class="blog-content-card">
       <header class="blog-header">
-        <h1 style="font-size: 32px; color: var(--aws-text); margin-bottom: 16px; line-height: 1.2;">AWS Network Firewall vs Security Groups vs NACLs</h1>
+        <h1 style="font-size: 32px; color: var(--aws-text); margin-bottom: 16px; line-height: 1.2;">AWS Network Firewall vs Security Groups vs NACLs — Layered Network Security Done Right</h1>
         <div style="display: flex; gap: 12px; align-items: center; color: var(--aws-text-light); font-size: 14px; flex-wrap: wrap;">
-          <span>Coming Soon</span>
+          <span>May 6, 2026</span>
           <span>•</span>
-          <span>20 min read</span>
+          <span>22 min read</span>
           <span class="tag blue">Security</span>
           <span class="tag purple">DevSecOps</span>
         </div>
@@ -58,17 +86,741 @@
 
         <img src="../../images/aws-network-firewall-security-groups-nacl.png" alt="AWS Network Firewall vs SG vs NACL Architecture" style="display: block; width: 100%; border-radius: 8px; border: 1px solid var(--aws-border); margin-bottom: 40px;">
 
-        <div style="background: var(--aws-highlight); padding: 40px; text-align: center; border-radius: 8px; border: 1px dashed var(--aws-border); margin: 40px 0;">
-          <i class="fa-solid fa-person-digging" style="font-size: 48px; color: var(--aws-orange); margin-bottom: 20px;"></i>
-          <h3 style="margin-bottom: 10px; color: var(--aws-text);">Content in Development</h3>
-          <p style="color: var(--aws-text-light); max-width: 500px; margin: 0 auto;">
-            I am currently drafting the final chapter of the Networking foundation series. This deep dive will cover the DevSecOps approach to layered network security, extending the Gateway Load Balancer patterns from Part 4 and providing a complete decision framework for Network Firewall, Security Groups, and NACLs.
+        <h2 id="tldr">TL;DR Comparison</h2>
+        <div style="overflow-x: auto;">
+          <table class="compare-table">
+            <thead>
+              <tr>
+                <th>Feature</th>
+                <th>Security Groups</th>
+                <th>Network ACLs</th>
+                <th>AWS Network Firewall</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Operates at</strong></td>
+                <td>Instance / ENI level</td>
+                <td>Subnet level</td>
+                <td>VPC / TGW level</td>
+              </tr>
+              <tr>
+                <td><strong>State</strong></td>
+                <td>Stateful</td>
+                <td>Stateless</td>
+                <td>Stateful + Stateless</td>
+              </tr>
+              <tr>
+                <td><strong>Traffic direction</strong></td>
+                <td>Inbound + Outbound</td>
+                <td>Inbound + Outbound</td>
+                <td>Inbound + Outbound + East-West</td>
+              </tr>
+              <tr>
+                <td><strong>Rule types</strong></td>
+                <td>Allow only</td>
+                <td>Allow + Deny</td>
+                <td>Allow, Deny, Drop, Alert</td>
+              </tr>
+              <tr>
+                <td><strong>Protocol inspection</strong></td>
+                <td>Layer 4 (port/protocol)</td>
+                <td>Layer 4 (port/protocol)</td>
+                <td>Layer 3–7 (deep packet)</td>
+              </tr>
+              <tr>
+                <td><strong>Domain filtering</strong></td>
+                <td>❌ No</td>
+                <td>❌ No</td>
+                <td>✅ Yes (FQDN rules)</td>
+              </tr>
+              <tr>
+                <td><strong>IDS / IPS</strong></td>
+                <td>❌ No</td>
+                <td>❌ No</td>
+                <td>✅ Suricata-based</td>
+              </tr>
+              <tr>
+                <td><strong>TLS inspection</strong></td>
+                <td>❌ No</td>
+                <td>❌ No</td>
+                <td>✅ Yes</td>
+              </tr>
+              <tr>
+                <td><strong>Scope</strong></td>
+                <td>Per resource</td>
+                <td>Per subnet</td>
+                <td>Per VPC / centralised</td>
+              </tr>
+              <tr>
+                <td><strong>Cost</strong></td>
+                <td>Free</td>
+                <td>Free</td>
+                <td>$0.395/hour + $0.065/GB</td>
+              </tr>
+              <tr>
+                <td><strong>Managed by</strong></td>
+                <td>Dev teams</td>
+                <td>Platform teams</td>
+                <td>Security / Network teams</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2>Introduction</h2>
+        <p>Security Groups and NACLs ship with every VPC. They are free, familiar, and solve 80% of use cases. But in regulated industries — financial services, healthcare, government — they leave critical gaps: no deep packet inspection, no domain-based filtering, no IDS/IPS, no TLS decryption.</p>
+        <p>AWS Network Firewall fills those gaps. But it is not a replacement for Security Groups and NACLs — it is a third, complementary layer. The mistake most teams make is treating these as alternatives when they should be used together, each doing the job it is best suited for.</p>
+        <p>In this post we go deep on all three layers — how each works, what it can and cannot do, how to build each in Terraform, and how to architect a genuinely layered defence-in-depth model that satisfies even the strictest compliance requirements. This is the DevSecOps post the series has been building toward.</p>
+
+        <h2>1. Security Groups — Your First Line of Defence</h2>
+        <h3>How They Work</h3>
+        <p>Security Groups are <strong>stateful, instance-level firewalls</strong>. They are attached to ENIs (Elastic Network Interfaces) — which means they protect individual EC2 instances, Lambda functions, RDS instances, ECS tasks, and any other resource with a network interface.</p>
+        <p>Stateful means: if you allow inbound traffic on port 443, the return traffic is <strong>automatically allowed</strong> without an explicit outbound rule. The connection tracking table handles this transparently.</p>
+        <div class="code-block">
+          <pre>Internet → [Security Group — inbound rules evaluated] → EC2 Instance
+EC2 Instance → [return traffic automatically allowed] → Internet</pre>
+        </div>
+
+        <h3>What Security Groups Can and Cannot Do</h3>
+        <p><strong>Can do:</strong></p>
+        <ul>
+          <li>Allow or deny by IP address, CIDR, or another Security Group ID</li>
+          <li>Filter by protocol (TCP, UDP, ICMP) and port</li>
+          <li>Reference other Security Groups as sources — the most powerful feature</li>
+          <li>Apply to multiple instances simultaneously</li>
+          <li>Be modified without restarting instances — changes apply immediately</li>
+        </ul>
+        <p><strong>Cannot do:</strong></p>
+        <ul>
+          <li>Create explicit Deny rules — every rule is an Allow. Anything not matched is implicitly denied</li>
+          <li>Filter by domain name or hostname</li>
+          <li>Inspect packet contents</li>
+          <li>Log individual connection decisions (only VPC Flow Logs can approximate this)</li>
+        </ul>
+
+        <h3>Full Security Group Terraform — Three-Tier Architecture</h3>
+        <div class="code-block">
+<pre><code><span style="color: #6a9955;"># ALB Security Group — public facing</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_security_group"</span> <span style="color: #ce9178;">"alb"</span> {
+  <span style="color: #9cdcfe;">name</span>        = <span style="color: #ce9178;">"alb-sg"</span>
+  <span style="color: #9cdcfe;">description</span> = <span style="color: #ce9178;">"Allow HTTPS from internet to ALB"</span>
+  <span style="color: #9cdcfe;">vpc_id</span>      = aws_vpc.main.id
+
+  <span style="color: #569cd6;">ingress</span> {
+    <span style="color: #9cdcfe;">from_port</span>   = <span style="color: #b5cea8;">443</span>
+    <span style="color: #9cdcfe;">to_port</span>     = <span style="color: #b5cea8;">443</span>
+    <span style="color: #9cdcfe;">protocol</span>    = <span style="color: #ce9178;">"tcp"</span>
+    <span style="color: #9cdcfe;">cidr_blocks</span> = [<span style="color: #ce9178;">"0.0.0.0/0"</span>]
+    <span style="color: #9cdcfe;">description</span> = <span style="color: #ce9178;">"HTTPS from internet"</span>
+  }
+
+  <span style="color: #569cd6;">ingress</span> {
+    <span style="color: #9cdcfe;">from_port</span>   = <span style="color: #b5cea8;">80</span>
+    <span style="color: #9cdcfe;">to_port</span>     = <span style="color: #b5cea8;">80</span>
+    <span style="color: #9cdcfe;">protocol</span>    = <span style="color: #ce9178;">"tcp"</span>
+    <span style="color: #9cdcfe;">cidr_blocks</span> = [<span style="color: #ce9178;">"0.0.0.0/0"</span>]
+    <span style="color: #9cdcfe;">description</span> = <span style="color: #ce9178;">"HTTP — redirect to HTTPS only"</span>
+  }
+
+  <span style="color: #569cd6;">egress</span> {
+    <span style="color: #9cdcfe;">from_port</span>   = <span style="color: #b5cea8;">0</span>
+    <span style="color: #9cdcfe;">to_port</span>     = <span style="color: #b5cea8;">0</span>
+    <span style="color: #9cdcfe;">protocol</span>    = <span style="color: #ce9178;">"-1"</span>
+    <span style="color: #9cdcfe;">cidr_blocks</span> = [<span style="color: #ce9178;">"0.0.0.0/0"</span>]
+    <span style="color: #9cdcfe;">description</span> = <span style="color: #ce9178;">"Allow all outbound"</span>
+  }
+
+  <span style="color: #9cdcfe;">tags</span> = { Name = <span style="color: #ce9178;">"alb-sg"</span> }
+}
+
+<span style="color: #6a9955;"># Application Security Group — only accepts traffic from ALB</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_security_group"</span> <span style="color: #ce9178;">"app"</span> {
+  <span style="color: #9cdcfe;">name</span>        = <span style="color: #ce9178;">"app-sg"</span>
+  <span style="color: #9cdcfe;">description</span> = <span style="color: #ce9178;">"Allow traffic from ALB only"</span>
+  <span style="color: #9cdcfe;">vpc_id</span>      = aws_vpc.main.id
+
+  <span style="color: #569cd6;">ingress</span> {
+    <span style="color: #9cdcfe;">from_port</span>       = <span style="color: #b5cea8;">8080</span>
+    <span style="color: #9cdcfe;">to_port</span>         = <span style="color: #b5cea8;">8080</span>
+    <span style="color: #9cdcfe;">protocol</span>        = <span style="color: #ce9178;">"tcp"</span>
+    <span style="color: #9cdcfe;">security_groups</span> = [aws_security_group.alb.id]   <span style="color: #6a9955;"># ← SG reference, not CIDR</span>
+    <span style="color: #9cdcfe;">description</span>     = <span style="color: #ce9178;">"App port from ALB only"</span>
+  }
+
+  <span style="color: #569cd6;">egress</span> {
+    <span style="color: #9cdcfe;">from_port</span>   = <span style="color: #b5cea8;">0</span>
+    <span style="color: #9cdcfe;">to_port</span>     = <span style="color: #b5cea8;">0</span>
+    <span style="color: #9cdcfe;">protocol</span>    = <span style="color: #ce9178;">"-1"</span>
+    <span style="color: #9cdcfe;">cidr_blocks</span> = [<span style="color: #ce9178;">"0.0.0.0/0"</span>]
+  }
+
+  <span style="color: #9cdcfe;">tags</span> = { Name = <span style="color: #ce9178;">"app-sg"</span> }
+}
+
+<span style="color: #6a9955;"># Database Security Group — only accepts traffic from App tier</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_security_group"</span> <span style="color: #ce9178;">"rds"</span> {
+  <span style="color: #9cdcfe;">name</span>        = <span style="color: #ce9178;">"rds-sg"</span>
+  <span style="color: #9cdcfe;">description</span> = <span style="color: #ce9178;">"Allow PostgreSQL from app tier only"</span>
+  <span style="color: #9cdcfe;">vpc_id</span>      = aws_vpc.main.id
+
+  <span style="color: #569cd6;">ingress</span> {
+    <span style="color: #9cdcfe;">from_port</span>       = <span style="color: #b5cea8;">5432</span>
+    <span style="color: #9cdcfe;">to_port</span>         = <span style="color: #b5cea8;">5432</span>
+    <span style="color: #9cdcfe;">protocol</span>        = <span style="color: #ce9178;">"tcp"</span>
+    <span style="color: #9cdcfe;">security_groups</span> = [aws_security_group.app.id]   <span style="color: #6a9955;"># ← Only app SG</span>
+    <span style="color: #9cdcfe;">description</span>     = <span style="color: #ce9178;">"PostgreSQL from app tier only"</span>
+  }
+
+  <span style="color: #6a9955;"># No egress rule — RDS doesn't initiate outbound connections</span>
+
+  <span style="color: #9cdcfe;">tags</span> = { Name = <span style="color: #ce9178;">"rds-sg"</span> }
+}</code></pre>
+        </div>
+
+        <h3>Security Group Chaining — The Most Powerful Pattern</h3>
+        <p>Referencing Security Groups as sources instead of CIDR blocks is the key architectural pattern. It means:</p>
+        <ul>
+          <li>You don't need to know or manage IP addresses</li>
+          <li>When you scale horizontally (new EC2 instances added to the app tier), they automatically inherit the <code>app-sg</code> and immediately get DB access — no rule changes needed</li>
+          <li>When you deprovision instances, access is automatically removed</li>
+          <li>Security is tied to <strong>identity</strong> (what role the resource plays) not <strong>location</strong> (what IP it has)</li>
+        </ul>
+        <div class="code-block">
+<pre><code><span style="color: #6a9955;"># Cross-account Security Group reference (peered VPCs, same region)</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_security_group_rule"</span> <span style="color: #ce9178;">"cross_account_app"</span> {
+  <span style="color: #9cdcfe;">type</span>                     = <span style="color: #ce9178;">"ingress"</span>
+  <span style="color: #9cdcfe;">from_port</span>                = <span style="color: #b5cea8;">443</span>
+  <span style="color: #9cdcfe;">to_port</span>                  = <span style="color: #b5cea8;">443</span>
+  <span style="color: #9cdcfe;">protocol</span>                 = <span style="color: #ce9178;">"tcp"</span>
+  <span style="color: #9cdcfe;">source_security_group_id</span> = <span style="color: #ce9178;">"sg-0abc123def456"</span>   <span style="color: #6a9955;"># SG in peered VPC</span>
+  <span style="color: #9cdcfe;">security_group_id</span>        = aws_security_group.app.id
+  <span style="color: #9cdcfe;">description</span>              = <span style="color: #ce9178;">"Allow from partner account app tier"</span>
+}</code></pre>
+        </div>
+
+        <h3>Security Group Best Practices</h3>
+        <div class="code-block">
+<pre><code><span style="color: #6a9955;"># Use specific descriptions on every rule — without this, auditing is painful</span>
+<span style="color: #569cd6;">ingress</span> {
+  <span style="color: #9cdcfe;">from_port</span>   = <span style="color: #b5cea8;">443</span>
+  <span style="color: #9cdcfe;">to_port</span>     = <span style="color: #b5cea8;">443</span>
+  <span style="color: #9cdcfe;">protocol</span>    = <span style="color: #ce9178;">"tcp"</span>
+  <span style="color: #9cdcfe;">cidr_blocks</span> = [<span style="color: #ce9178;">"10.0.0.0/8"</span>]
+  <span style="color: #9cdcfe;">description</span> = <span style="color: #ce9178;">"HTTPS from all internal RFC1918 — required for ALB health checks"</span>
+  <span style="color: #6a9955;"># Bad: description = "" — no description = no audit trail</span>
+}
+
+<span style="color: #6a9955;"># Never use 0.0.0.0/0 on sensitive ports</span>
+<span style="color: #6a9955;"># This is what compliance scanners flag first</span>
+<span style="color: #569cd6;">ingress</span> {
+  <span style="color: #9cdcfe;">from_port</span>   = <span style="color: #b5cea8;">22</span>     <span style="color: #6a9955;"># ← NEVER open to 0.0.0.0/0</span>
+  <span style="color: #9cdcfe;">to_port</span>     = <span style="color: #b5cea8;">22</span>
+  <span style="color: #9cdcfe;">protocol</span>    = <span style="color: #ce9178;">"tcp"</span>
+  <span style="color: #9cdcfe;">cidr_blocks</span> = [<span style="color: #ce9178;">"10.0.0.0/8"</span>]   <span style="color: #6a9955;"># Internal only, or use SSM Session Manager instead</span>
+  <span style="color: #9cdcfe;">description</span> = <span style="color: #ce9178;">"SSH from internal network — prefer SSM Session Manager"</span>
+}</code></pre>
+        </div>
+
+        <h2>2. Network ACLs — Subnet-Level Guardrails</h2>
+        <h3>How They Work</h3>
+        <p>Network ACLs (NACLs) are <strong>stateless, subnet-level firewalls</strong>. Unlike Security Groups which protect individual resources, NACLs protect entire subnets — every resource in a subnet is subject to the same NACL rules.</p>
+        <p>Stateless means: return traffic is <strong>not automatically allowed</strong>. You must explicitly permit both the inbound request and the outbound response. This catches engineers who configure inbound rules but forget ephemeral ports on outbound.</p>
+        <div class="code-block">
+          <pre>Internet → [NACL inbound rules — subnet boundary] → Resource
+Resource → [NACL outbound rules — must be explicitly allowed] → Internet</pre>
+        </div>
+
+        <h3>Ephemeral Ports — The Most Common NACL Mistake</h3>
+        <p>When a client connects to your server, it uses a random high-numbered <strong>ephemeral port</strong> (1024-65535) as its source port. The return traffic from your server goes back to that ephemeral port. Because NACLs are stateless, you must explicitly allow outbound traffic to the entire ephemeral range:</p>
+        <div class="code-block">
+<pre><code><span style="color: #6a9955;"># Correct NACL for a public subnet — both inbound and return traffic</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_network_acl"</span> <span style="color: #ce9178;">"public"</span> {
+  <span style="color: #9cdcfe;">vpc_id</span>     = aws_vpc.main.id
+  <span style="color: #9cdcfe;">subnet_ids = aws_subnet.public[*].id</span>
+
+  <span style="color: #6a9955;"># Allow HTTPS inbound</span>
+  <span style="color: #569cd6;">ingress</span> {
+    <span style="color: #9cdcfe;">rule_no</span>    = <span style="color: #b5cea8;">100</span>
+    <span style="color: #9cdcfe;">action</span>     = <span style="color: #ce9178;">"allow"</span>
+    <span style="color: #9cdcfe;">protocol</span>   = <span style="color: #ce9178;">"tcp"</span>
+    <span style="color: #9cdcfe;">from_port</span>  = <span style="color: #b5cea8;">443</span>
+    <span style="color: #9cdcfe;">to_port</span>    = <span style="color: #b5cea8;">443</span>
+    <span style="color: #9cdcfe;">cidr_block</span> = <span style="color: #ce9178;">"0.0.0.0/0"</span>
+  }
+
+  <span style="color: #6a9955;"># Allow HTTP inbound (for redirect)</span>
+  <span style="color: #569cd6;">ingress</span> {
+    <span style="color: #9cdcfe;">rule_no</span>    = <span style="color: #b5cea8;">110</span>
+    <span style="color: #9cdcfe;">action</span>     = <span style="color: #ce9178;">"allow"</span>
+    <span style="color: #9cdcfe;">protocol</span>   = <span style="color: #ce9178;">"tcp"</span>
+    <span style="color: #9cdcfe;">from_port</span>  = <span style="color: #b5cea8;">80</span>
+    <span style="color: #9cdcfe;">to_port</span>    = <span style="color: #b5cea8;">80</span>
+    <span style="color: #9cdcfe;">cidr_block</span> = <span style="color: #ce9178;">"0.0.0.0/0"</span>
+  }
+
+  <span style="color: #6a9955;"># Allow return traffic for outbound connections (ephemeral ports)</span>
+  <span style="color: #6a9955;"># Without this — your instances can't receive responses to outbound requests</span>
+  <span style="color: #569cd6;">ingress</span> {
+    <span style="color: #9cdcfe;">rule_no</span>    = <span style="color: #b5cea8;">120</span>
+    <span style="color: #9cdcfe;">action</span>     = <span style="color: #ce9178;">"allow"</span>
+    <span style="color: #9cdcfe;">protocol</span>   = <span style="color: #ce9178;">"tcp"</span>
+    <span style="color: #9cdcfe;">from_port</span>  = <span style="color: #b5cea8;">1024</span>
+    <span style="color: #9cdcfe;">to_port</span>    = <span style="color: #b5cea8;">65535</span>
+    <span style="color: #9cdcfe;">cidr_block</span> = <span style="color: #ce9178;">"0.0.0.0/0"</span>
+    <span style="color: #6a9955;"># This is the ephemeral port range — required for stateless operation</span>
+  }
+
+  <span style="color: #6a9955;"># Allow HTTPS outbound (to ALB, internet)</span>
+  <span style="color: #569cd6;">egress</span> {
+    <span style="color: #9cdcfe;">rule_no</span>    = <span style="color: #b5cea8;">100</span>
+    <span style="color: #9cdcfe;">action</span>     = <span style="color: #ce9178;">"allow"</span>
+    <span style="color: #9cdcfe;">protocol</span>   = <span style="color: #ce9178;">"tcp"</span>
+    <span style="color: #9cdcfe;">from_port</span>  = <span style="color: #b5cea8;">443</span>
+    <span style="color: #9cdcfe;">to_port</span>    = <span style="color: #b5cea8;">443</span>
+    <span style="color: #9cdcfe;">cidr_block</span> = <span style="color: #ce9178;">"0.0.0.0/0"</span>
+  }
+
+  <span style="color: #6a9955;"># Allow ephemeral ports outbound — return traffic for inbound connections</span>
+  <span style="color: #569cd6;">egress</span> {
+    <span style="color: #9cdcfe;">rule_no</span>    = <span style="color: #b5cea8;">110</span>
+    <span style="color: #9cdcfe;">action</span>     = <span style="color: #ce9178;">"allow"</span>
+    <span style="color: #9cdcfe;">protocol</span>   = <span style="color: #ce9178;">"tcp"</span>
+    <span style="color: #9cdcfe;">from_port</span>  = <span style="color: #b5cea8;">1024</span>
+    <span style="color: #9cdcfe;">to_port</span>    = <span style="color: #b5cea8;">65535</span>
+    <span style="color: #9cdcfe;">cidr_block</span> = <span style="color: #ce9178;">"0.0.0.0/0"</span>
+  }
+
+  <span style="color: #9cdcfe;">tags</span> = { Name = <span style="color: #ce9178;">"public-nacl"</span> }
+}</code></pre>
+        </div>
+
+        <h3>When NACLs Add Real Value</h3>
+        <p>NACLs have one capability Security Groups don't: <strong>explicit Deny rules</strong>. This makes them useful in specific scenarios:</p>
+        <div class="code-block">
+<pre><code><span style="color: #6a9955;"># Block a known malicious IP range — explicit deny before any allow rules</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_network_acl_rule"</span> <span style="color: #ce9178;">"block_malicious"</span> {
+  <span style="color: #9cdcfe;">network_acl_id</span> = aws_network_acl.public.id
+  <span style="color: #9cdcfe;">rule_number</span>    = <span style="color: #b5cea8;">50</span>      <span style="color: #6a9955;"># Lower number = evaluated first</span>
+  <span style="color: #9cdcfe;">egress</span>         = <span style="color: #569cd6;">false</span>   <span style="color: #6a9955;"># Inbound</span>
+  <span style="color: #9cdcfe;">protocol</span>       = <span style="color: #ce9178;">"-1"</span>    <span style="color: #6a9955;"># All protocols</span>
+  <span style="color: #9cdcfe;">rule_action</span>    = <span style="color: #ce9178;">"deny"</span>
+  <span style="color: #9cdcfe;">cidr_block</span>     = <span style="color: #ce9178;">"198.51.100.0/24"</span>   <span style="color: #6a9955;"># Known bad actor range</span>
+}
+
+<span style="color: #6a9955;"># Block all traffic from a specific country CIDR range</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_network_acl_rule"</span> <span style="color: #ce9178;">"block_country"</span> {
+  <span style="color: #9cdcfe;">network_acl_id</span> = aws_network_acl.public.id
+  <span style="color: #9cdcfe;">rule_number</span>    = <span style="color: #b5cea8;">60</span>
+  <span style="color: #9cdcfe;">egress</span>         = <span style="color: #569cd6;">false</span>
+  <span style="color: #9cdcfe;">protocol</span>       = <span style="color: #ce9178;">"-1"</span>
+  <span style="color: #9cdcfe;">rule_action</span>    = <span style="color: #ce9178;">"deny"</span>
+  <span style="color: #9cdcfe;">cidr_block</span>     = <span style="color: #ce9178;">"203.0.113.0/24"</span>
+}</code></pre>
+        </div>
+
+        <blockquote>
+          <strong>Architect's Rule:</strong> Don't over-engineer NACLs. They are coarse-grained subnet-level guardrails, not fine-grained security tools. Use them for: blocking known bad CIDR ranges, isolating subnets during incident response, and enforcing hard network boundaries between environments (e.g., deny all traffic from dev subnet CIDR to prod subnet CIDR at the NACL level). Leave granular access control to Security Groups.
+        </blockquote>
+
+        <h3>NACL Rule Evaluation Order</h3>
+        <p>Rules are evaluated in ascending numerical order — <strong>lowest rule number wins</strong>. Rule evaluation stops at the first match. Always leave gaps between rule numbers for future insertions:</p>
+        <div class="code-block">
+          <pre>Rule 50  → DENY  198.51.100.0/24 (malicious range — checked first)
+Rule 100 → ALLOW tcp/443 0.0.0.0/0
+Rule 110 → ALLOW tcp/80  0.0.0.0/0
+Rule 120 → ALLOW tcp/1024-65535 0.0.0.0/0 (ephemeral)
+Rule *   → DENY  all (implicit — always last)</pre>
+        </div>
+
+        <h2>3. AWS Network Firewall — Deep Packet Inspection at Scale</h2>
+        <h3>What It Is and Where It Sits</h3>
+        <p>AWS Network Firewall is a <strong>managed, stateful network firewall</strong> and intrusion detection/prevention system. It operates at the VPC level — typically in a dedicated Inspection VPC — and uses Gateway Load Balancer to transparently redirect traffic through a firewall fleet without changing your application architecture.</p>
+        <p>Unlike Security Groups and NACLs which operate at Layer 4 (ports and protocols), Network Firewall operates at Layers 3-7:</p>
+        <div class="code-block">
+          <pre>Layer 3 — IP addresses and routing
+Layer 4 — TCP/UDP ports and protocols
+Layer 5 — Connection state
+Layer 7 — HTTP headers, TLS SNI, DNS queries, application payloads</pre>
+        </div>
+        <p>It is built on <strong>Suricata</strong> — the open-source intrusion detection engine — which means you can write custom Suricata-compatible rules and use any existing Suricata rule sets.</p>
+
+        <h3>Where It Fits in Your Architecture</h3>
+        <div class="code-block">
+          <pre>Spoke VPC (no direct internet)
+    → TGW
+        → Inspection VPC
+            → AWS Network Firewall
+                → Stateless rule groups (fast path — IP/port filtering)
+                → Stateful rule groups (deep inspection — domain, IPS, TLS)
+            → NAT Gateway (for allowed internet-bound traffic)
+                → Internet Gateway
+                    → Internet</pre>
+        </div>
+
+        <h3>Full Network Firewall Terraform</h3>
+        <div class="code-block">
+<pre><code><span style="color: #6a9955;"># Stateless Rule Group — fast path, evaluated first</span>
+<span style="color: #6a9955;"># Drop obvious threats before they reach stateful inspection</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_networkfirewall_rule_group"</span> <span style="color: #ce9178;">"stateless_block"</span> {
+  <span style="color: #9cdcfe;">capacity</span> = <span style="color: #b5cea8;">100</span>
+  <span style="color: #9cdcfe;">name</span>     = <span style="color: #ce9178;">"stateless-block-rules"</span>
+  <span style="color: #9cdcfe;">type</span>     = <span style="color: #ce9178;">"STATELESS"</span>
+
+  <span style="color: #569cd6;">rule_group</span> {
+    <span style="color: #569cd6;">rules_source</span> {
+      <span style="color: #569cd6;">stateless_rules_and_custom_actions</span> {
+
+        <span style="color: #6a9955;"># Drop all traffic from known malicious IPs (fast, no state tracking)</span>
+        <span style="color: #569cd6;">stateless_rule</span> {
+          <span style="color: #9cdcfe;">priority</span> = <span style="color: #b5cea8;">1</span>
+          <span style="color: #569cd6;">rule_definition</span> {
+            <span style="color: #9cdcfe;">actions</span> = [<span style="color: #ce9178;">"aws:drop"</span>]
+            <span style="color: #569cd6;">match_attributes</span> {
+              <span style="color: #569cd6;">sources</span> {
+                <span style="color: #9cdcfe;">address_definition</span> = <span style="color: #ce9178;">"198.51.100.0/24"</span>
+              }
+            }
+          }
+        }
+
+        <span style="color: #6a9955;"># Pass SSH only from known management ranges (fast allow)</span>
+        <span style="color: #569cd6;">stateless_rule</span> {
+          <span style="color: #9cdcfe;">priority</span> = <span style="color: #b5cea8;">10</span>
+          <span style="color: #569cd6;">rule_definition</span> {
+            <span style="color: #9cdcfe;">actions</span> = [<span style="color: #ce9178;">"aws:pass"</span>]
+            <span style="color: #569cd6;">match_attributes</span> {
+              <span style="color: #569cd6;">sources</span> {
+                <span style="color: #9cdcfe;">address_definition</span> = <span style="color: #ce9178;">"10.0.0.0/8"</span>
+              }
+              <span style="color: #569cd6;">destination_ports</span> {
+                <span style="color: #9cdcfe;">from_port</span> = <span style="color: #b5cea8;">22</span>
+                <span style="color: #9cdcfe;">to_port</span>   = <span style="color: #b5cea8;">22</span>
+              }
+              <span style="color: #9cdcfe;">protocols</span> = [<span style="color: #b5cea8;">6</span>]   <span style="color: #6a9955;"># TCP</span>
+            }
+          }
+        }
+
+        <span style="color: #6a9955;"># Forward everything else to stateful inspection</span>
+        <span style="color: #569cd6;">stateless_rule</span> {
+          <span style="color: #9cdcfe;">priority</span> = <span style="color: #b5cea8;">100</span>
+          <span style="color: #569cd6;">rule_definition</span> {
+            <span style="color: #9cdcfe;">actions</span> = [<span style="color: #ce9178;">"aws:forward_to_sfe"</span>]   <span style="color: #6a9955;"># Send to Stateful Engine</span>
+            <span style="color: #569cd6;">match_attributes</span> {
+              <span style="color: #569cd6;">sources</span> {
+                <span style="color: #9cdcfe;">address_definition</span> = <span style="color: #ce9178;">"0.0.0.0/0"</span>
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  <span style="color: #9cdcfe;">tags</span> = { Name = <span style="color: #ce9178;">"stateless-block-rules"</span> }
+}
+
+<span style="color: #6a9955;"># Stateful Rule Group — domain filtering (Layer 7)</span>
+<span style="color: #6a9955;"># Block all domains except explicit allowlist — zero-trust egress</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_networkfirewall_rule_group"</span> <span style="color: #ce9178;">"domain_allowlist"</span> {
+  <span style="color: #9cdcfe;">capacity</span> = <span style="color: #b5cea8;">100</span>
+  <span style="color: #9cdcfe;">name</span>     = <span style="color: #ce9178;">"domain-allowlist"</span>
+  <span style="color: #9cdcfe;">type</span>     = <span style="color: #ce9178;">"STATEFUL"</span>
+
+  <span style="color: #569cd6;">rule_group</span> {
+    <span style="color: #569cd6;">rule_variables</span> {
+      <span style="color: #569cd6;">ip_sets</span> {
+        <span style="color: #9cdcfe;">key</span> = <span style="color: #ce9178;">"HOME_NET"</span>
+        <span style="color: #569cd6;">ip_set</span> {
+          <span style="color: #9cdcfe;">definition</span> = [<span style="color: #ce9178;">"10.0.0.0/8"</span>, <span style="color: #ce9178;">"172.16.0.0/12"</span>, <span style="color: #ce9178;">"192.168.0.0/16"</span>]
+        }
+      }
+    }
+
+    <span style="color: #569cd6;">rules_source</span> {
+      <span style="color: #569cd6;">rules_source_list</span> {
+        <span style="color: #9cdcfe;">generated_rules_type</span> = <span style="color: #ce9178;">"ALLOWLIST"</span>
+        <span style="color: #9cdcfe;">target_types</span>         = [<span style="color: #ce9178;">"HTTP_HOST"</span>, <span style="color: #ce9178;">"TLS_SNI"</span>]   <span style="color: #6a9955;"># HTTP + HTTPS domains</span>
+
+        <span style="color: #6a9955;"># Only these domains can be reached from your VPC</span>
+        <span style="color: #9cdcfe;">targets</span> = [
+          <span style="color: #ce9178;">".amazonaws.com"</span>,        <span style="color: #6a9955;"># AWS services</span>
+          <span style="color: #ce9178;">".docker.io"</span>,            <span style="color: #6a9955;"># Docker Hub</span>
+          <span style="color: #ce9178;">".github.com"</span>,           <span style="color: #6a9955;"># GitHub</span>
+          <span style="color: #ce9178;">".pypi.org"</span>,             <span style="color: #6a9955;"># Python packages</span>
+          <span style="color: #ce9178;">".npmjs.com"</span>,            <span style="color: #6a9955;"># Node packages</span>
+          <span style="color: #ce9178;">"updates.company.com"</span>,   <span style="color: #6a9955;"># Internal update server</span>
+        ]
+      }
+    }
+  }
+
+  <span style="color: #9cdcfe;">tags</span> = { Name = <span style="color: #ce9178;">"domain-allowlist"</span> }
+}
+
+<span style="color: #6a9955;"># Stateful Rule Group — Suricata IPS rules</span>
+<span style="color: #6a9955;"># Block known CVEs, C2 callbacks, and malware signatures</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_networkfirewall_rule_group"</span> <span style="color: #ce9178;">"ips_rules"</span> {
+  <span style="color: #9cdcfe;">capacity</span> = <span style="color: #b5cea8;">1000</span>
+  <span style="color: #9cdcfe;">name</span>     = <span style="color: #ce9178;">"suricata-ips-rules"</span>
+  <span style="color: #9cdcfe;">type</span>     = <span style="color: #ce9178;">"STATEFUL"</span>
+
+  <span style="color: #569cd6;">rule_group</span> {
+    <span style="color: #569cd6;">rules_source</span> {
+      <span style="color: #6a9955;"># Suricata rule format — same syntax as on-premises Suricata</span>
+      <span style="color: #9cdcfe;">rules_string</span> = <span style="color: #ce9178;">&lt;&lt;-EOT
+        # Block Cobalt Strike default beacon (C2 callback)
+        alert http $HOME_NET any -> $EXTERNAL_NET any (msg:"Cobalt Strike Beacon"; 
+          content:"Accept: */*"; http_header; 
+          content:!"Referer"; http_header; 
+          threshold: type limit, track by_src, count 1, seconds 60; 
+          sid:9000001; rev:1;)
+
+        # Block DNS queries to known malware C2 domains
+        drop dns $HOME_NET any -> any 53 (msg:"Known C2 Domain Query"; 
+          dns.query; content:"malware-c2.example.com"; nocase; 
+          sid:9000002; rev:1;)
+
+        # Alert on SSH brute force (>10 attempts/minute)
+        alert tcp $EXTERNAL_NET any -> $HOME_NET 22 (msg:"SSH Brute Force Attempt"; 
+          threshold: type threshold, track by_src, count 10, seconds 60; 
+          sid:9000003; rev:1;)
+
+        # Block outbound traffic on non-standard ports (data exfiltration indicator)
+        drop tcp $HOME_NET any -> $EXTERNAL_NET ![$HTTP_PORTS,443,22,53] 
+          (msg:"Non-standard outbound port"; sid:9000004; rev:1;)
+      EOT</span>
+    }
+  }
+
+  <span style="color: #9cdcfe;">tags</span> = { Name = <span style="color: #ce9178;">"suricata-ips-rules"</span> }
+}
+
+<span style="color: #6a9955;"># Firewall Policy — combines all rule groups</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_networkfirewall_firewall_policy"</span> <span style="color: #ce9178;">"main"</span> {
+  <span style="color: #9cdcfe;">name</span> = <span style="color: #ce9178;">"org-firewall-policy"</span>
+
+  <span style="color: #569cd6;">firewall_policy</span> {
+    <span style="color: #6a9955;"># Default actions for traffic not matched by any rule</span>
+    <span style="color: #9cdcfe;">stateless_default_actions</span>          = [<span style="color: #ce9178;">"aws:forward_to_sfe"</span>]
+    <span style="color: #9cdcfe;">stateless_fragment_default_actions</span> = [<span style="color: #ce9178;">"aws:drop"</span>]   <span style="color: #6a9955;"># Drop all IP fragments</span>
+
+    <span style="color: #6a9955;"># Stateless rules — evaluated first, in order</span>
+    <span style="color: #569cd6;">stateless_rule_group_reference</span> {
+      <span style="color: #9cdcfe;">priority</span>     = <span style="color: #b5cea8;">1</span>
+      <span style="color: #9cdcfe;">resource_arn</span> = aws_networkfirewall_rule_group.stateless_block.arn
+    }
+
+    <span style="color: #6a9955;"># Stateful rules — evaluated after stateless pass-through</span>
+    <span style="color: #569cd6;">stateful_rule_group_reference</span> {
+      <span style="color: #9cdcfe;">resource_arn = aws_networkfirewall_rule_group.domain_allowlist.arn</span>
+    }
+
+    <span style="color: #569cd6;">stateful_rule_group_reference</span> {
+      <span style="color: #9cdcfe;">resource_arn = aws_networkfirewall_rule_group.ips_rules.arn</span>
+    }
+
+    <span style="color: #6a9955;"># Stateful default — drop everything not explicitly allowed</span>
+    <span style="color: #9cdcfe;">stateful_default_actions</span> = [<span style="color: #ce9178;">"aws:drop_strict"</span>]
+  }
+
+  <span style="color: #9cdcfe;">tags</span> = { Name = <span style="color: #ce9178;">"org-firewall-policy"</span> }
+}</code></pre>
+        </div>
+
+        <h3>TLS Inspection — Decrypting Encrypted Traffic</h3>
+        <p>The most powerful and most complex Network Firewall capability. Without TLS inspection, ~90% of internet traffic is opaque to your firewall — attackers know this and use HTTPS for C2 callbacks and data exfiltration.</p>
+        <div class="code-block">
+<pre><code><span style="color: #6a9955;"># TLS Inspection Configuration</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_networkfirewall_tls_inspection_configuration"</span> <span style="color: #ce9178;">"main"</span> {
+  <span style="color: #9cdcfe;">name</span>        = <span style="color: #ce9178;">"tls-inspection"</span>
+  <span style="color: #9cdcfe;">description</span> = <span style="color: #ce9178;">"Decrypt and inspect HTTPS traffic"</span>
+
+  <span style="color: #569cd6;">tls_inspection_configuration</span> {
+    <span style="color: #6a9955;"># Outbound inspection — decrypt traffic leaving your VPC</span>
+    <span style="color: #569cd6;">server_certificate_configurations</span> {
+      <span style="color: #9cdcfe;">certificate_authority_arn</span> = aws_acm_certificate.inspection_ca.arn
+
+      <span style="color: #6a9955;"># Re-encrypt with inspection CA — clients must trust this CA</span>
+      <span style="color: #569cd6;">check_certificate_revocation_status</span> {
+        <span style="color: #9cdcfe;">revoked_status_action</span>  = <span style="color: #ce9178;">"DROP"</span>
+        <span style="color: #9cdcfe;">unknown_status_action</span>  = <span style="color: #ce9178;">"PASS"</span>
+      }
+
+      <span style="color: #569cd6;">scopes</span> {
+        <span style="color: #9cdcfe;">protocols</span> = [<span style="color: #b5cea8;">443</span>]   <span style="color: #6a9955;"># HTTPS only</span>
+
+        <span style="color: #6a9955;"># Inspect traffic to all external destinations</span>
+        <span style="color: #569cd6;">destination_ports</span> {
+          <span style="color: #9cdcfe;">from_port</span> = <span style="color: #b5cea8;">443</span>
+          <span style="color: #9cdcfe;">to_port</span>   = <span style="color: #b5cea8;">443</span>
+        }
+      }
+    }
+  }
+}</code></pre>
+        </div>
+
+        <blockquote>
+          <strong>Important:</strong> TLS inspection requires your internal clients to trust the inspection CA certificate. For managed fleets (EC2, ECS), push the CA via Systems Manager. For BYOD or contractor devices, this requires MDM (Mobile Device Management) distribution. Never enable TLS inspection without planning the CA distribution first.
+        </blockquote>
+
+        <h2>4. The Layered Defence-in-Depth Architecture</h2>
+        <p>This is the production pattern that satisfies PCI-DSS, HIPAA, SOC 2 Type II, and ISO 27001 requirements. Each layer has a distinct responsibility:</p>
+        <div class="code-block">
+          <pre>Internet
+    ↓
+[AWS Shield + WAF]              ← Layer 0: DDoS + L7 protection (CloudFront/ALB)
+    ↓
+[Network ACL]                   ← Layer 1: Subnet boundary, block known bad CIDRs
+    ↓
+[AWS Network Firewall]          ← Layer 2: Deep inspection, IPS, domain filtering, TLS
+    ↓
+[Security Group — ALB]          ← Layer 3: Allow HTTPS/HTTP from internet only
+    ↓
+[Security Group — App]          ← Layer 4: Allow only from ALB SG
+    ↓
+[Security Group — RDS]          ← Layer 5: Allow only from App SG
+    ↓
+[Resource-level encryption]     ← Layer 6: KMS encryption at rest (EBS, RDS, S3)</pre>
+        </div>
+        <p>Each layer is independent. Compromise of one layer does not bypass the others. This is genuine defence in depth — not security theatre.</p>
+
+        <h3>Routing Traffic Through the Firewall — The Missing Piece</h3>
+        <p>The firewall only inspects traffic that is routed through it. This is where most implementations fail — the firewall is deployed but traffic bypasses it because routing wasn't updated:</p>
+        <div class="code-block">
+<pre><code><span style="color: #6a9955;"># In the Inspection VPC — route table for firewall subnet</span>
+<span style="color: #6a9955;"># Traffic from TGW → Firewall → NAT GW → Internet</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_route_table"</span> <span style="color: #ce9178;">"firewall"</span> {
+  <span style="color: #9cdcfe;">vpc_id</span> = aws_vpc.inspection.id
+
+  <span style="color: #6a9955;"># Return traffic: after firewall inspection, route to TGW for delivery</span>
+  <span style="color: #569cd6;">route</span> {
+    <span style="color: #9cdcfe;">cidr_block</span>         = <span style="color: #ce9178;">"10.0.0.0/8"</span>   <span style="color: #6a9955;"># All spoke VPC CIDRs</span>
+    <span style="color: #9cdcfe;">transit_gateway_id = aws_ec2_transit_gateway.main.id</span>
+  }
+
+  <span style="color: #6a9955;"># Internet-bound traffic after inspection goes to NAT GW</span>
+  <span style="color: #569cd6;">route</span> {
+    <span style="color: #9cdcfe;">cidr_block</span>     = <span style="color: #ce9178;">"0.0.0.0/0"</span>
+    <span style="color: #9cdcfe;">nat_gateway_id = aws_nat_gateway.inspection.id</span>
+  }
+
+  <span style="color: #9cdcfe;">tags</span> = { Name = <span style="color: #ce9178;">"firewall-rt"</span> }
+}</code></pre>
+        </div>
+
+        <blockquote>
+          <strong>Critical:</strong> The firewall endpoint ID is per-AZ. For production deployments, use a <code>for_each</code> loop to create per-AZ route table entries — never use a single AZ's endpoint ID in all route tables, as this creates asymmetric routing that breaks stateful inspection.
+        </blockquote>
+
+        <h2>5. AWS Network Firewall — Managed Rule Groups</h2>
+        <p>Instead of writing Suricata rules from scratch, AWS offers managed rule groups maintained by AWS Threat Intelligence:</p>
+        <div class="code-block">
+<pre><code><span style="color: #6a9955;"># Subscribe to AWS managed rule groups</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_networkfirewall_firewall_policy"</span> <span style="color: #ce9178;">"with_managed_rules"</span> {
+  <span style="color: #9cdcfe;">name</span> = <span style="color: #ce9178;">"policy-with-managed-rules"</span>
+
+  <span style="color: #569cd6;">firewall_policy</span> {
+    <span style="color: #9cdcfe;">stateless_default_actions</span>          = [<span style="color: #ce9178;">"aws:forward_to_sfe"</span>]
+    <span style="color: #9cdcfe;">stateless_fragment_default_actions = ["aws:drop"]</span>
+
+    <span style="color: #6a9955;"># AWS managed — blocks known botnet C2 and malware domains</span>
+    <span style="color: #569cd6;">stateful_rule_group_reference</span> {
+      <span style="color: #9cdcfe;">resource_arn</span> = <span style="color: #ce9178;">"arn:aws:network-firewall:eu-west-1:aws-managed:stateful-rulegroup/AbusedLegitMalwareDomainsActionOrder"</span>
+      <span style="color: #9cdcfe;">priority</span>     = <span style="color: #b5cea8;">1</span>
+    }
+
+    <span style="color: #6a9955;"># AWS managed — blocks known malware domains</span>
+    <span style="color: #569cd6;">stateful_rule_group_reference</span> {
+      <span style="color: #9cdcfe;">resource_arn</span> = <span style="color: #ce9178;">"arn:aws:network-firewall:eu-west-1:aws-managed:stateful-rulegroup/MalwareDomainsActionOrder"</span>
+      <span style="color: #9cdcfe;">priority</span>     = <span style="color: #b5cea8;">2</span>
+    }
+  }
+}</code></pre>
+        </div>
+
+        <h2>6. Cost Deep-Dive</h2>
+        <p>Security Groups and NACLs are completely free. AWS Network Firewall is not:</p>
+        <div style="overflow-x: auto;">
+          <table class="compare-table">
+            <thead>
+              <tr>
+                <th>Component</th>
+                <th>Cost (eu-west-1)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Firewall endpoint (per AZ)</td>
+                <td>$0.395/hour (~$288/month per AZ)</td>
+              </tr>
+              <tr>
+                <td>Data processed</td>
+                <td>$0.065/GB</td>
+              </tr>
+              <tr>
+                <td>TLS inspection</td>
+                <td>Additional $0.01/GB</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p><strong>Cost example — 3 AZ deployment, 10 TB/month traffic:</strong></p>
+        <div class="code-block">
+          <pre>Firewall endpoints:   3 × $0.395 × 730h        = $865.35/month
+Data processed:       10,000 GB × $0.065        = $650.00/month
+Total:                                           ~$1,515/month</pre>
+        </div>
+
+        <h2>7. The Decision Framework</h2>
+        <div class="code-block">
+<pre><code>What are you protecting against?
+
+Known bad IPs / port scans?
+└── Network ACL (deny rules, free, subnet-level)
+
+Unauthorised access between application tiers?
+└── Security Groups (SG chaining, free, instance-level)
+
+Outbound traffic to malicious domains / C2 callbacks?
+└── AWS Network Firewall (domain allowlist + IPS rules)
+
+Encrypted C2 / data exfiltration over HTTPS?
+└── AWS Network Firewall + TLS Inspection
+
+Known vulnerability exploits (CVEs)?
+└── AWS Network Firewall + Suricata IPS rules or managed rule groups
+
+L7 attacks (SQLi, XSS, bot traffic)?
+└── AWS WAF (not covered in this post — next layer up)
+
+Do you need compliance (PCI-DSS, HIPAA, ISO 27001)?
+└── All three layers + WAF + Shield Advanced + CloudTrail</code></pre>
+        </div>
+
+        <h2>8. Common Mistakes & Anti-Patterns</h2>
+        <ul>
+          <li><strong>Mistake 1: Opening Port 22 or 3389 to 0.0.0.0/0</strong> — Use AWS Systems Manager Session Manager instead.</li>
+          <li><strong>Mistake 2: Deploying Network Firewall Without Updating Routes</strong> — Traffic will bypass the firewall entirely.</li>
+          <li><strong>Mistake 3: Forgetting Ephemeral Ports in NACLs</strong> — Return traffic will be dropped, failing all connections.</li>
+          <li><strong>Mistake 4: Using NACLs as a Primary Security Tool</strong> — NACLs are stateless and limited; use SGs for granular control.</li>
+          <li><strong>Mistake 5: <code>stateful_default_actions = ["aws:drop_strict"]</code> Without Testing</strong> — Use <code>alert_strict</code> first to avoid breaking production.</li>
+        </ul>
+
+        <div style="background: var(--aws-highlight); padding: 24px; border-radius: 8px; border: 1px solid var(--aws-border); margin: 40px 0; text-align: center;">
+          <i class="fa-solid fa-tower-observation" style="font-size: 32px; color: var(--aws-orange); margin-bottom: 16px;"></i>
+          <h3 style="font-size: 18px; color: var(--aws-text); margin-bottom: 12px;">The Golden Rule</h3>
+          <p style="font-size: 15px; color: var(--aws-text-light); font-style: italic; margin-bottom: 0;">
+            "Security Groups for everything — they are free, precise, and should be applied to every resource with a network interface, always following least privilege. NACLs as a coarse safety net — explicit deny rules for known bad actors, hard isolation between environments. AWS Network Firewall when you need Layer 7 visibility, domain-based egress control, IDS/IPS, or regulatory compliance that requires deep packet inspection. Never skip the first two layers thinking the third covers everything — and never skip the third layer in a regulated environment thinking the first two are enough."
           </p>
         </div>
-        
+
         <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--aws-border);">
           <span style="font-weight: 700; color: var(--aws-text-light); margin-right: 12px; font-size: 13px;">Tags:</span>
-          <span class="tag">#AWS</span> <span class="tag">#Security</span> <span class="tag">#NetworkFirewall</span> <span class="tag">#DevSecOps</span> <span class="tag">#CloudSecurity</span>
+          <span class="tag">#AWS</span> <span class="tag">#NetworkFirewall</span> <span class="tag">#SecurityGroups</span> <span class="tag">#DevSecOps</span> <span class="tag">#CloudSecurity</span>
         </div>
       </div>
 

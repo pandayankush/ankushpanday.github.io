@@ -256,28 +256,52 @@
         <pre><code>IAM User:  Access Key ID + Secret → Valid forever until manually rotated
 IAM Role:  AssumeRole → STS Token (expires in 1h) → Refresh automatically</code></pre>
 
-        <h3>EC2 Instance Profile — The Fundamental Pattern</h3>
         <pre><code><span style="color: #6a9955;"># IAM Role for EC2 — never use access keys on EC2 instances</span>
 <span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_iam_role"</span> <span style="color: #ce9178;">"ec2_app"</span> {
-  <span style="color: #9cdcfe;">name</span>        = <span style="color: #ce9178;">"ec2-app-role"</span>
-  <span style="color: #9cdcfe;">description</span> = <span style="color: #ce9178;">"Role for application EC2 instances — least privilege"</span>
+  <span style="color: #9cdcfe;">name</span> = <span style="color: #ce9178;">"ec2-app-role"</span>
 
-  <span style="color: #6a9955;"># Trust policy — only EC2 service can assume this role</span>
   <span style="color: #9cdcfe;">assume_role_policy</span> = jsonencode({
+    Version = <span style="color: #ce9178;">"2012-10-17"</span>
+    Statement = [{
+      Effect    = <span style="color: #ce9178;">"Allow"</span>
+      Principal = { Service = <span style="color: #ce9178;">"ec2.amazonaws.com"</span> }
+      Action    = <span style="color: #ce9178;">"sts:AssumeRole"</span>
+    }]
+  })
+}
+
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_iam_policy"</span> <span style="color: #ce9178;">"ec2_app_policy"</span> {
+  <span style="color: #9cdcfe;">name</span> = <span style="color: #ce9178;">"ec2-app-permissions"</span>
+  
+  <span style="color: #9cdcfe;">policy</span> = jsonencode({
     Version = <span style="color: #ce9178;">"2012-10-17"</span>
     Statement = [
       {
-        Effect    = <span style="color: #ce9178;">"Allow"</span>
-        Principal = { Service = <span style="color: #ce9178;">"ec2.amazonaws.com"</span> }
-        Action    = <span style="color: #ce9178;">"sts:AssumeRole"</span>
+        Sid    = <span style="color: #ce9178;">"ScopedSSMAccess"</span>
+        Effect = <span style="color: #ce9178;">"Allow"</span>
+        Action = [<span style="color: #ce9178;">"ssm:GetParameter*"</span>, <span style="color: #ce9178;">"ssm:DescribeParameters"</span>]
+        Resource = <span style="color: #ce9178;">"arn:aws:ssm:eu-west-1:123456789012:parameter/app/prod/*"</span>
+      },
+      {
+        Sid    = <span style="color: #ce9178;">"SecretsManagerAccess"</span>
+        Effect = <span style="color: #ce9178;">"Allow"</span>
+        Action = [<span style="color: #ce9178;">"secretsmanager:GetSecretValue"</span>]
+        Resource = <span style="color: #ce9178;">"arn:aws:secretsmanager:eu-west-1:123456789012:secret:app/prod/*"</span>
+      },
+      {
+        Sid    = <span style="color: #ce9178;">"CloudWatchLogging"</span>
+        Effect = <span style="color: #ce9178;">"Allow"</span>
+        Action = [<span style="color: #ce9178;">"logs:CreateLogStream"</span>, <span style="color: #ce9178;">"logs:PutLogEvents"</span>]
+        Resource = <span style="color: #ce9178;">"arn:aws:logs:eu-west-1:123456789012:log-group:/aws/ec2/app/*"</span>
       }
     ]
   })
+}
 
-  <span style="color: #6a9955;"># Permissions boundary — hard ceiling on what this role can ever do</span>
-  <span style="color: #9cdcfe;">permissions_boundary</span> = aws_iam_policy.developer_boundary.arn
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_iam_role_policy_attachment"</span> <span style="color: #ce9178;">"ec2_attach"</span> {
+  <span style="color: #9cdcfe;">role</span>       = aws_iam_role.ec2_app.name
+  <span style="color: #9cdcfe;">policy_arn</span> = aws_iam_policy.ec2_app_policy.arn
 }</code></pre>
-        <p><em>Note: Always scope policies to specific paths (e.g., <code>arn:aws:ssm:eu-west-1:123456789012:parameter/app/prod/*</code>) rather than <code>*</code>.</em></p>
 
         <h3>Lambda Execution Role</h3>
         <p>Similar to EC2, Lambda requires a trust policy for the service to assume the role, combined with confused deputy protection.</p>
@@ -291,10 +315,38 @@ IAM Role:  AssumeRole → STS Token (expires in 1h) → Refresh automatically</c
       Principal = { Service = <span style="color: #ce9178;">"lambda.amazonaws.com"</span> }
       Action    = <span style="color: #ce9178;">"sts:AssumeRole"</span>
       Condition = {
-        StringEquals = { <span style="color: #ce9178;">"aws:SourceAccount"</span> = var.account_id }
-        ArnLike      = { <span style="color: #ce9178;">"aws:SourceArn"</span> = <span style="color: #ce9178;">"arn:aws:lambda:${var.region}:${var.account_id}:function:processor-*"</span> }
+        StringEquals = { <span style="color: #ce9178;">"aws:SourceAccount"</span> = <span style="color: #ce9178;">"123456789012"</span> }
+        ArnLike      = { <span style="color: #ce9178;">"aws:SourceArn"</span> = <span style="color: #ce9178;">"arn:aws:lambda:eu-west-1:123456789012:function:processor-*"</span> }
       }
     }]
+  })
+}
+
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_iam_policy"</span> <span style="color: #ce9178;">"lambda_processor_policy"</span> {
+  <span style="color: #9cdcfe;">name</span> = <span style="color: #ce9178;">"lambda-processor-permissions"</span>
+  
+  <span style="color: #9cdcfe;">policy</span> = jsonencode({
+    Version = <span style="color: #ce9178;">"2012-10-17"</span>
+    Statement = [
+      {
+        Sid    = <span style="color: #ce9178;">"SQSConsume"</span>
+        Effect = <span style="color: #ce9178;">"Allow"</span>
+        Action = [<span style="color: #ce9178;">"sqs:ReceiveMessage"</span>, <span style="color: #ce9178;">"sqs:DeleteMessage"</span>, <span style="color: #ce9178;">"sqs:GetQueueAttributes"</span>]
+        Resource = <span style="color: #ce9178;">"arn:aws:sqs:eu-west-1:123456789012:app-inbound-queue"</span>
+      },
+      {
+        Sid    = <span style="color: #ce9178;">"DynamoDBWrite"</span>
+        Effect = <span style="color: #ce9178;">"Allow"</span>
+        Action = [<span style="color: #ce9178;">"dynamodb:PutItem"</span>, <span style="color: #ce9178;">"dynamodb:UpdateItem"</span>]
+        Resource = <span style="color: #ce9178;">"arn:aws:dynamodb:eu-west-1:123456789012:table/AppProcessing"</span>
+      },
+      {
+        Sid    = <span style="color: #ce9178;">"KMSDecrypt"</span>
+        Effect = <span style="color: #ce9178;">"Allow"</span>
+        Action = [<span style="color: #ce9178;">"kms:Decrypt"</span>]
+        Resource = <span style="color: #ce9178;">"arn:aws:kms:eu-west-1:123456789012:key/app-processing-key"</span>
+      }
+    ]
   })
 }</code></pre>
 
@@ -334,78 +386,231 @@ IAM Role:  AssumeRole → STS Token (expires in 1h) → Refresh automatically</c
           </table>
         </div>
 
+        <pre><code><span style="color: #6a9955;"># 1. Task Execution Role — for the ECS Platform</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_iam_role"</span> <span style="color: #ce9178;">"ecs_execution"</span> {
+  <span style="color: #9cdcfe;">name</span> = <span style="color: #ce9178;">"ecs-task-execution-role"</span>
+
+  <span style="color: #9cdcfe;">assume_role_policy</span> = jsonencode({
+    Version = <span style="color: #ce9178;">"2012-10-17"</span>
+    Statement = [{
+      Action = <span style="color: #ce9178;">"sts:AssumeRole"</span>
+      Effect = <span style="color: #ce9178;">"Allow"</span>
+      Principal = { Service = <span style="color: #ce9178;">"ecs-tasks.amazonaws.com"</span> }
+    }]
+  })
+}
+
+<span style="color: #6a9955;"># 2. Task Role — for the Application Logic</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_iam_role"</span> <span style="color: #ce9178;">"ecs_task"</span> {
+  <span style="color: #9cdcfe;">name</span> = <span style="color: #ce9178;">"ecs-app-task-role"</span>
+
+  <span style="color: #9cdcfe;">assume_role_policy</span> = jsonencode({
+    Version = <span style="color: #ce9178;">"2012-10-17"</span>
+    Statement = [{
+      Action = <span style="color: #ce9178;">"sts:AssumeRole"</span>
+      Effect = <span style="color: #ce9178;">"Allow"</span>
+      Principal = { Service = <span style="color: #ce9178;">"ecs-tasks.amazonaws.com"</span> }
+    }]
+  })
+}</code></pre>
+
         <h2>3. Cross-Account IAM — The Enterprise Pattern</h2>
         <h3>How Cross-Account Role Assumption Works</h3>
         <p>Cross-account access involves a source account principal assuming a role in a target account. This requires a trust policy in the target and an identity policy in the source using <code>sts:AssumeRole</code>.</p>
-        <pre><code><span style="color: #6a9955;"># In Account B — the role being assumed</span>
+        <pre><code><span style="color: #6a9955;"># 1. In Account B — the role being assumed</span>
 <span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_iam_role"</span> <span style="color: #ce9178;">"cross_account"</span> {
   <span style="color: #9cdcfe;">name</span> = <span style="color: #ce9178;">"cross-account-access-role"</span>
 
   <span style="color: #9cdcfe;">assume_role_policy</span> = jsonencode({
     Version = <span style="color: #ce9178;">"2012-10-17"</span>
+    Statement = [{
+      Effect = <span style="color: #ce9178;">"Allow"</span>
+      Principal = { AWS = <span style="color: #ce9178;">"arn:aws:iam::111111111111:role/app-role"</span> }
+      Action = <span style="color: #ce9178;">"sts:AssumeRole"</span>
+      Condition = {
+        StringEquals = { <span style="color: #ce9178;">"sts:ExternalId"</span> = <span style="color: #ce9178;">"enterprise-shared-id-123"</span> }
+      }
+    }]
+  })
+}
+
+<span style="color: #6a9955;"># 2. In Account A — The Terraform Provider Alias Pattern</span>
+<span style="color: #569cd6;">provider</span> <span style="color: #ce9178;">"aws"</span> {
+  <span style="color: #9cdcfe;">alias</span>  = <span style="color: #ce9178;">"account_b"</span>
+  <span style="color: #9cdcfe;">region</span> = <span style="color: #ce9178;">"eu-west-1"</span>
+  <span style="color: #9cdcfe;">assume_role</span> {
+    <span style="color: #9cdcfe;">role_arn</span>     = <span style="color: #ce9178;">"arn:aws:iam::222222222222:role/cross-account-access-role"</span>
+    <span style="color: #9cdcfe;">external_id</span>  = <span style="color: #ce9178;">"enterprise-shared-id-123"</span>
+    <span style="color: #9cdcfe;">session_name</span> = <span style="color: #ce9178;">"terraform-deployment"</span>
+  }
+}
+
+<span style="color: #6a9955;"># Resource deployed into Account B using the alias</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_s3_bucket"</span> <span style="color: #ce9178;">"shared_data"</span> {
+  <span style="color: #9cdcfe;">provider</span> = aws.account_b
+  <span style="color: #9cdcfe;">bucket</span>   = <span style="color: #ce9178;">"enterprise-shared-data-b"</span>
+}</code></pre>
+
+        <h2>4. Permission Boundaries — Delegating Safely</h2>
+        <h3>What They Are</h3>
+        <p>This is the mechanism that allows you to <strong>safely delegate IAM role creation</strong> to developers without giving them the ability to escalate their own privileges.</p>
+
+        <pre><code><span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_iam_policy"</span> <span style="color: #ce9178;">"developer_boundary"</span> {
+  <span style="color: #9cdcfe;">name</span> = <span style="color: #ce9178;">"developer-iam-boundary"</span>
+  
+  <span style="color: #9cdcfe;">policy</span> = jsonencode({
+    Version = <span style="color: #ce9178;">"2012-10-17"</span>
     Statement = [
       {
+        Sid    = <span style="color: #ce9178;">"AllowCommonServices"</span>
         Effect = <span style="color: #ce9178;">"Allow"</span>
-        Principal = {
-          AWS = [
-            <span style="color: #ce9178;">"arn:aws:iam::111111111111:role/app-role"</span>,     <span style="color: #6a9955;"># Specific role in Account A</span>
-            <span style="color: #ce9178;">"arn:aws:iam::222222222222:root"</span>               <span style="color: #6a9955;"># Any principal in Account C</span>
-          ]
-        }
-        Action = <span style="color: #ce9178;">"sts:AssumeRole"</span>
+        Action = [<span style="color: #ce9178;">"s3:*"</span>, <span style="color: #ce9178;">"ec2:*"</span>, <span style="color: #ce9178;">"lambda:*"</span>, <span style="color: #ce9178;">"dynamodb:*"</span>]
+        Resource = <span style="color: #ce9178;">"*"</span>
+      },
+      {
+        Sid    = <span style="color: #ce9178;">"DenyPrivilegeEscalation"</span>
+        Effect = <span style="color: #ce9178;">"Deny"</span>
+        Action = [
+          <span style="color: #ce9178;">"iam:CreatePolicyVersion"</span>,
+          <span style="color: #ce9178;">"iam:SetDefaultPolicyVersion"</span>,
+          <span style="color: #ce9178;">"iam:PassRole"</span>
+        ]
+        Resource = <span style="color: #ce9178;">"*"</span>
         Condition = {
-          Bool = { <span style="color: #ce9178;">"aws:MultiFactorAuthPresent"</span> = <span style="color: #ce9178;">"true"</span> }
-          StringEquals = { <span style="color: #ce9178;">"sts:ExternalId"</span> = var.external_id }
+          StringNotLike = { <span style="color: #ce9178;">"iam:PermissionsBoundary"</span> = <span style="color: #ce9178;">"arn:aws:iam::*:policy/developer-iam-boundary"</span> }
         }
       }
     ]
   })
 }</code></pre>
 
-        <h2>4. Permission Boundaries — Delegating Safely</h2>
-        <h3>What They Are</h3>
-        <p>A <code>Permissions Boundary</code> is a managed policy attached to an <code>IAM</code> role or user that sets the <strong>maximum permissions</strong> that identity can ever have — regardless of what identity-based policies are attached.</p>
-        <div style="background: #f8f9fa; border: 1px solid var(--aws-border); color: var(--aws-text); padding: 20px; text-align: center; font-weight: 700; border-radius: 6px; margin: 24px 0;">
-          Effective permissions = Identity policies ∩ Permissions Boundary
-        </div>
-        <p>This is the mechanism that allows you to <strong>safely delegate IAM role creation</strong> to developers without giving them the ability to escalate their own privileges.</p>
-
         <h2>5. Service Control Policies — Account-Level Guardrails</h2>
         <p><code>SCPs</code> are attached to <code>AWS</code> accounts or <code>OUs</code> in <code>AWS Organizations</code>. They define the <strong>maximum permissions for every IAM principal in that account</strong> — including the root user.</p>
         <p><strong>Critical:</strong> <code>SCPs</code> do not grant permissions. They only restrict them. Even if an <code>SCP</code> allows <code>s3:*</code>, an <code>IAM</code> role still needs an identity policy that allows <code>s3:GetObject</code>.</p>
-        <pre><code><span style="color: #6a9955;"># SCP — enforce encryption on all S3 objects</span>
-<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_organizations_policy"</span> <span style="color: #ce9178;">"require_s3_encryption"</span> {
-  <span style="color: #9cdcfe;">name</span>        = <span style="color: #ce9178;">"require-s3-encryption"</span>
-  <span style="color: #9cdcfe;">type</span>        = <span style="color: #ce9178;">"SERVICE_CONTROL_POLICY"</span>
+        <pre><code><span style="color: #6a9955;"># SCP — Enterprise Security Guardrails</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_organizations_policy"</span> <span style="color: #ce9178;">"security_guardrails"</span> {
+  <span style="color: #9cdcfe;">name</span> = <span style="color: #ce9178;">"enterprise-security-guardrails"</span>
+  <span style="color: #9cdcfe;">type</span> = <span style="color: #ce9178;">"SERVICE_CONTROL_POLICY"</span>
+
   <span style="color: #9cdcfe;">content</span> = jsonencode({
     Version = <span style="color: #ce9178;">"2012-10-17"</span>
-    Statement = [{
-      Sid    = <span style="color: #ce9178;">"DenyUnencryptedS3"</span>
-      Effect = <span style="color: #ce9178;">"Deny"</span>
-      Action = [<span style="color: #ce9178;">"s3:PutObject"</span>]
-      Resource = <span style="color: #ce9178;">"*"</span>
-      Condition = {
-        StringNotEquals = { <span style="color: #ce9178;">"s3:x-amz-server-side-encryption"</span> = [<span style="color: #ce9178;">"aws:kms"</span>, <span style="color: #ce9178;">"AES256"</span>] }
+    Statement = [
+      {
+        Sid    = <span style="color: #ce9178;">"PreventLeavingOrg"</span>
+        Effect = <span style="color: #ce9178;">"Deny"</span>
+        Action = [<span style="color: #ce9178;">"organizations:LeaveOrganization"</span>]
+        Resource = <span style="color: #ce9178;">"*"</span>
+      },
+      {
+        Sid    = <span style="color: #ce9178;">"ProtectCloudTrail"</span>
+        Effect = <span style="color: #ce9178;">"Deny"</span>
+        Action = [<span style="color: #ce9178;">"cloudtrail:StopLogging"</span>, <span style="color: #ce9178;">"cloudtrail:DeleteTrail"</span>]
+        Resource = <span style="color: #ce9178;">"*"</span>
+      },
+      {
+        Sid    = <span style="color: #ce9178;">"RegionRestriction"</span>
+        Effect = <span style="color: #ce9178;">"Deny"</span>
+        NotAction = [<span style="color: #ce9178;">"iam:*"</span>, <span style="color: #ce9178;">"organizations:*"</span>, <span style="color: #ce9178;">"route53:*"</span>, <span style="color: #ce9178;">"cloudfront:*"</span>]
+        Resource = <span style="color: #ce9178;">"*"</span>
+        Condition = {
+          StringNotEquals = { <span style="color: #ce9178;">"aws:RequestedRegion"</span> = [<span style="color: #ce9178;">"eu-west-1"</span>, <span style="color: #ce9178;">"us-east-1"</span>] }
+        }
       }
-    }]
+    ]
   })
 }</code></pre>
 
-        <h2>6. Identity Federation — SSO at Enterprise Scale</h2>
         <p>For enterprise organisations with 10+ <code>AWS</code> accounts, managing individual <code>IAM Users</code> per account is unsustainable. <code>IAM Identity Center</code> provides centralised <code>SSO</code> via identity providers like Okta or Azure AD.</p>
 
-        <h2>7. CI/CD IAM — The Most Dangerous Attack Surface</h2>
-        <h3>GitHub Actions with OIDC — No Long-Term Keys</h3>
-        <p>The modern approach uses <code>OpenID Connect</code> (<code>OIDC</code>) to issue short-term credentials, eliminating the need for long-term <code>AWS_ACCESS_KEY_ID</code> secrets in GitHub.</p>
-        <pre><code><span style="color: #6a9955;"># OIDC Identity Provider</span>
-<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_iam_openid_connect_provider"</span> <span style="color: #ce9178;">"github"</span> {
-  <span style="color: #9cdcfe;">url</span> = <span style="color: #ce9178;">"https://token.actions.githubusercontent.com"</span>
-  <span style="color: #9cdcfe;">client_id_list</span> = [<span style="color: #ce9178;">"sts.amazonaws.com"</span>]
-  <span style="color: #9cdcfe;">thumbprint_list</span> = [<span style="color: #ce9178;">"6938fd4d98bab03faadb97b34396831e3780aea1"</span>]
+        <pre><code><span style="color: #6a9955;"># 1. Permission Set — defines what users can do</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_ssoadmin_permission_set"</span> <span style="color: #ce9178;">"admin"</span> {
+  <span style="color: #9cdcfe;">name</span>             = <span style="color: #ce9178;">"AdministratorAccess"</span>
+  <span style="color: #9cdcfe;">instance_arn</span>     = tolist(data.aws_ssoadmin_instances.main.arns)[0]
+  <span style="color: #9cdcfe;">session_duration</span> = <span style="color: #ce9178;">"PT2H"</span>
+}
+
+<span style="color: #6a9955;"># 2. Account Assignment — assigns user/group to account with permission set</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_ssoadmin_account_assignment"</span> <span style="color: #ce9178;">"admin_assignment"</span> {
+  <span style="color: #9cdcfe;">instance_arn</span>       = aws_ssoadmin_permission_set.admin.instance_arn
+  <span style="color: #9cdcfe;">target_id</span>          = <span style="color: #ce9178;">"123456789012"</span>  <span style="color: #6a9955;"># Target Account ID</span>
+  <span style="color: #9cdcfe;">target_type</span>        = <span style="color: #ce9178;">"AWS_ACCOUNT"</span>
+  <span style="color: #9cdcfe;">permission_set_arn</span> = aws_ssoadmin_permission_set.admin.arn
+  <span style="color: #9cdcfe;">principal_id</span>       = <span style="color: #ce9178;">"9067b5c2-b0d1-706d-e061-0734a974d092"</span> <span style="color: #6a9955;"># Group/User ID from IdP</span>
+  <span style="color: #9cdcfe;">principal_type</span>     = <span style="color: #ce9178;">"GROUP"</span>
 }</code></pre>
 
-        <h2>8. IAM Access Analyzer — Automated Policy Intelligence</h2>
+        <h2>7. CI/CD IAM — The Most Dangerous Attack Surface</h2>
+        <pre><code><span style="color: #6a9955;"># 1. Trust Policy scoped to GitHub Repo & Branch</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_iam_role"</span> <span style="color: #ce9178;">"github_actions"</span> {
+  <span style="color: #9cdcfe;">name</span> = <span style="color: #ce9178;">"github-actions-deploy-role"</span>
+
+  <span style="color: #9cdcfe;">assume_role_policy</span> = jsonencode({
+    Version = <span style="color: #ce9178;">"2012-10-17"</span>
+    Statement = [{
+      Effect = <span style="color: #ce9178;">"Allow"</span>
+      Principal = { Federated = aws_iam_openid_connect_provider.github.arn }
+      Action = <span style="color: #ce9178;">"sts:AssumeRoleWithWebIdentity"</span>
+      Condition = {
+        StringLike = {
+          <span style="color: #ce9178;">"token.actions.githubusercontent.com:sub"</span> = <span style="color: #ce9178;">"repo:ankushpanday/infrastructure:ref:refs/heads/main"</span>
+        }
+      }
+    }]
+  })
+}
+
+<span style="color: #6a9955;"># 2. Deployment Policy (Least Privilege)</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_iam_role_policy"</span> <span style="color: #ce9178;">"deploy_policy"</span> {
+  <span style="color: #9cdcfe;">role</span> = aws_iam_role.github_actions.id
+  <span style="color: #9cdcfe;">policy</span> = jsonencode({
+    Version = <span style="color: #ce9178;">"2012-10-17"</span>
+    Statement = [{
+      Effect = <span style="color: #ce9178;">"Allow"</span>
+      Action = [<span style="color: #ce9178;">"s3:*"</span>, <span style="color: #ce9178;">"ec2:*"</span>, <span style="color: #ce9178;">"rds:*"</span>, <span style="color: #ce9178;">"iam:PassRole"</span>]
+      Resource = <span style="color: #ce9178;">"*"</span>
+    }]
+  })
+}
+
+<span style="color: #6a9955;"># 3. GitHub Actions YAML (.github/workflows/deploy.yml)</span>
+<span style="color: #9cdcfe;">jobs:</span>
+  <span style="color: #9cdcfe;">deploy:</span>
+    <span style="color: #9cdcfe;">permissions:</span>
+      <span style="color: #9cdcfe;">id-token: write</span>
+      <span style="color: #9cdcfe;">contents: read</span>
+    <span style="color: #9cdcfe;">steps:</span>
+      <span style="color: #9cdcfe;">- name: Configure AWS Credentials</span>
+        <span style="color: #9cdcfe;">uses: aws-actions/configure-aws-credentials@v4</span>
+        <span style="color: #9cdcfe;">with:</span>
+          <span style="color: #9cdcfe;">role-to-assume: arn:aws:iam::123456789012:role/github-actions-deploy-role</span>
+          <span style="color: #9cdcfe;">aws-region: eu-west-1</span></code></pre>
+
         <p><code>IAM Access Analyzer</code> automatically scans your resource policies and identifies any resource accessible from outside your <code>AWS</code> account or Organisation — without you having to audit them manually.</p>
+
+        <pre><code><span style="color: #6a9955;"># 1. Enable the Analyzer</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_accessanalyzer_analyzer"</span> <span style="color: #ce9178;">"main"</span> {
+  <span style="color: #9cdcfe;">analyzer_name</span> = <span style="color: #ce9178;">"account-security-analyzer"</span>
+  <span style="color: #9cdcfe;">type</span>          = <span style="color: #ce9178;">"ACCOUNT"</span>
+}
+
+<span style="color: #6a9955;"># 2. Archive Rule for Trusted Partners</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_accessanalyzer_archive_rule"</span> <span style="color: #ce9178;">"trusted_account"</span> {
+  <span style="color: #9cdcfe;">analyzer_name</span> = aws_accessanalyzer_analyzer.main.analyzer_name
+  <span style="color: #9cdcfe;">rule_name</span>     = <span style="color: #ce9178;">"archive-trusted-partner-access"</span>
+  <span style="color: #9cdcfe;">filter</span> {
+    <span style="color: #9cdcfe;">criteria</span> = <span style="color: #ce9178;">"principal.AWS"</span>
+    <span style="color: #9cdcfe;">contains</span> = [<span style="color: #ce9178;">"111122223333"</span>] <span style="color: #6a9955;"># Partner Account ID</span>
+  }
+}
+
+<span style="color: #6a9955;"># 3. Real-time Alerting via CloudWatch Event</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_cloudwatch_event_rule"</span> <span style="color: #ce9178;">"analyzer_finding"</span> {
+  <span style="color: #9cdcfe;">name</span> = <span style="color: #ce9178;">"iam-access-analyzer-finding"</span>
+  <span style="color: #9cdcfe;">event_pattern</span> = jsonencode({
+    source      = [<span style="color: #ce9178;">"aws.access-analyzer"</span>]
+    detail-type = [<span style="color: #ce9178;">"Access Analyzer Finding"</span>]
+  })
+}</code></pre>
 
         <h2>9. Cost Consideration</h2>
         <p><code>IAM</code> itself is free. However, poor <code>IAM</code> hygiene creates indirect costs:</p>
@@ -458,6 +663,26 @@ IAM Role:  AssumeRole → STS Token (expires in 1h) → Refresh automatically</c
           <h4>Mistake 2: Wildcard Resources in Production Policies</h4>
           <p>Grants access to ALL resources (e.g., all <code>S3</code> buckets) instead of just the ones needed. Always scope to specific <code>ARNs</code>.</p>
         </div>
+        <div class="pitfall-card">
+          <h4>Mistake 3: Hardcoding Credentials in App Configs</h4>
+          <p>Never store <code>AWS_ACCESS_KEY_ID</code> in <code>web.config</code> or <code>.env</code> files. Use <strong>IAM Roles</strong> for services and <strong>AWS Secrets Manager</strong> for third-party keys.</p>
+        </div>
+        <div class="pitfall-card">
+          <h4>Mistake 4: Missing MFA on Sensitive Role Assumption</h4>
+          <p>Highly privileged roles (e.g., <code>NetworkAdmin</code>) should always require MFA. Add the <code>aws:MultiFactorAuthPresent</code> condition to the trust policy.</p>
+        </div>
+        <div class="pitfall-card">
+          <h4>Mistake 5: Overly Broad <code>iam:PassRole</code> Permissions</h4>
+          <p>Allowing <code>iam:PassRole</code> on <code>*</code> is a massive security hole. It allows a developer to pass the <code>AdministratorAccess</code> role to an EC2 instance they control.</p>
+        </div>
+        <div class="pitfall-card">
+          <h4>Mistake 6: Using the Root User for Daily Tasks</h4>
+          <p>The root user has absolute power and cannot be restricted by SCPs. Create an <code>Administrator</code> role via SSO and lock the root credentials in a physical vault.</p>
+        </div>
+        <div class="pitfall-card">
+          <h4>Mistake 7: Stagnant IAM Access Keys</h4>
+          <p>If you must use keys, rotate them every 90 days. Undetected leaked keys from 2 years ago are the #1 cause of "unexpected" account takeovers.</p>
+        </div>
 
         <h2>Architecture Decision Matrix</h2>
         <div style="overflow-x: auto;">
@@ -498,7 +723,42 @@ IAM Role:  AssumeRole → STS Token (expires in 1h) → Refresh automatically</c
                 <td>❌ Has keys</td>
                 <td>✅ STS tokens</td>
                 <td>✅ STS tokens</td>
-                <td>❌ N/A</td>
+                <td>N/A</td>
+              </tr>
+              <tr>
+                <td>Cross-Account Governance</td>
+                <td>❌ Hard to manage</td>
+                <td>✅ ExternalId pattern</td>
+                <td>✅ Centralised</td>
+                <td>✅ Enforces limits</td>
+              </tr>
+              <tr>
+                <td>Multi-Account Scale</td>
+                <td>❌ Unsustainable</td>
+                <td>⚠️ Manual effort</td>
+                <td>✅ Native scale</td>
+                <td>✅ Bulk protection</td>
+              </tr>
+              <tr>
+                <td>Privilege Escalation Prevention</td>
+                <td>❌ Not natively</td>
+                <td>✅ Permissions Boundaries</td>
+                <td>✅ Centralised control</td>
+                <td>✅ Hard ceiling</td>
+              </tr>
+              <tr>
+                <td>Compliance Auditability</td>
+                <td>⚠️ Hard (key usage)</td>
+                <td>✅ CloudTrail / Access Analyzer</td>
+                <td>✅ Centralised logs</td>
+                <td>✅ Enforced standards</td>
+              </tr>
+              <tr>
+                <td>Developer Self-Service</td>
+                <td>❌ Dangerous</td>
+                <td>✅ With Boundaries</td>
+                <td>✅ Managed access</td>
+                <td>✅ Guardrails in place</td>
               </tr>
             </tbody>
           </table>

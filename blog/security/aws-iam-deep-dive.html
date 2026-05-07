@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <!-- SEO PRIMARY -->
+  <title>AWS IAM Deep Dive: Roles, Policies & Boundaries | Ankush Panday</title>
+  <meta name="description" content="Mastering AWS Identity and Access Management (IAM). A deep dive into Users, Roles, Policies, Service Control Policies (SCPs), and Permission Boundaries.">
+  <meta name="keywords" content="AWS, IAM, Security, Least Privilege, Permission Boundaries, SCP, CloudArchitecture, DevSecOps">
+  <link rel="canonical" href="https://www.ankushpanday.com/blog/security/aws-iam-deep-dive.html">
+
+  <!-- OPEN GRAPH -->
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://www.ankushpanday.com/blog/security/aws-iam-deep-dive.html">
+  <meta property="og:title" content="AWS IAM Deep Dive: Roles, Policies & Boundaries — Mastering Least Privilege">
+  <meta property="og:description" content="Identity is the new perimeter. Learn how to architect secure, scalable IAM strategies using advanced concepts like Permission Boundaries and SCPs.">
+  <meta property="og:image" content="https://www.ankushpanday.com/images/aws-iam-roles-policies-architecture.png">
+
+  <link rel="stylesheet" href="../../style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    .blog-page-container { max-width: 900px; margin: 100px auto 40px auto; padding: 0 20px; min-height: calc(100vh - 200px); }
+    .back-btn { display: inline-flex; align-items: center; gap: 8px; color: var(--aws-blue); text-decoration: none; font-weight: 500; margin-bottom: 24px; }
+    .blog-content-card { background: var(--aws-white); border: 1px solid var(--aws-border); border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+    .blog-header { background: #f8f9fa; padding: 40px; border-bottom: 1px solid var(--aws-border); }
+    .blog-body { padding: 40px; line-height: 1.8; font-size: 16px; color: var(--aws-text); }
+    .blog-body h2 { margin-top: 48px; font-size: 26px; color: var(--aws-text); border-bottom: 2px solid var(--aws-orange); display: inline-block; padding-bottom: 4px; margin-bottom: 24px; }
+    .blog-body h3 { margin-top: 32px; font-size: 22px; color: var(--aws-blue); margin-bottom: 16px; }
+    .blog-body h4 { margin-top: 24px; font-size: 18px; color: var(--aws-text); font-weight: 700; }
+    .blog-body p { margin-bottom: 20px; }
+    .blog-body ul, .blog-body ol { margin-bottom: 24px; padding-left: 24px; }
+    .blog-body li { margin-bottom: 12px; }
+    .blog-body strong { color: var(--aws-text); }
+    .blog-body blockquote { font-style: italic; color: var(--aws-text-light); margin: 30px 0; border-left: 4px solid var(--aws-orange); padding-left: 15px; background: #fcfcfc; padding: 20px; }
+    
+    .compare-table { width: 100%; border-collapse: collapse; text-align: left; margin-bottom: 30px; font-size: 14px; }
+    .compare-table th { background: var(--aws-blue); color: white; padding: 12px; border: 1px solid var(--aws-border); }
+    .compare-table td { padding: 12px; border: 1px solid var(--aws-border); }
+    .compare-table tr:nth-child(even) { background: #f9f9f9; }
+
+    .code-block { background: #1e1e1e; padding: 16px; border-radius: 6px; margin-bottom: 24px; overflow-x: auto; border: 1px solid #333; }
+    .code-block pre { margin: 0; color: #d4d4d4; font-family: monospace; font-size: 13px; }
+    
+    .pitfall-card { background: #fff5f5; border: 1px solid #fed7d7; border-left: 4px solid #d13212; padding: 20px; border-radius: 6px; margin-bottom: 20px; }
+    
+    .author-card { display: flex; gap: 20px; align-items: center; padding: 30px; background: #fcfcfc; border-top: 1px solid var(--aws-border); }
+    .author-img { width: 80px; height: 80px; border-radius: 50%; background: var(--aws-highlight); display: flex; align-items: center; justify-content: center; font-size: 30px; color: var(--aws-orange); border: 2px solid var(--aws-border); }
+    .nav-links { display: flex; justify-content: space-between; margin-top: 40px; padding: 20px 0; border-top: 1px solid var(--aws-border); }
+    .nav-link { text-decoration: none; color: var(--aws-blue); font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 8px; }
+    .tag { display: inline-block; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: 600; margin-right: 8px; }
+    .tag.blue { background: #e7f2fa; color: #0073bb; }
+    .tag.purple { background: #f2e7fa; color: #6b3fa0; }
+  </style>
+</head>
+<body>
+
+  <nav class="aws-topnav">
+    <a href="../../index.html" class="logo">
+      <i class="fa-solid fa-cloud" style="color: var(--aws-orange); font-size: 20px;"></i>
+      <span>Ankush Panday</span>
+    </a>
+    <div class="nav-spacer"></div>
+    <div class="nav-icons">
+      <a href="../../index.html" class="nav-icon-btn" style="text-decoration: none;">Portfolio Home</a>
+      <a href="../index.html" class="nav-icon-btn orange" style="text-decoration: none; font-weight: 600;">Blog Hub</a>
+      <button class="nav-icon-btn"><i class="fa-solid fa-earth-europe" style="margin-right: 6px; font-size: 12px; color: var(--aws-orange);"></i> Europe (nl-ams-1)</button>
+      <button class="nav-icon-btn">ankushpandey@hotmail.com <i class="fa-solid fa-caret-down" style="margin-left: 4px;"></i></button>
+    </div>
+  </nav>
+
+  <div class="blog-page-container">
+    <a href="../index.html" class="back-btn"><i class="fa-solid fa-arrow-left"></i> Back to Blog Hub</a>
+    
+    <article class="blog-content-card">
+      <header class="blog-header">
+        <h1 style="font-size: 32px; color: var(--aws-text); margin-bottom: 16px; line-height: 1.2;">AWS IAM Deep Dive: Roles, Policies & Boundaries — Mastering Least Privilege</h1>
+        <div style="display: flex; gap: 12px; align-items: center; color: var(--aws-text-light); font-size: 14px; flex-wrap: wrap;">
+          <span>May 7, 2026</span>
+          <span>•</span>
+          <span>18 min read</span>
+          <span class="tag blue">Identity</span>
+          <span class="tag purple">Security</span>
+        </div>
+      </header>
+
+      <div class="blog-body">
+        <p style="font-style: italic; color: var(--aws-text-light); margin-bottom: 30px; border-left: 4px solid var(--aws-orange); padding-left: 15px;">
+          <strong>AWS Security Series | Part 1</strong> — Identity is the new perimeter. Learn how to architect for least privilege.
+        </p>
+
+        <img src="../../images/aws-iam-roles-policies-architecture.png" alt="AWS IAM Architecture Deep Dive" style="display: block; width: 100%; border-radius: 8px; border: 1px solid var(--aws-border); margin-bottom: 40px;">
+
+        <p>Identity and Access Management (IAM) is the most critical service in AWS. It’s the "glue" that binds every other service together. If your IAM strategy is weak, your network security won't save you. In this deep dive, we move beyond the basics of Users and Groups to explore the advanced mechanisms that power enterprise-grade security.</p>
+
+        <h2>1. The Identity Stack: Users vs. Roles</h2>
+        <p>In a production environment, you should rarely be using IAM Users. Instead, the focus should be on <strong>IAM Roles</strong>. Roles are intended to be assumed by authorized identities (users, applications, or services) for temporary access.</p>
+        
+        <ul>
+          <li><strong>IAM Users:</strong> Long-term credentials (access keys). High risk if leaked.</li>
+          <li><strong>IAM Roles:</strong> Short-term credentials. Temporary, revocable, and much more secure.</li>
+        </ul>
+
+        <h3>Best Practice: Federation</h3>
+        <p>For enterprise teams, always prefer Identity Federation (e.g., via AWS IAM Identity Center/SSO) over creating local IAM users. This centralizes management and ensures that when an employee leaves the company, their cloud access is revoked instantly via the central directory (AD/Okta).</p>
+
+        <h2>2. Understanding Policy Evaluation Logic</h2>
+        <p>AWS policy evaluation follows a simple but strict rule: <strong>An explicit DENY always wins.</strong> If there is no explicit DENY, then there must be an explicit ALLOW for an action to be permitted. If neither exists, the request is denied by default (Implicit Deny).</p>
+
+        <div style="overflow-x: auto;">
+          <table class="compare-table">
+            <thead>
+              <tr>
+                <th>Policy Type</th>
+                <th>Primary Use Case</th>
+                <th>Scope</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Identity-based</strong></td>
+                <td>Attached to Users/Roles to grant permissions.</td>
+                <td>Principal</td>
+              </tr>
+              <tr>
+                <td><strong>Resource-based</strong></td>
+                <td>Attached to S3 buckets, KMS keys, etc.</td>
+                <td>Resource</td>
+              </tr>
+              <tr>
+                <td><strong>SCPs</strong></td>
+                <td>Guardrails for an entire AWS Organization.</td>
+                <td>Account/OU</td>
+              </tr>
+              <tr>
+                <td><strong>Permission Boundaries</strong></td>
+                <td>Maximum permissions an entity can ever have.</td>
+                <td>Principal</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2>3. Permission Boundaries: The Secret Weapon</h2>
+        <p>Permission Boundaries are often misunderstood. They don't grant permissions; they **limit** them. Think of them as a "maximum allowable ceiling." This is incredibly useful for team enablement.</p>
+        <p><strong>Scenario:</strong> You want to allow developers to create their own IAM roles (e.g., for Lambda functions) without giving them the power to create a full "Admin" role. By enforcing a Permission Boundary, you can ensure that any role they create can never exceed the permissions defined in that boundary, even if they attach an AdministratorAccess policy.</p>
+
+        <div class="code-block">
+          <pre>{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "AllowS3AndDynamoOnly",
+            "Effect": "Allow",
+            "Action": [
+                "s3:*",
+                "dynamodb:*"
+            ],
+            "Resource": "*"
+        }
+    ]
+}</pre>
+        </div>
+        <p><em>The boundary above ensures that any role created with this boundary attached can ONLY perform S3 and DynamoDB actions, regardless of what other policies are attached to it.</em></p>
+
+        <h2>4. Common Pitfalls & Production Lessons</h2>
+        
+        <div class="pitfall-card">
+          <h4>Pitfall 1: Using the Root User for Daily Tasks</h4>
+          <p>The root user should only be used for the initial setup and specific account management tasks (like changing support plans). Always lock the root user away with MFA and use IAM Roles for everything else.</p>
+        </div>
+
+        <div class="pitfall-card">
+          <h4>Pitfall 2: Overly Broad Resource Wildcards</h4>
+          <p>Using <code>"Resource": "*"</code> is the fastest way to fail an audit. Whenever possible, restrict permissions to specific ARNs. This prevents "lateral movement" if a role is compromised.</p>
+        </div>
+
+        <div class="pitfall-card">
+          <h4>Pitfall 3: Not Rotating Access Keys</h4>
+          <p>If you must use IAM Users and access keys, rotate them every 90 days. Better yet, migrate to IAM Roles and temporary credentials using Instance Profiles or OIDC for GitHub Actions.</p>
+        </div>
+
+        <div class="pitfall-card">
+          <h4>Pitfall 4: Forgetting the Confused Deputy Problem</h4>
+          <p>When allowing a 3rd party (like a monitoring tool) to assume a role in your account, always enforce the use of an <code>ExternalID</code> to prevent cross-account impersonation attacks.</p>
+        </div>
+
+        <h2>The Golden Rule of IAM</h2>
+        <blockquote>
+          "Grant only the permissions required to perform a task. No more, no less. Audit often, and automate the removal of unused permissions."
+        </blockquote>
+
+        <div class="author-card">
+          <div class="author-img">AP</div>
+          <div>
+            <div style="font-weight: 700; color: var(--aws-text);">Ankush Panday</div>
+            <div style="font-size: 13px; color: var(--aws-text-light);">Cloud Specialist @ Rabobank | AWS & Kubernetes Architect</div>
+          </div>
+        </div>
+
+        <div class="nav-links">
+          <a href="../networking/network-firewall-vs-security-groups.html" class="nav-link"><i class="fa-solid fa-chevron-left"></i> Previous: Network Firewall vs SG</a>
+          <a href="../index.html" class="nav-link">Next: Security Hub & GuardDuty <i class="fa-solid fa-chevron-right"></i></a>
+        </div>
+
+      </div>
+    </article>
+  </div>
+
+  <footer class="aws-footer">
+    Built for Performance. Architected for the Cloud. &bull; &copy; 2026 <span>Ankush Panday</span>
+  </footer>
+
+</body>
+</html>

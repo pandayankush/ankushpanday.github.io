@@ -5,16 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
   <!-- SEO PRIMARY -->
-  <title>AWS IAM Deep Dive: Roles, Policies & Boundaries | Ankush Panday</title>
-  <meta name="description" content="Mastering AWS Identity and Access Management (IAM). A deep dive into Users, Roles, Policies, Service Control Policies (SCPs), and Permission Boundaries.">
-  <meta name="keywords" content="AWS, IAM, Security, Least Privilege, Permission Boundaries, SCP, CloudArchitecture, DevSecOps">
+  <title>AWS IAM Deep Dive — Roles, Policies, and Zero-Trust at Scale | Ankush Panday</title>
+  <meta name="description" content="Mastering AWS Identity and Access Management (IAM). A Part 8 deep dive into OIDC, Permission Boundaries, SCPs, and building a Zero-Trust identity posture at scale.">
+  <meta name="keywords" content="AWS, IAM, Security, Zero-Trust, OIDC, Terraform, SCP, Permissions Boundary, CloudSecurity, DevSecOps">
   <link rel="canonical" href="https://www.ankushpanday.com/blog/security/aws-iam-deep-dive.html">
 
   <!-- OPEN GRAPH -->
   <meta property="og:type" content="article">
   <meta property="og:url" content="https://www.ankushpanday.com/blog/security/aws-iam-deep-dive.html">
-  <meta property="og:title" content="AWS IAM Deep Dive: Roles, Policies & Boundaries — Mastering Least Privilege">
-  <meta property="og:description" content="Identity is the new perimeter. Learn how to architect secure, scalable IAM strategies using advanced concepts like Permission Boundaries and SCPs.">
+  <meta property="og:title" content="AWS IAM Deep Dive — Roles, Policies, and Zero-Trust at Scale">
+  <meta property="og:description" content="Mastering the new perimeter. Learn how to architect secure, scalable IAM strategies using advanced OIDC and Zero-Trust patterns.">
   <meta property="og:image" content="https://www.ankushpanday.com/images/aws-iam-roles-policies-architecture.png">
 
   <link rel="stylesheet" href="../../style.css">
@@ -39,18 +39,24 @@
     .compare-table td { padding: 12px; border: 1px solid var(--aws-border); }
     .compare-table tr:nth-child(even) { background: #f9f9f9; }
 
-    .code-block { background: #1e1e1e; padding: 16px; border-radius: 6px; margin-bottom: 24px; overflow-x: auto; border: 1px solid #333; }
-    .code-block pre { margin: 0; color: #d4d4d4; font-family: monospace; font-size: 13px; }
+    /* Code block styling - synchronized across all blogs */
+    pre { background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; margin: 24px 0; font-size: 13px; line-height: 1.5; border-left: 4px solid var(--aws-orange); }
+    code { font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; background: #f1f3f5; color: #232f3e; padding: 2px 4px; border-radius: 4px; border: 1px solid #dee2e6; font-size: 0.9em; }
+    pre code { background: none; color: inherit; padding: 0; border: none; font-size: inherit; }
     
     .pitfall-card { background: #fff5f5; border: 1px solid #fed7d7; border-left: 4px solid #d13212; padding: 20px; border-radius: 6px; margin-bottom: 20px; }
     
     .author-card { display: flex; gap: 20px; align-items: center; padding: 30px; background: #fcfcfc; border-top: 1px solid var(--aws-border); }
     .author-img { width: 80px; height: 80px; border-radius: 50%; background: var(--aws-highlight); display: flex; align-items: center; justify-content: center; font-size: 30px; color: var(--aws-orange); border: 2px solid var(--aws-border); }
-    .nav-links { display: flex; justify-content: space-between; margin-top: 40px; padding: 20px 0; border-top: 1px solid var(--aws-border); }
+    .nav-links { display: flex; justify-content: space-between; margin: 40px 0; padding: 20px 0; border-top: 1px solid var(--aws-border); }
     .nav-link { text-decoration: none; color: var(--aws-blue); font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 8px; }
     .tag { display: inline-block; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: 600; margin-right: 8px; }
     .tag.blue { background: #e7f2fa; color: #0073bb; }
     .tag.purple { background: #f2e7fa; color: #6b3fa0; }
+
+    .share-section { padding: 20px 40px; border-top: 1px solid var(--aws-border); display: flex; justify-content: space-between; align-items: center; background: #fff; }
+    .share-btn { padding: 8px 16px; border-radius: 4px; text-decoration: none; font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 8px; }
+    .linkedin-btn { background: #0077b5; color: white; }
   </style>
 </head>
 <body>
@@ -74,11 +80,11 @@
     
     <article class="blog-content-card">
       <header class="blog-header">
-        <h1 style="font-size: 32px; color: var(--aws-text); margin-bottom: 16px; line-height: 1.2;">AWS IAM Deep Dive: Roles, Policies & Boundaries — Mastering Least Privilege</h1>
+        <h1 style="font-size: 32px; color: var(--aws-text); margin-bottom: 16px; line-height: 1.2;">AWS IAM Deep Dive — Roles, Policies, and Zero-Trust Identity at Scale</h1>
         <div style="display: flex; gap: 12px; align-items: center; color: var(--aws-text-light); font-size: 14px; flex-wrap: wrap;">
           <span>May 7, 2026</span>
           <span>•</span>
-          <span>18 min read</span>
+          <span>25 min read</span>
           <span class="tag blue">Identity</span>
           <span class="tag purple">Security</span>
         </div>
@@ -86,125 +92,453 @@
 
       <div class="blog-body">
         <p style="font-style: italic; color: var(--aws-text-light); margin-bottom: 30px; border-left: 4px solid var(--aws-orange); padding-left: 15px;">
-          <strong>AWS Security Series | Part 1</strong> — Identity is the new perimeter. Learn how to architect for least privilege.
+          <strong>AWS Series | Part 8</strong> — Building secure, cost-optimised, cloud-native infrastructure on AWS
         </p>
 
         <img src="../../images/aws-iam-roles-policies-architecture.png" alt="AWS IAM Architecture Deep Dive" style="display: block; width: 100%; border-radius: 8px; border: 1px solid var(--aws-border); margin-bottom: 40px;">
 
-        <p>Identity and Access Management (IAM) is the most critical service in AWS. It’s the "glue" that binds every other service together. If your IAM strategy is weak, your network security won't save you. In this deep dive, we move beyond the basics of Users and Groups to explore the advanced mechanisms that power enterprise-grade security.</p>
-
-        <h2>1. The Identity Stack: Users vs. Roles</h2>
-        <p>In a production environment, you should rarely be using IAM Users. Instead, the focus should be on <strong>IAM Roles</strong>. Roles are intended to be assumed by authorized identities (users, applications, or services) for temporary access.</p>
-        
-        <ul>
-          <li><strong>IAM Users:</strong> Long-term credentials (access keys). High risk if leaked.</li>
-          <li><strong>IAM Roles:</strong> Short-term credentials. Temporary, revocable, and much more secure.</li>
-        </ul>
-
-        <h3>Best Practice: Federation</h3>
-        <p>For enterprise teams, always prefer Identity Federation (e.g., via AWS IAM Identity Center/SSO) over creating local IAM users. This centralizes management and ensures that when an employee leaves the company, their cloud access is revoked instantly via the central directory (AD/Okta).</p>
-
-        <h2>2. Understanding Policy Evaluation Logic</h2>
-        <p>AWS policy evaluation follows a simple but strict rule: <strong>An explicit DENY always wins.</strong> If there is no explicit DENY, then there must be an explicit ALLOW for an action to be permitted. If neither exists, the request is denied by default (Implicit Deny).</p>
-
+        <h2>TL;DR Comparison</h2>
         <div style="overflow-x: auto;">
           <table class="compare-table">
             <thead>
               <tr>
-                <th>Policy Type</th>
-                <th>Primary Use Case</th>
-                <th>Scope</th>
+                <th>Concept</th>
+                <th>IAM Users</th>
+                <th>IAM Roles</th>
+                <th>IAM Groups</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td><strong>Identity-based</strong></td>
-                <td>Attached to Users/Roles to grant permissions.</td>
-                <td>Principal</td>
+                <td><strong>Identity type</strong></td>
+                <td>Human or service</td>
+                <td>AWS service or federated identity</td>
+                <td>Collection of users</td>
               </tr>
               <tr>
-                <td><strong>Resource-based</strong></td>
-                <td>Attached to S3 buckets, KMS keys, etc.</td>
-                <td>Resource</td>
+                <td><strong>Credentials</strong></td>
+                <td>Long-term (access keys)</td>
+                <td>Short-term (STS tokens, 1h–12h)</td>
+                <td>Inherited from group policies</td>
               </tr>
               <tr>
-                <td><strong>SCPs</strong></td>
-                <td>Guardrails for an entire AWS Organization.</td>
-                <td>Account/OU</td>
+                <td><strong>Best for</strong></td>
+                <td>Break-glass emergency access</td>
+                <td>EC2, Lambda, ECS, CI/CD, SSO</td>
+                <td>Organising human users</td>
               </tr>
               <tr>
-                <td><strong>Permission Boundaries</strong></td>
-                <td>Maximum permissions an entity can ever have.</td>
-                <td>Principal</td>
+                <td><strong>MFA support</strong></td>
+                <td>✅ Yes</td>
+                <td>✅ Via assume-role condition</td>
+                <td>✅ Per user</td>
+              </tr>
+              <tr>
+                <td><strong>Cross-account</strong></td>
+                <td>❌ Not directly</td>
+                <td>✅ Native</td>
+                <td>❌ No</td>
+              </tr>
+              <tr>
+                <td><strong>Rotation required</strong></td>
+                <td>✅ Manual rotation needed</td>
+                <td>✅ Automatic (STS)</td>
+                <td>N/A</td>
+              </tr>
+              <tr>
+                <td><strong>Recommended</strong></td>
+                <td>Minimal use</td>
+                <td>Always preferred</td>
+                <td>For human users only</td>
               </tr>
             </tbody>
           </table>
         </div>
 
-        <h2>3. Permission Boundaries: The Secret Weapon</h2>
-        <p>Permission Boundaries are often misunderstood. They don't grant permissions; they **limit** them. Think of them as a "maximum allowable ceiling." This is incredibly useful for team enablement.</p>
-        <p><strong>Scenario:</strong> You want to allow developers to create their own IAM roles (e.g., for Lambda functions) without giving them the power to create a full "Admin" role. By enforcing a Permission Boundary, you can ensure that any role they create can never exceed the permissions defined in that boundary, even if they attach an AdministratorAccess policy.</p>
+        <p><code>IAM</code> is the most powerful — and most dangerous — service in <code>AWS</code>. Every action in your entire <code>AWS</code> estate flows through <code>IAM</code>. A misconfigured <code>S3</code> bucket policy is a data leak. A misconfigured <code>IAM</code> role is a full account takeover.</p>
+        <p>Yet <code>IAM</code> is also one of the most poorly understood services. Engineers create overly permissive roles "just to make it work," attach <code>AdministratorAccess</code> to <code>Lambda</code> functions, store long-term access keys in environment variables, and wonder why their security audit comes back with 47 critical findings.</p>
+        <p>In this post we go end-to-end: how <code>IAM</code> policy evaluation actually works, how to build least-privilege roles for every <code>AWS</code> service, how to implement cross-account access safely, how to federate your corporate identity into <code>AWS</code>, and how to build a <code>Zero Trust</code> <code>IAM</code> posture at enterprise scale. Every concept has working <code>Terraform</code>.</p>
 
-        <div class="code-block">
-          <pre>{
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Sid": "AllowS3AndDynamoOnly",
-            "Effect": "Allow",
-            "Action": [
-                "s3:*",
-                "dynamodb:*"
-            ],
-            "Resource": "*"
+        <h2>1. How IAM Policy Evaluation Actually Works</h2>
+        <p>Before writing a single policy, you need to understand how AWS evaluates them. The evaluation logic is more nuanced than most engineers realise.</p>
+        <h3>The Evaluation Order</h3>
+        <p>When an <code>IAM</code> principal makes an <code>API</code> call, <code>AWS</code> evaluates policies in this exact order:</p>
+        <pre><code>1. Explicit DENY in any policy?          → DENY (immediately, no exceptions)
+2. SCPs (Service Control Policies)?      → If SCP denies → DENY
+3. Resource-based policy allows?         → ALLOW (for cross-account, this is sufficient)
+4. Identity-based policy allows?         → ALLOW
+5. Permissions boundary allows?          → Must also allow if boundary exists
+6. Session policy allows?               → Must also allow if session policy exists
+7. Nothing matched?                      → Implicit DENY</code></pre>
+        <p><strong>The most important rule:</strong> An explicit <code>Deny</code> overrides every <code>Allow</code> in every policy, everywhere. This is why the <code>aws:sourceVpce</code> bucket policy from Blog 3 works — a single <code>Deny</code> statement beats any number of <code>Allow</code> statements from any identity.</p>
+
+        <h3>Policy Types — Know All Six</h3>
+        <div style="overflow-x: auto;">
+          <table class="compare-table">
+            <thead>
+              <tr>
+                <th>Policy Type</th>
+                <th>Attached to</th>
+                <th>Controls</th>
+                <th>Overrides</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Identity-based</strong></td>
+                <td>IAM user/role/group</td>
+                <td>What the identity can do</td>
+                <td>Subject to SCPs, boundaries</td>
+              </tr>
+              <tr>
+                <td><strong>Resource-based</strong></td>
+                <td>S3, SQS, KMS, etc.</td>
+                <td>Who can access the resource</td>
+                <td>Can grant cross-account</td>
+              </tr>
+              <tr>
+                <td><strong>Permission Boundary</strong></td>
+                <td>IAM user/role</td>
+                <td>Maximum permissions ceiling</td>
+                <td>Cannot exceed boundary</td>
+              </tr>
+              <tr>
+                <td><strong>SCP</strong></td>
+                <td>AWS account/OU</td>
+                <td>Maximum permissions for entire account</td>
+                <td>Overrides everything in account</td>
+              </tr>
+              <tr>
+                <td><strong>Session Policy</strong></td>
+                <td>AssumeRole call</td>
+                <td>Restrict assumed role session</td>
+                <td>Cannot exceed role's policies</td>
+              </tr>
+              <tr>
+                <td><strong>ACL</strong></td>
+                <td>S3, VPC</td>
+                <td>Cross-account access (legacy)</td>
+                <td>Avoid — use resource policies</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>The Confused Deputy Problem</h3>
+        <p>This is the most dangerous <code>IAM</code> vulnerability in cross-account architectures. It occurs when a trusted service is tricked into using its permissions on behalf of an attacker.</p>
+        <p style="background: #f8f9fa; border-left: 4px solid var(--aws-orange); padding: 12px 20px; font-style: italic; font-size: 14px; margin: 20px 0; border-radius: 4px; color: var(--aws-text);">
+          Attacker's account → Tricks your <code>Lambda</code> → <code>Lambda</code> uses its role → Accesses your <code>S3</code>
+        </p>
+        <p>The fix is <code>aws:SourceAccount</code> and <code>aws:SourceArn</code> conditions on trust policies:</p>
+        <pre><code>{
+  <span style="color: #ce9178;">"Version"</span>: <span style="color: #ce9178;">"2012-10-17"</span>,
+  <span style="color: #ce9178;">"Statement"</span>: [
+    {
+      <span style="color: #ce9178;">"Effect"</span>: <span style="color: #ce9178;">"Allow"</span>,
+      <span style="color: #ce9178;">"Principal"</span>: { <span style="color: #ce9178;">"Service"</span>: <span style="color: #ce9178;">"lambda.amazonaws.com"</span> },
+      <span style="color: #ce9178;">"Action"</span>: <span style="color: #ce9178;">"sts:AssumeRole"</span>,
+      <span style="color: #ce9178;">"Condition"</span>: {
+        <span style="color: #ce9178;">"StringEquals"</span>: {
+          <span style="color: #ce9178;">"aws:SourceAccount"</span>: <span style="color: #ce9178;">"123456789012"</span>
+        },
+        <span style="color: #ce9178;">"ArnLike"</span>: {
+          <span style="color: #ce9178;">"aws:SourceArn"</span>: <span style="color: #ce9178;">"arn:aws:lambda:eu-west-1:123456789012:function:my-function"</span>
         }
+      }
+    }
+  ]
+}</code></pre>
+
+        <h2>2. IAM Roles — Always Prefer Over Users</h2>
+        <h3>Why Roles Are Safer Than Users</h3>
+        <p><code>IAM Users</code> have <strong>long-term credentials</strong> — access keys that never expire unless you manually rotate them. These keys get committed to git repositories, hardcoded in application configs, and leaked in <code>CloudTrail</code> logs. The Verizon 2024 Data Breach Report found that 77% of cloud breaches involved compromised credentials.</p>
+        <p><code>IAM Roles</code> use <strong>short-term STS tokens</strong> that expire automatically (15 minutes to 12 hours). There's nothing to rotate, nothing to leak long-term, and nothing to forget.</p>
+        <pre><code>IAM User:  Access Key ID + Secret → Valid forever until manually rotated
+IAM Role:  AssumeRole → STS Token (expires in 1h) → Refresh automatically</code></pre>
+
+        <h3>EC2 Instance Profile — The Fundamental Pattern</h3>
+        <pre><code><span style="color: #6a9955;"># IAM Role for EC2 — never use access keys on EC2 instances</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_iam_role"</span> <span style="color: #ce9178;">"ec2_app"</span> {
+  <span style="color: #9cdcfe;">name</span>        = <span style="color: #ce9178;">"ec2-app-role"</span>
+  <span style="color: #9cdcfe;">description</span> = <span style="color: #ce9178;">"Role for application EC2 instances — least privilege"</span>
+
+  <span style="color: #6a9955;"># Trust policy — only EC2 service can assume this role</span>
+  <span style="color: #9cdcfe;">assume_role_policy</span> = jsonencode({
+    Version = <span style="color: #ce9178;">"2012-10-17"</span>
+    Statement = [
+      {
+        Effect    = <span style="color: #ce9178;">"Allow"</span>
+        Principal = { Service = <span style="color: #ce9178;">"ec2.amazonaws.com"</span> }
+        Action    = <span style="color: #ce9178;">"sts:AssumeRole"</span>
+      }
     ]
-}</pre>
-        </div>
-        <p><em>The boundary above ensures that any role created with this boundary attached can ONLY perform S3 and DynamoDB actions, regardless of what other policies are attached to it.</em></p>
+  })
 
-        <h2>4. Common Pitfalls & Production Lessons</h2>
-        
+  <span style="color: #6a9955;"># Permissions boundary — hard ceiling on what this role can ever do</span>
+  <span style="color: #9cdcfe;">permissions_boundary</span> = aws_iam_policy.developer_boundary.arn
+}</code></pre>
+        <p><em>Note: Always scope policies to specific paths (e.g., <code>arn:aws:ssm:eu-west-1:123456789012:parameter/app/prod/*</code>) rather than <code>*</code>.</em></p>
+
+        <h3>Lambda Execution Role</h3>
+        <p>Similar to EC2, Lambda requires a trust policy for the service to assume the role, combined with confused deputy protection.</p>
+        <pre><code><span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_iam_role"</span> <span style="color: #ce9178;">"lambda_processor"</span> {
+  <span style="color: #9cdcfe;">name</span> = <span style="color: #ce9178;">"lambda-processor-role"</span>
+
+  <span style="color: #9cdcfe;">assume_role_policy</span> = jsonencode({
+    Version = <span style="color: #ce9178;">"2012-10-17"</span>
+    Statement = [{
+      Effect    = <span style="color: #ce9178;">"Allow"</span>
+      Principal = { Service = <span style="color: #ce9178;">"lambda.amazonaws.com"</span> }
+      Action    = <span style="color: #ce9178;">"sts:AssumeRole"</span>
+      Condition = {
+        StringEquals = { <span style="color: #ce9178;">"aws:SourceAccount"</span> = var.account_id }
+        ArnLike      = { <span style="color: #ce9178;">"aws:SourceArn"</span> = <span style="color: #ce9178;">"arn:aws:lambda:${var.region}:${var.account_id}:function:processor-*"</span> }
+      }
+    }]
+  })
+}</code></pre>
+
+        <h3>ECS Task Role vs Task Execution Role</h3>
+        <p>This is one of the most confused distinctions in <code>AWS</code>. They are two completely different roles:</p>
+        <div style="overflow-x: auto;">
+          <table class="compare-table">
+            <thead>
+              <tr>
+                <th></th>
+                <th>Task Execution Role</th>
+                <th>Task Role</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Used by</strong></td>
+                <td>ECS agent (control plane)</td>
+                <td>Your application container</td>
+              </tr>
+              <tr>
+                <td><strong>Purpose</strong></td>
+                <td>Pull image from ECR, write logs</td>
+                <td>What your app code can do in AWS</td>
+              </tr>
+              <tr>
+                <td><strong>Who assumes it</strong></td>
+                <td>AWS ECS service</td>
+                <td>Your application via AWS SDK</td>
+              </tr>
+              <tr>
+                <td><strong>Typical permissions</strong></td>
+                <td>ECR pull, CloudWatch Logs</td>
+                <td>S3, DynamoDB, SQS, Secrets Manager</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2>3. Cross-Account IAM — The Enterprise Pattern</h2>
+        <h3>How Cross-Account Role Assumption Works</h3>
+        <p>Cross-account access involves a source account principal assuming a role in a target account. This requires a trust policy in the target and an identity policy in the source using <code>sts:AssumeRole</code>.</p>
+        <pre><code><span style="color: #6a9955;"># In Account B — the role being assumed</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_iam_role"</span> <span style="color: #ce9178;">"cross_account"</span> {
+  <span style="color: #9cdcfe;">name</span> = <span style="color: #ce9178;">"cross-account-access-role"</span>
+
+  <span style="color: #9cdcfe;">assume_role_policy</span> = jsonencode({
+    Version = <span style="color: #ce9178;">"2012-10-17"</span>
+    Statement = [
+      {
+        Effect = <span style="color: #ce9178;">"Allow"</span>
+        Principal = {
+          AWS = [
+            <span style="color: #ce9178;">"arn:aws:iam::111111111111:role/app-role"</span>,     <span style="color: #6a9955;"># Specific role in Account A</span>
+            <span style="color: #ce9178;">"arn:aws:iam::222222222222:root"</span>               <span style="color: #6a9955;"># Any principal in Account C</span>
+          ]
+        }
+        Action = <span style="color: #ce9178;">"sts:AssumeRole"</span>
+        Condition = {
+          Bool = { <span style="color: #ce9178;">"aws:MultiFactorAuthPresent"</span> = <span style="color: #ce9178;">"true"</span> }
+          StringEquals = { <span style="color: #ce9178;">"sts:ExternalId"</span> = var.external_id }
+        }
+      }
+    ]
+  })
+}</code></pre>
+
+        <h2>4. Permission Boundaries — Delegating Safely</h2>
+        <h3>What They Are</h3>
+        <p>A <code>Permissions Boundary</code> is a managed policy attached to an <code>IAM</code> role or user that sets the <strong>maximum permissions</strong> that identity can ever have — regardless of what identity-based policies are attached.</p>
+        <div style="background: #f8f9fa; border: 1px solid var(--aws-border); color: var(--aws-text); padding: 20px; text-align: center; font-weight: 700; border-radius: 6px; margin: 24px 0;">
+          Effective permissions = Identity policies ∩ Permissions Boundary
+        </div>
+        <p>This is the mechanism that allows you to <strong>safely delegate IAM role creation</strong> to developers without giving them the ability to escalate their own privileges.</p>
+
+        <h2>5. Service Control Policies — Account-Level Guardrails</h2>
+        <p><code>SCPs</code> are attached to <code>AWS</code> accounts or <code>OUs</code> in <code>AWS Organizations</code>. They define the <strong>maximum permissions for every IAM principal in that account</strong> — including the root user.</p>
+        <p><strong>Critical:</strong> <code>SCPs</code> do not grant permissions. They only restrict them. Even if an <code>SCP</code> allows <code>s3:*</code>, an <code>IAM</code> role still needs an identity policy that allows <code>s3:GetObject</code>.</p>
+        <pre><code><span style="color: #6a9955;"># SCP — enforce encryption on all S3 objects</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_organizations_policy"</span> <span style="color: #ce9178;">"require_s3_encryption"</span> {
+  <span style="color: #9cdcfe;">name</span>        = <span style="color: #ce9178;">"require-s3-encryption"</span>
+  <span style="color: #9cdcfe;">type</span>        = <span style="color: #ce9178;">"SERVICE_CONTROL_POLICY"</span>
+  <span style="color: #9cdcfe;">content</span> = jsonencode({
+    Version = <span style="color: #ce9178;">"2012-10-17"</span>
+    Statement = [{
+      Sid    = <span style="color: #ce9178;">"DenyUnencryptedS3"</span>
+      Effect = <span style="color: #ce9178;">"Deny"</span>
+      Action = [<span style="color: #ce9178;">"s3:PutObject"</span>]
+      Resource = <span style="color: #ce9178;">"*"</span>
+      Condition = {
+        StringNotEquals = { <span style="color: #ce9178;">"s3:x-amz-server-side-encryption"</span> = [<span style="color: #ce9178;">"aws:kms"</span>, <span style="color: #ce9178;">"AES256"</span>] }
+      }
+    }]
+  })
+}</code></pre>
+
+        <h2>6. Identity Federation — SSO at Enterprise Scale</h2>
+        <p>For enterprise organisations with 10+ <code>AWS</code> accounts, managing individual <code>IAM Users</code> per account is unsustainable. <code>IAM Identity Center</code> provides centralised <code>SSO</code> via identity providers like Okta or Azure AD.</p>
+
+        <h2>7. CI/CD IAM — The Most Dangerous Attack Surface</h2>
+        <h3>GitHub Actions with OIDC — No Long-Term Keys</h3>
+        <p>The modern approach uses <code>OpenID Connect</code> (<code>OIDC</code>) to issue short-term credentials, eliminating the need for long-term <code>AWS_ACCESS_KEY_ID</code> secrets in GitHub.</p>
+        <pre><code><span style="color: #6a9955;"># OIDC Identity Provider</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_iam_openid_connect_provider"</span> <span style="color: #ce9178;">"github"</span> {
+  <span style="color: #9cdcfe;">url</span> = <span style="color: #ce9178;">"https://token.actions.githubusercontent.com"</span>
+  <span style="color: #9cdcfe;">client_id_list</span> = [<span style="color: #ce9178;">"sts.amazonaws.com"</span>]
+  <span style="color: #9cdcfe;">thumbprint_list</span> = [<span style="color: #ce9178;">"6938fd4d98bab03faadb97b34396831e3780aea1"</span>]
+}</code></pre>
+
+        <h2>8. IAM Access Analyzer — Automated Policy Intelligence</h2>
+        <p><code>IAM Access Analyzer</code> automatically scans your resource policies and identifies any resource accessible from outside your <code>AWS</code> account or Organisation — without you having to audit them manually.</p>
+
+        <h2>9. Cost Consideration</h2>
+        <p><code>IAM</code> itself is free. However, poor <code>IAM</code> hygiene creates indirect costs:</p>
+        <div style="overflow-x: auto;">
+          <table class="compare-table">
+            <thead>
+              <tr>
+                <th>Bad Practice</th>
+                <th>Cost Impact</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Overly permissive roles → data breach</td>
+                <td>Average breach cost: $4.88M (IBM 2024)</td>
+              </tr>
+              <tr>
+                <td>No OIDC for CI/CD → leaked key compromise</td>
+                <td>Incident response + remediation: $50K–$500K</td>
+              </tr>
+              <tr>
+                <td>Too broad SCPs → blocks legitimate usage</td>
+                <td>Engineering time lost debugging: High</td>
+              </tr>
+              <tr>
+                <td>No Access Analyzer → undetected public resources</td>
+                <td>Compliance fines (GDPR: up to 4% annual revenue)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2>10. The Decision Framework</h2>
+        <div style="background: #f8f9fa; padding: 25px; border-radius: 8px; border: 1px solid var(--aws-border); margin: 30px 0;">
+          <h4 style="margin-top: 0; color: var(--aws-blue);">Does the identity need to access <code>AWS</code>?</h4>
+          <ul style="margin-bottom: 0;">
+            <li><strong>A human user?</strong> → Use <code>IAM Identity Center</code> (<code>SSO</code>).</li>
+            <li><strong>An <code>AWS</code> service?</strong> → Use <code>IAM Roles</code> with instance profiles / task roles.</li>
+            <li><strong>A CI/CD pipeline?</strong> → Use <code>OIDC</code> (no long-term keys).</li>
+            <li><strong>Another <code>AWS</code> account?</strong> → Use <code>Cross-account IAM Role</code> with <code>ExternalId</code>.</li>
+          </ul>
+        </div>
+
+        <h2>11. Common Mistakes & Anti-Patterns</h2>
         <div class="pitfall-card">
-          <h4>Pitfall 1: Using the Root User for Daily Tasks</h4>
-          <p>The root user should only be used for the initial setup and specific account management tasks (like changing support plans). Always lock the root user away with MFA and use IAM Roles for everything else.</p>
+          <h4>Mistake 1: <code>AdministratorAccess</code> on <code>Lambda</code> Functions</h4>
+          <p><code>Lambda</code> only needs access to the specific services it calls. <code>AdministratorAccess</code> means a single vulnerability is a full account takeover.</p>
         </div>
-
         <div class="pitfall-card">
-          <h4>Pitfall 2: Overly Broad Resource Wildcards</h4>
-          <p>Using <code>"Resource": "*"</code> is the fastest way to fail an audit. Whenever possible, restrict permissions to specific ARNs. This prevents "lateral movement" if a role is compromised.</p>
+          <h4>Mistake 2: Wildcard Resources in Production Policies</h4>
+          <p>Grants access to ALL resources (e.g., all <code>S3</code> buckets) instead of just the ones needed. Always scope to specific <code>ARNs</code>.</p>
         </div>
 
-        <div class="pitfall-card">
-          <h4>Pitfall 3: Not Rotating Access Keys</h4>
-          <p>If you must use IAM Users and access keys, rotate them every 90 days. Better yet, migrate to IAM Roles and temporary credentials using Instance Profiles or OIDC for GitHub Actions.</p>
+        <h2>Architecture Decision Matrix</h2>
+        <div style="overflow-x: auto;">
+          <table class="compare-table">
+            <thead>
+              <tr>
+                <th>Requirement</th>
+                <th>IAM Users</th>
+                <th>IAM Roles</th>
+                <th>IAM Identity Center</th>
+                <th>SCPs</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Human console access</td>
+                <td>⚠️ Legacy</td>
+                <td>❌ Wrong tool</td>
+                <td>✅ Best choice</td>
+                <td>❌ N/A</td>
+              </tr>
+              <tr>
+                <td>EC2 / ECS / Lambda access</td>
+                <td>❌ Never</td>
+                <td>✅ Instance profile</td>
+                <td>❌ N/A</td>
+                <td>❌ N/A</td>
+              </tr>
+              <tr>
+                <td>CI/CD pipeline access</td>
+                <td>❌ Never (no keys)</td>
+                <td>✅ OIDC</td>
+                <td>❌ N/A</td>
+                <td>❌ N/A</td>
+              </tr>
+              <tr>
+                <td>Zero long-term credentials</td>
+                <td>❌ Has keys</td>
+                <td>✅ STS tokens</td>
+                <td>✅ STS tokens</td>
+                <td>❌ N/A</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
 
-        <div class="pitfall-card">
-          <h4>Pitfall 4: Forgetting the Confused Deputy Problem</h4>
-          <p>When allowing a 3rd party (like a monitoring tool) to assume a role in your account, always enforce the use of an <code>ExternalID</code> to prevent cross-account impersonation attacks.</p>
+        <div style="background: var(--aws-highlight); padding: 32px; border-radius: 8px; border: 1px solid var(--aws-border); margin: 40px 0; text-align: center; border-left: 4px solid var(--aws-orange);">
+          <i class="fa-solid fa-id-card-clip" style="font-size: 32px; color: var(--aws-orange); margin-bottom: 16px;"></i>
+          <h3 style="font-size: 18px; color: var(--aws-text); margin-bottom: 12px;">The Golden Rule</h3>
+          <p style="font-size: 15px; color: var(--aws-text-light); font-style: italic; margin-bottom: 0;">
+            "Never use IAM Users for workloads — always roles. Never use wildcard resources in production — always scope to specific ARNs. Never store access keys anywhere — use OIDC for CI/CD and instance profiles for compute. Apply Permissions Boundaries when delegating IAM to developers. Use SCPs as the non-negotiable floor of your security posture."
+          </p>
         </div>
 
-        <h2>The Golden Rule of IAM</h2>
-        <blockquote>
-          "Grant only the permissions required to perform a task. No more, no less. Audit often, and automate the removal of unused permissions."
-        </blockquote>
-
-        <div class="author-card">
-          <div class="author-img">AP</div>
-          <div>
-            <div style="font-weight: 700; color: var(--aws-text);">Ankush Panday</div>
-            <div style="font-size: 13px; color: var(--aws-text-light);">Cloud Specialist @ Rabobank | AWS & Kubernetes Architect</div>
-          </div>
+        <div style="margin: 40px 0;">
+          <span style="font-weight: 700; color: var(--aws-text-light); margin-right: 12px; font-size: 13px;">Tags:</span>
+          <span class="tag">#AWS</span> <span class="tag">#IAM</span> <span class="tag">#Security</span> <span class="tag">#ZeroTrust</span> <span class="tag">#IdentityManagement</span> <span class="tag">#CloudSecurity</span>
         </div>
-
-        <div class="nav-links">
-          <a href="../networking/network-firewall-vs-security-groups.html" class="nav-link"><i class="fa-solid fa-chevron-left"></i> Previous: Network Firewall vs SG</a>
-          <a href="../index.html" class="nav-link">Next: Security Hub & GuardDuty <i class="fa-solid fa-chevron-right"></i></a>
-        </div>
-
       </div>
+      <div class="share-section">
+        <span style="font-weight: 700; color: var(--aws-text-light);">Share this article:</span>
+        <a href="https://www.linkedin.com/sharing/share-offsite/?url=https://www.ankushpanday.com/blog/security/aws-iam-deep-dive.html" target="_blank" class="share-btn linkedin-btn">
+          <i class="fa-brands fa-linkedin"></i> Share on LinkedIn
+        </a>
+      </div>
+
+      <div class="author-card">
+        <div class="author-img"><i class="fa-solid fa-user-tie"></i></div>
+        <div>
+          <h4 style="margin: 0 0 8px 0; color: var(--aws-text);">Ankush Panday</h4>
+          <p style="margin: 0; font-size: 14px; color: var(--aws-text-light);">Specializing in highly scalable AWS infrastructure and automated quality engineering.</p>
+          <a href="https://www.linkedin.com/in/ankush-panday-39b97824/" target="_blank" style="display: inline-block; margin-top: 10px; color: var(--aws-blue); text-decoration: none; font-size: 13px; font-weight: 600;">Connect on LinkedIn <i class="fa-solid fa-external-link" style="font-size: 10px;"></i></a>
+        </div>
+      </div>
+
     </article>
+
+    <div class="nav-links">
+      <a href="../networking/network-firewall-vs-security-groups.html" class="nav-link"><i class="fa-solid fa-arrow-left"></i> Previous: Network Firewall vs Security Groups</a>
+      <a href="../index.html" class="nav-link">Return to Blog Hub <i class="fa-solid fa-arrow-right"></i></a>
+    </div>
   </div>
 
   <footer class="aws-footer">

@@ -58,8 +58,10 @@
     .blog-body h4 { margin-top: 32px; font-size: 20px; color: var(--aws-blue); margin-bottom: 16px; }
     .blog-body p { margin-bottom: 20px; }
     .blog-body ul { margin-bottom: 24px; padding-left: 24px; }
-    .blog-body li { margin-bottom: 12px; color: var(--aws-text-light); }
-    .blog-body strong { color: var(--aws-text); }
+    /* Code block styling - synchronized across all blogs */
+    pre { background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; margin: 24px 0; font-size: 13px; line-height: 1.5; border-left: 4px solid var(--aws-orange); }
+    code { font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; background: #f1f3f5; color: #232f3e; padding: 2px 4px; border-radius: 4px; border: 1px solid #dee2e6; font-size: 0.9em; }
+    pre code { background: none; color: inherit; padding: 0; border: none; font-size: inherit; }
 
     .pitfall-card { background: #fcfcfc; border: 1px solid var(--aws-border); border-left: 4px solid #d13212; border-radius: 6px; padding: 20px 24px; margin-bottom: 16px; }
     .pitfall-card strong { color: #d13212; font-size: 15px; }
@@ -72,7 +74,7 @@
     .share-btn { padding: 8px 16px; border-radius: 4px; text-decoration: none; font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 8px; }
     .linkedin-btn { background: #0077b5; color: white; }
     
-    .nav-links { display: flex; justify-content: space-between; margin-top: 40px; padding: 20px 0; border-top: 1px solid var(--aws-border); }
+    .nav-links { display: flex; justify-content: space-between; margin: 40px 0; padding: 20px 0; border-top: 1px solid var(--aws-border); }
     .nav-link { text-decoration: none; color: var(--aws-blue); font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 8px; }
 
     @media (max-width: 768px) { .blog-header, .blog-body { padding: 24px; } .author-card { flex-direction: column; text-align: center; } }
@@ -154,7 +156,7 @@
 
         <h4>Provisioning with Infrastructure as Code (Terraform)</h4>
         <p>In modern cloud engineering, we never create VPCs via the console. Here is the standard "Golden Template" for a multi-AZ VPC using Terraform:</p>
-        <pre style="background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 13px; border-left: 4px solid var(--aws-orange);"><code><span style="color: #569cd6;">module</span> <span style="color: #ce9178;">"vpc"</span> {
+        <pre><code><span style="color: #569cd6;">module</span> <span style="color: #ce9178;">"vpc"</span> {
   <span style="color: #9cdcfe;">source</span>  = <span style="color: #ce9178;">"terraform-aws-modules/vpc/aws"</span>
   <span style="color: #9cdcfe;">version</span> = <span style="color: #ce9178;">"5.0.0"</span>
 
@@ -178,7 +180,7 @@
 } <span style="color: #6a9955;"># End of Module Block</span></code></pre>
 
         <p><strong>Under the Hood:</strong> While modules are great, an architect should understand the raw resources. Here is the manual breakdown of what that module is doing:</p>
-        <pre style="background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 13px; border-left: 4px solid var(--aws-orange);"><code><span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_vpc"</span> <span style="color: #ce9178;">"main"</span> {
+        <pre><code><span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_vpc"</span> <span style="color: #ce9178;">"main"</span> {
   <span style="color: #9cdcfe;">cidr_block</span>           = <span style="color: #ce9178;">"10.0.0.0/16"</span>
   <span style="color: #9cdcfe;">enable_dns_support</span>   = <span style="color: #569cd6;">true</span>
   <span style="color: #9cdcfe;">enable_dns_hostnames</span> = <span style="color: #569cd6;">true</span>
@@ -208,7 +210,7 @@
         <p>For high-authority environments, <strong>VPC Flow Logs</strong> are non-negotiable. They capture information about the IP traffic going to and from network interfaces in your VPC. </p>
         <ul>
           <li><strong>Athena for Querying:</strong> Send your logs to S3 and use Amazon Athena to run SQL queries. A classic "Top Talkers" query to find bandwidth hogs looks like this:</li>
-          <pre style="background: #232f3e; color: #f8f8f2; padding: 15px; border-radius: 4px; font-size: 12px;"><code>SELECT srcaddr, dstaddr, sum(bytes) as total_bytes
+        <pre><code>SELECT srcaddr, dstaddr, sum(bytes) as total_bytes
 FROM vpc_flow_logs
 WHERE action = 'ACCEPT'
 GROUP BY srcaddr, dstaddr
@@ -260,7 +262,7 @@ LIMIT <span style="color: #b5cea8;">10</span>;</code></pre>
           </tbody>
         </table>
 
-        <div style="background: var(--aws-highlight); padding: 24px; border-left: 5px solid var(--aws-orange); margin-top: 40px;">
+        <div style="background: var(--aws-highlight); padding: 24px; border-left: 5px solid var(--aws-orange); margin: 40px 0;">
           <h4 style="margin-top: 0; color: var(--aws-orange);">Architect's Tips & Best Practices:</h4>
           <ul style="margin-bottom: 0;">
             <li><strong>Sizing:</strong> Choose a CIDR block that is large enough (e.g., /16) to accommodate future growth.</li>
@@ -309,7 +311,8 @@ LIMIT <span style="color: #b5cea8;">10</span>;</code></pre>
             "Build your VPC with the future in mind. Always use non-overlapping CIDRs, design for multi-AZ high availability from day one, and keep your public subnets as small as possible. The most secure VPC is the one where your resources have no direct route to the internet unless absolutely necessary."
           </p>
         </div>
-<div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--aws-border);">
+        
+        <div style="margin: 40px 0;">
           <span style="font-weight: 700; color: var(--aws-text-light); margin-right: 12px; font-size: 13px;">Tags:</span>
           <span class="tag">#AWS</span> <span class="tag">#VPC</span> <span class="tag">#Networking</span> <span class="tag">#FlowLogs</span> <span class="tag">#Athena</span> <span class="tag">#DNS</span> <span class="tag">#Terraform</span>
         </div>
@@ -334,7 +337,7 @@ LIMIT <span style="color: #b5cea8;">10</span>;</code></pre>
 
     <div class="nav-links">
       <span></span> <!-- Spacer -->
-      <a href="advanced-vpc-scaling.html" class="nav-link">Next Post: Advanced VPC Concepts <i class="fa-solid fa-arrow-right"></i></a>
+      <a href="advanced-vpc-scaling.html" class="nav-link">Next: Advanced VPC Concepts <i class="fa-solid fa-arrow-right"></i></a>
     </div>
   </div>
 

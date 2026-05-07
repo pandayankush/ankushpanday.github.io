@@ -259,7 +259,7 @@ body {
 .hero-info { flex: 1; }
 .hero-name { font-size: 26px; font-weight: 700; color: var(--aws-white); }
 .hero-title { color: var(--aws-orange); font-size: 15px; font-weight: 500; margin: 4px 0 12px; }
-.hero-meta { display: flex; flex-wrap: wrap; gap: 16px; }
+.hero-meta { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 8px; }
 .hero-meta-item {
   display: flex;
   align-items: center;
@@ -289,7 +289,7 @@ body {
 .hero-cta-row {
   display: flex;
   gap: 10px;
-  margin-top: 4px;
+  margin-top: 24px;
   flex-wrap: wrap;
 }
 

@@ -880,24 +880,28 @@
             </div>
           </div>
           
-          <!-- BLOG POST 9 (COMING SOON) -->
-          <div style="border: 1px solid var(--aws-border); border-radius: 8px; margin-top: 20px; overflow: hidden; background: var(--aws-white); opacity: 0.7;">
-            <div style="background: #f8f9fa; padding: 16px 20px; border-bottom: 1px solid var(--aws-border); cursor: default;">
+          <!-- BLOG POST 9 -->
+          <div style="border: 1px solid var(--aws-border); border-radius: 8px; margin-top: 20px; overflow: hidden; background: var(--aws-white);">
+            <div style="background: #f8f9fa; padding: 16px 20px; border-bottom: 1px solid var(--aws-border); cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#f0f4f8'" onmouseout="this.style.background='#f8f9fa'">
               <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div style="flex-grow: 1;">
-                  <h3 style="font-size: 16px; font-weight: 700; color: #6c757d;">AWS Security in Depth: GuardDuty, Security Hub & WAF</h3>
+                <a href="blog/security/aws-security-in-depth.html" style="text-decoration: none; flex-grow: 1;">
+                  <h3 style="font-size: 16px; font-weight: 700; color: var(--aws-text);">AWS Security in Depth: GuardDuty, Security Hub & WAF</h3>
                   <div style="font-size: 12px; color: var(--aws-text-light); margin-top: 6px;">
-                    <i class="fa-solid fa-lock"></i> Coming Soon • Phase 2 • 
-                    <span class="tag" style="padding: 2px 6px; font-size: 10px; margin-left: 4px; background: #e9ecef; color: #6c757d;">Security Ops</span>
+                    Posted on May 8, 2026 • 25 min read • 
+                    <span class="tag orange" style="padding: 2px 6px; font-size: 10px; margin-left: 4px;">GuardDuty</span>
+                    <span class="tag blue" style="padding: 2px 6px; font-size: 10px; margin-left: 4px;">Security Hub</span>
                   </div>
-                </div>
-                <div><i class="fa-solid fa-clock-rotate-left" style="color: #ced4da; padding: 10px;"></i></div>
+                </a>
+                <div onclick="toggleBlog('blog9')"><i class="fa-solid fa-chevron-down" id="blog9-icon" style="color: var(--aws-text-light); padding: 10px;"></i></div>
               </div>
             </div>
             
-            <div style="padding: 24px; font-size: 14px; line-height: 1.7; color: #6c757d;">
-              <img src="images/aws-security-in-depth-architecture.png" alt="AWS Security in Depth Architecture" style="display: block; max-width: 75%; margin: 0 auto 24px auto; border-radius: 6px; border: 1px solid var(--aws-border); opacity: 0.6;">
+            <div id="blog9-content" style="display: none; padding: 24px; font-size: 14px; line-height: 1.7; color: var(--aws-text);">
+              <img src="images/aws-security-in-depth-architecture.png" alt="AWS Security in Depth Architecture" style="display: block; max-width: 75%; margin: 0 auto 24px auto; border-radius: 6px; border: 1px solid var(--aws-border);">
               <p style="margin-bottom: 14px;">The defense-in-depth model. Learn how to orchestrate GuardDuty for threat intelligence, Security Hub for compliance posture, and WAF for edge protection.</p>
+              <div style="margin-top: 24px; text-align: right;">
+                <a href="blog/security/aws-security-in-depth.html" class="nav-icon-btn orange" style="text-decoration: none; display: inline-block;">Read Full Article <i class="fa-solid fa-arrow-right" style="margin-left: 8px;"></i></a>
+              </div>
             </div>
           </div>
 

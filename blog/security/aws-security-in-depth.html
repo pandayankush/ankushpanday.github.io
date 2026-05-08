@@ -1,64 +1,269 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  
+
   <!-- SEO PRIMARY -->
   <title>AWS Security in Depth: GuardDuty, Security Hub, WAF & the Defence-in-Depth Model | Ankush Panday</title>
-  <meta name="description" content="Mastering AWS security architecture. A Part 9 deep dive into GuardDuty, Security Hub, WAF, and the layered Defence-in-Depth model for enterprise cloud.">
-  <meta name="keywords" content="AWS, Security, GuardDuty, Security Hub, WAF, Defence-in-Depth, CloudSecurity, DevSecOps, Shield, Inspector, Macie, CloudTrail">
+  <meta name="description"
+    content="Mastering AWS security architecture. A Part 9 deep dive into GuardDuty, Security Hub, WAF, and the layered Defence-in-Depth model for enterprise cloud.">
+  <meta name="keywords"
+    content="AWS, Security, GuardDuty, Security Hub, WAF, Defence-in-Depth, CloudSecurity, DevSecOps, Shield, Inspector, Macie, CloudTrail">
   <link rel="canonical" href="https://www.ankushpanday.com/blog/security/aws-security-in-depth.html">
 
   <!-- OPEN GRAPH -->
   <meta property="og:type" content="article">
   <meta property="og:url" content="https://www.ankushpanday.com/blog/security/aws-security-in-depth.html">
   <meta property="og:title" content="AWS Security in Depth: GuardDuty, Security Hub, WAF & the Defence-in-Depth Model">
-  <meta property="og:description" content="Beyond the perimeter. Learn how to architect a layered defense using AWS native security services and automated threat response.">
+  <meta property="og:description"
+    content="Beyond the perimeter. Learn how to architect a layered defense using AWS native security services and automated threat response.">
   <meta property="og:image" content="https://www.ankushpanday.com/images/aws-security-in-depth-architecture.png">
 
   <link rel="stylesheet" href="../../style.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
-    .blog-page-container { max-width: 900px; margin: 100px auto 40px auto; padding: 0 20px; min-height: calc(100vh - 200px); }
-    .back-btn { display: inline-flex; align-items: center; gap: 8px; color: var(--aws-blue); text-decoration: none; font-weight: 500; margin-bottom: 24px; }
-    .blog-content-card { background: var(--aws-white); border: 1px solid var(--aws-border); border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
-    .blog-header { background: #f8f9fa; padding: 40px; border-bottom: 1px solid var(--aws-border); }
-    .blog-body { padding: 40px; line-height: 1.8; font-size: 16px; color: var(--aws-text); }
-    .blog-body h2 { margin-top: 48px; font-size: 26px; color: var(--aws-text); border-bottom: 2px solid var(--aws-orange); display: inline-block; padding-bottom: 4px; margin-bottom: 24px; }
-    .blog-body h3 { margin-top: 32px; font-size: 22px; color: var(--aws-blue); margin-bottom: 16px; }
-    .blog-body h4 { margin-top: 24px; font-size: 18px; color: var(--aws-text); font-weight: 700; }
-    .blog-body p { margin-bottom: 20px; }
-    .blog-body ul, .blog-body ol { margin-bottom: 24px; padding-left: 24px; }
-    .blog-body li { margin-bottom: 12px; }
-    .blog-body strong { color: var(--aws-text); }
-    .blog-body blockquote { font-style: italic; color: var(--aws-text-light); margin: 30px 0; border-left: 4px solid var(--aws-orange); padding-left: 15px; background: #fcfcfc; padding: 20px; }
-    
-    .compare-table { width: 100%; border-collapse: collapse; text-align: left; margin-bottom: 30px; font-size: 14px; }
-    .compare-table th { background: var(--aws-blue); color: white; padding: 12px; border: 1px solid var(--aws-border); }
-    .compare-table td { padding: 12px; border: 1px solid var(--aws-border); }
-    .compare-table tr:nth-child(even) { background: #f9f9f9; }
+    .blog-page-container {
+      max-width: 900px;
+      margin: 100px auto 40px auto;
+      padding: 0 20px;
+      min-height: calc(100vh - 200px);
+    }
+
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--aws-blue);
+      text-decoration: none;
+      font-weight: 500;
+      margin-bottom: 24px;
+    }
+
+    .blog-content-card {
+      background: var(--aws-white);
+      border: 1px solid var(--aws-border);
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    }
+
+    .blog-header {
+      background: #f8f9fa;
+      padding: 40px;
+      border-bottom: 1px solid var(--aws-border);
+    }
+
+    .blog-body {
+      padding: 40px;
+      line-height: 1.8;
+      font-size: 16px;
+      color: var(--aws-text);
+    }
+
+    .blog-body h2 {
+      margin-top: 48px;
+      font-size: 26px;
+      color: var(--aws-text);
+      border-bottom: 2px solid var(--aws-orange);
+      display: inline-block;
+      padding-bottom: 4px;
+      margin-bottom: 24px;
+    }
+
+    .blog-body h3 {
+      margin-top: 32px;
+      font-size: 22px;
+      color: var(--aws-blue);
+      margin-bottom: 16px;
+    }
+
+    .blog-body h4 {
+      margin-top: 24px;
+      font-size: 18px;
+      color: var(--aws-text);
+      font-weight: 700;
+    }
+
+    .blog-body p {
+      margin-bottom: 20px;
+    }
+
+    .blog-body ul,
+    .blog-body ol {
+      margin-bottom: 24px;
+      padding-left: 24px;
+    }
+
+    .blog-body li {
+      margin-bottom: 12px;
+    }
+
+    .blog-body strong {
+      color: var(--aws-text);
+    }
+
+    .blog-body blockquote {
+      font-style: italic;
+      color: var(--aws-text-light);
+      margin: 30px 0;
+      border-left: 4px solid var(--aws-orange);
+      padding-left: 15px;
+      background: #fcfcfc;
+      padding: 20px;
+    }
+
+    .compare-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+
+    .compare-table th {
+      background: var(--aws-blue);
+      color: white;
+      padding: 12px;
+      border: 1px solid var(--aws-border);
+    }
+
+    .compare-table td {
+      padding: 12px;
+      border: 1px solid var(--aws-border);
+    }
+
+    .compare-table tr:nth-child(even) {
+      background: #f9f9f9;
+    }
 
     /* Code block styling - synchronized across all blogs */
-    pre { background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; margin: 24px 0; font-size: 13px; line-height: 1.5; border-left: 4px solid var(--aws-orange); }
-    code { font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; background: #f1f3f5; color: #232f3e; padding: 2px 4px; border-radius: 4px; border: 1px solid #dee2e6; font-size: 0.9em; }
-    pre code { background: none; color: inherit; padding: 0; border: none; font-size: inherit; }
-    
-    .pitfall-card { background: #fff5f5; border: 1px solid #fed7d7; border-left: 4px solid #d13212; padding: 20px; border-radius: 6px; margin-bottom: 20px; }
-    
-    .author-card { display: flex; gap: 20px; align-items: center; padding: 30px; background: #fcfcfc; border-top: 1px solid var(--aws-border); }
-    .author-img { width: 80px; height: 80px; border-radius: 50%; background: var(--aws-highlight); display: flex; align-items: center; justify-content: center; font-size: 30px; color: var(--aws-orange); border: 2px solid var(--aws-border); }
-    .nav-links { display: flex; justify-content: space-between; margin: 40px 0; padding: 20px 0; border-top: 1px solid var(--aws-border); }
-    .nav-link { text-decoration: none; color: var(--aws-blue); font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 8px; }
-    .tag { display: inline-block; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: 600; margin-right: 8px; }
-    .tag.blue { background: #e7f2fa; color: #0073bb; }
-    .tag.purple { background: #f2e7fa; color: #6b3fa0; }
+    pre {
+      background: #232f3e;
+      color: #f8f8f2;
+      padding: 20px;
+      border-radius: 6px;
+      overflow-x: auto;
+      margin: 24px 0;
+      font-size: 13px;
+      line-height: 1.5;
+      border-left: 4px solid var(--aws-orange);
+    }
 
-    .share-section { padding: 20px 40px; border-top: 1px solid var(--aws-border); display: flex; justify-content: space-between; align-items: center; background: #fff; }
-    .share-btn { padding: 8px 16px; border-radius: 4px; text-decoration: none; font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 8px; }
-    .linkedin-btn { background: #0077b5; color: white; }
+    code {
+      font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+      background: #f1f3f5;
+      color: #232f3e;
+      padding: 2px 4px;
+      border-radius: 4px;
+      border: 1px solid #dee2e6;
+      font-size: 0.9em;
+    }
+
+    pre code {
+      background: none;
+      color: inherit;
+      padding: 0;
+      border: none;
+      font-size: inherit;
+    }
+
+    .pitfall-card {
+      background: #fff5f5;
+      border: 1px solid #fed7d7;
+      border-left: 4px solid #d13212;
+      padding: 20px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+    }
+
+    .author-card {
+      display: flex;
+      gap: 20px;
+      align-items: center;
+      padding: 30px;
+      background: #fcfcfc;
+      border-top: 1px solid var(--aws-border);
+    }
+
+    .author-img {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background: var(--aws-highlight);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 30px;
+      color: var(--aws-orange);
+      border: 2px solid var(--aws-border);
+    }
+
+    .nav-links {
+      display: flex;
+      justify-content: space-between;
+      margin: 40px 0;
+      padding: 20px 0;
+      border-top: 1px solid var(--aws-border);
+    }
+
+    .nav-link {
+      text-decoration: none;
+      color: var(--aws-blue);
+      font-weight: 600;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .tag {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-right: 8px;
+    }
+
+    .tag.blue {
+      background: #e7f2fa;
+      color: #0073bb;
+    }
+
+    .tag.purple {
+      background: #f2e7fa;
+      color: #6b3fa0;
+    }
+
+    .share-section {
+      padding: 20px 40px;
+      border-top: 1px solid var(--aws-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #fff;
+    }
+
+    .share-btn {
+      padding: 8px 16px;
+      border-radius: 4px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .linkedin-btn {
+      background: #0077b5;
+      color: white;
+    }
   </style>
 </head>
+
 <body>
 
   <nav class="aws-topnav">
@@ -70,18 +275,22 @@
     <div class="nav-icons">
       <a href="../../index.html" class="nav-icon-btn" style="text-decoration: none;">Portfolio Home</a>
       <a href="../index.html" class="nav-icon-btn orange" style="text-decoration: none; font-weight: 600;">Blog Hub</a>
-      <button class="nav-icon-btn"><i class="fa-solid fa-earth-europe" style="margin-right: 6px; font-size: 12px; color: var(--aws-orange);"></i> Europe (nl-ams-1)</button>
-      <button class="nav-icon-btn">ankushpandey@hotmail.com <i class="fa-solid fa-caret-down" style="margin-left: 4px;"></i></button>
+      <button class="nav-icon-btn"><i class="fa-solid fa-earth-europe"
+          style="margin-right: 6px; font-size: 12px; color: var(--aws-orange);"></i> Europe (nl-ams-1)</button>
+      <button class="nav-icon-btn">ankushpandey@hotmail.com <i class="fa-solid fa-caret-down"
+          style="margin-left: 4px;"></i></button>
     </div>
   </nav>
 
   <div class="blog-page-container">
     <a href="../index.html" class="back-btn"><i class="fa-solid fa-arrow-left"></i> Back to Blog Hub</a>
-    
+
     <article class="blog-content-card">
       <header class="blog-header">
-        <h1 style="font-size: 32px; color: var(--aws-text); margin-bottom: 16px; line-height: 1.2;">AWS Security in Depth: GuardDuty, Security Hub, WAF & the Defence-in-Depth Model</h1>
-        <div style="display: flex; gap: 12px; align-items: center; color: var(--aws-text-light); font-size: 14px; flex-wrap: wrap;">
+        <h1 style="font-size: 32px; color: var(--aws-text); margin-bottom: 16px; line-height: 1.2;">AWS Security in
+          Depth: GuardDuty, Security Hub, WAF & the Defence-in-Depth Model</h1>
+        <div
+          style="display: flex; gap: 12px; align-items: center; color: var(--aws-text-light); font-size: 14px; flex-wrap: wrap;">
           <span>May 8, 2026</span>
           <span>•</span>
           <span>25 min read</span>
@@ -91,11 +300,13 @@
       </header>
 
       <div class="blog-body">
-        <p style="font-style: italic; color: var(--aws-text-light); margin-bottom: 30px; border-left: 4px solid var(--aws-orange); padding-left: 15px;">
+        <p
+          style="font-style: italic; color: var(--aws-text-light); margin-bottom: 30px; border-left: 4px solid var(--aws-orange); padding-left: 15px;">
           <strong>AWS Series | Part 9</strong> — Building secure, cost-optimised, cloud-native infrastructure on AWS
         </p>
 
-        <img src="../../images/aws-security-in-depth-architecture.png" alt="AWS Security Architecture Deep Dive" style="display: block; width: 100%; border-radius: 8px; border: 1px solid var(--aws-border); margin-bottom: 40px;">
+        <img src="../../images/aws-security-in-depth-architecture.png" alt="AWS Security Architecture Deep Dive"
+          style="display: block; width: 100%; border-radius: 8px; border: 1px solid var(--aws-border); margin-bottom: 40px;">
 
         <h2>TL;DR Comparison</h2>
         <div style="overflow-x: auto;">
@@ -162,13 +373,24 @@
         </div>
 
         <h2>Introduction</h2>
-        <p>In Blog 7 we covered network-level defence — <code>Security Groups</code>, <code>NACLs</code>, and <code>Network Firewall</code>. In Blog 8 we covered identity defence — <code>IAM</code>, <code>SCPs</code>, and <code>OIDC</code>. This post covers the third pillar: <strong>detection, response, and application-layer protection</strong>.</p>
-        <p>The reality of cloud security is that prevention is never 100% effective. Misconfigured resources get deployed. Credentials get compromised. Zero-day vulnerabilities appear. The question is not whether something will go wrong — it's how quickly you detect it, how clearly you understand the blast radius, and how fast you can respond.</p>
-        <p><code>GuardDuty</code>, <code>Security Hub</code>, <code>WAF</code>, and the surrounding <code>AWS</code> security services answer those questions. Together they form a continuous security posture that detects threats in real time, aggregates findings across your entire organisation, blocks malicious traffic before it reaches your application, and proves compliance to auditors without manual effort.</p>
-        <p>Every service in this post has working <code>Terraform</code>. The architecture patterns are production-grade and directly applicable to regulated environments like financial services.</p>
+        <p>In Blog 7 we covered network-level defence — <code>Security Groups</code>, <code>NACLs</code>, and
+          <code>Network Firewall</code>. In Blog 8 we covered identity defence — <code>IAM</code>, <code>SCPs</code>,
+          and <code>OIDC</code>. This post covers the third pillar: <strong>detection, response, and application-layer
+            protection</strong>.</p>
+        <p>The reality of cloud security is that prevention is never 100% effective. Misconfigured resources get
+          deployed. Credentials get compromised. Zero-day vulnerabilities appear. The question is not whether something
+          will go wrong — it's how quickly you detect it, how clearly you understand the blast radius, and how fast you
+          can respond.</p>
+        <p><code>GuardDuty</code>, <code>Security Hub</code>, <code>WAF</code>, and the surrounding <code>AWS</code>
+          security services answer those questions. Together they form a continuous security posture that detects
+          threats in real time, aggregates findings across your entire organisation, blocks malicious traffic before it
+          reaches your application, and proves compliance to auditors without manual effort.</p>
+        <p>Every service in this post has working <code>Terraform</code>. The architecture patterns are production-grade
+          and directly applicable to regulated environments like financial services.</p>
 
         <h2>1. The Defence-in-Depth Model — All Layers Together</h2>
-        <p>Before diving into individual services, here is the complete layered security architecture that this post builds toward:</p>
+        <p>Before diving into individual services, here is the complete layered security architecture that this post
+          builds toward:</p>
 
         <pre><code>Internet
     ↓
@@ -196,11 +418,15 @@ Detection & Response (spans all layers):
 ├── Config           → Configuration compliance and drift detection
 └── CloudTrail       → Immutable API audit log for every action in every account</code></pre>
 
-        <p>Each layer is independent. A threat that bypasses <code>WAF</code> still hits <code>Network Firewall</code>. A threat that bypasses <code>Network Firewall</code> still hits <code>Security Groups</code>. Detection services observe all layers simultaneously — they don't sit in the traffic path, so they can't be bypassed by routing.</p>
+        <p>Each layer is independent. A threat that bypasses <code>WAF</code> still hits <code>Network Firewall</code>.
+          A threat that bypasses <code>Network Firewall</code> still hits <code>Security Groups</code>. Detection
+          services observe all layers simultaneously — they don't sit in the traffic path, so they can't be bypassed by
+          routing.</p>
 
         <h2>2. AWS WAF — Application Layer Protection</h2>
         <h3>What It Does</h3>
-        <p><code>AWS WAF</code> (Web Application Firewall) inspects HTTP/HTTPS requests at <strong>Layer 7</strong> before they reach your application. It can allow, block, count, or rate-limit requests based on:</p>
+        <p><code>AWS WAF</code> (Web Application Firewall) inspects HTTP/HTTPS requests at <strong>Layer 7</strong>
+          before they reach your application. It can allow, block, count, or rate-limit requests based on:</p>
         <ul>
           <li>IP addresses and CIDR ranges</li>
           <li>Geographic origin (country-level blocking)</li>
@@ -210,7 +436,9 @@ Detection & Response (spans all layers):
           <li>Bot signatures and browser fingerprints</li>
           <li>Request rate (rate-based rules)</li>
         </ul>
-        <p><code>WAF</code> integrates with <code>CloudFront</code>, <code>ALB</code>, <code>API Gateway</code>, and <code>AppSync</code>. For most architectures, attach it to <code>CloudFront</code> for the lowest latency inspection — requests are inspected at the edge before they traverse the <code>AWS</code> backbone.</p>
+        <p><code>WAF</code> integrates with <code>CloudFront</code>, <code>ALB</code>, <code>API Gateway</code>, and
+          <code>AppSync</code>. For most architectures, attach it to <code>CloudFront</code> for the lowest latency
+          inspection — requests are inspected at the edge before they traverse the <code>AWS</code> backbone.</p>
 
         <h3>Full WAF Terraform — Production Configuration</h3>
         <pre><code><span style="color: #6a9955;"># WAF Web ACL — production configuration</span>
@@ -326,18 +554,25 @@ Detection & Response (spans all layers):
 }</code></pre>
 
         <h3>WAF Rollout Strategy — Count Before Block</h3>
-        <p>Never deploy a new <code>WAF</code> rule directly to <code>block</code> mode in production. Use this staged rollout:</p>
+        <p>Never deploy a new <code>WAF</code> rule directly to <code>block</code> mode in production. Use this staged
+          rollout:</p>
         <ol>
           <li><strong>Week 1:</strong> Deploy all rules in <code>COUNT</code> mode → observe CloudWatch metrics</li>
           <li><strong>Week 2:</strong> Review sampled requests → identify false positives</li>
-          <li><strong>Week 3:</strong> Move high-confidence rules to <code>BLOCK</code> → keep edge cases in <code>COUNT</code></li>
-          <li><strong>Week 4:</strong> Tune remaining <code>COUNT</code> rules → move to <code>BLOCK</code> or exclude</li>
+          <li><strong>Week 3:</strong> Move high-confidence rules to <code>BLOCK</code> → keep edge cases in
+            <code>COUNT</code></li>
+          <li><strong>Week 4:</strong> Tune remaining <code>COUNT</code> rules → move to <code>BLOCK</code> or exclude
+          </li>
         </ol>
 
         <h2>3. AWS Shield — DDoS Protection</h2>
         <h3>Shield Standard vs Advanced</h3>
-        <p><code>Shield Standard</code> is automatically enabled for every <code>AWS</code> account at no cost. It protects against common Layer 3 and Layer 4 DDoS attacks — SYN floods, UDP reflection attacks, and similar volumetric threats.</p>
-        <p><code>Shield Advanced</code> adds Layer 7 DDoS protection with automatic <code>WAF</code> rule creation during attacks, 24/7 access to the <code>AWS DDoS Response Team (DRT)</code>, and cost protection against abnormal data transfer charges during a DDoS event.</p>
+        <p><code>Shield Standard</code> is automatically enabled for every <code>AWS</code> account at no cost. It
+          protects against common Layer 3 and Layer 4 DDoS attacks — SYN floods, UDP reflection attacks, and similar
+          volumetric threats.</p>
+        <p><code>Shield Advanced</code> adds Layer 7 DDoS protection with automatic <code>WAF</code> rule creation
+          during attacks, 24/7 access to the <code>AWS DDoS Response Team (DRT)</code>, and cost protection against
+          abnormal data transfer charges during a DDoS event.</p>
 
         <pre><code><span style="color: #6a9955;"># Shield Advanced — enable and protect resources</span>
 <span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_shield_protection"</span> <span style="color: #ce9178;">"cloudfront"</span> {
@@ -346,13 +581,17 @@ Detection & Response (spans all layers):
 }</code></pre>
 
         <blockquote>
-          <strong>Cost reality:</strong> Shield Advanced costs $3,000/month as a flat fee. For smaller organisations, Shield Standard + WAF covers the vast majority of threats.
+          <strong>Cost reality:</strong> Shield Advanced costs $3,000/month as a flat fee. For smaller organisations,
+          Shield Standard + WAF covers the vast majority of threats.
         </blockquote>
 
         <h2>4. Amazon GuardDuty — Intelligent Threat Detection</h2>
         <h3>How It Works</h3>
-        <p><code>GuardDuty</code> is a <strong>continuous threat detection service</strong> that analyses three data sources without any agents required: <code>CloudTrail logs</code>, <code>VPC Flow Logs</code>, and <code>DNS logs</code>.</p>
-        <p>It uses machine learning and <code>AWS</code> threat intelligence feeds to generate <strong>findings</strong> — prioritised alerts that describe a specific threat with context about the affected resource.</p>
+        <p><code>GuardDuty</code> is a <strong>continuous threat detection service</strong> that analyses three data
+          sources without any agents required: <code>CloudTrail logs</code>, <code>VPC Flow Logs</code>, and
+          <code>DNS logs</code>.</p>
+        <p>It uses machine learning and <code>AWS</code> threat intelligence feeds to generate <strong>findings</strong>
+          — prioritised alerts that describe a specific threat with context about the affected resource.</p>
 
         <pre><code><span style="color: #6a9955;"># Enable GuardDuty in the delegated administrator account</span>
 <span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_guardduty_detector"</span> <span style="color: #ce9178;">"main"</span> {
@@ -364,7 +603,8 @@ Detection & Response (spans all layers):
 }</code></pre>
 
         <h3>Automated Response — Isolate a Compromised Instance</h3>
-        <p>Always preserve the instance for forensic investigation — do NOT terminate it. Use <code>EventBridge</code> and <code>Lambda</code> to isolate it automatically.</p>
+        <p>Always preserve the instance for forensic investigation — do NOT terminate it. Use <code>EventBridge</code>
+          and <code>Lambda</code> to isolate it automatically.</p>
 
         <pre><code><span style="color: #569cd6;">import</span> boto3
 
@@ -381,7 +621,10 @@ Detection & Response (spans all layers):
     print(<span style="color: #ce9178;">f"Quarantined instance {instance_id}"</span>)</code></pre>
 
         <h2>5. AWS Security Hub — Centralised Security Posture</h2>
-        <p><code>Security Hub</code> is the <strong>single pane of glass</strong> that aggregates findings from <code>GuardDuty</code>, <code>Inspector</code>, <code>Macie</code>, <code>Config</code>, and <code>IAM Access Analyzer</code>. It also runs automated compliance checks against standards like <code>CIS AWS Foundations</code> and <code>PCI-DSS</code>.</p>
+        <p><code>Security Hub</code> is the <strong>single pane of glass</strong> that aggregates findings from
+          <code>GuardDuty</code>, <code>Inspector</code>, <code>Macie</code>, <code>Config</code>, and
+          <code>IAM Access Analyzer</code>. It also runs automated compliance checks against standards like
+          <code>CIS AWS Foundations</code> and <code>PCI-DSS</code>.</p>
 
         <pre><code><span style="color: #6a9955;"># Enable Security Hub and compliance standards</span>
 <span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_securityhub_account"</span> <span style="color: #ce9178;">"main"</span> {}
@@ -391,17 +634,23 @@ Detection & Response (spans all layers):
 }</code></pre>
 
         <h2>6. Amazon Inspector — Vulnerability Scanning</h2>
-        <p><code>Inspector</code> automatically scans your workloads for known <code>CVEs</code>. Use it as a <strong>CI/CD Gate</strong>: fail your pipeline if <code>Inspector</code> finds <code>CRITICAL</code> vulnerabilities in your container images before they reach production.</p>
+        <p><code>Inspector</code> automatically scans your workloads for known <code>CVEs</code>. Use it as a
+          <strong>CI/CD Gate</strong>: fail your pipeline if <code>Inspector</code> finds <code>CRITICAL</code>
+          vulnerabilities in your container images before they reach production.</p>
 
         <pre><code><span style="color: #6a9955;"># Fail deployment if findings exist</span>
 <span style="color: #569cd6;">if</span> findings:
     <span style="color: #569cd6;">raise</span> <span style="color: #569cd6;">Exception</span>(<span style="color: #ce9178;">f"Deployment blocked: {len(findings)} CRITICAL vulnerabilities found."</span>)</code></pre>
 
         <h2>7. Amazon Macie — Sensitive Data Discovery</h2>
-        <p><code>Macie</code> uses machine learning to discover and classify <strong>sensitive data</strong> in your <code>S3</code> buckets (PII, financial data, etc.). It answers the auditor's question: <em>"Do you know where all your sensitive data is?"</em></p>
+        <p><code>Macie</code> uses machine learning to discover and classify <strong>sensitive data</strong> in your
+          <code>S3</code> buckets (PII, financial data, etc.). It answers the auditor's question: <em>"Do you know where
+            all your sensitive data is?"</em></p>
 
         <h2>8. AWS Config — Configuration Compliance at Scale</h2>
-        <p><code>Config</code> records the state of every resource and detects <strong>configuration drift</strong>. Unlike <code>GuardDuty</code> (threats), <code>Config</code> detects <strong>misconfigurations</strong> — the root cause of most security incidents.</p>
+        <p><code>Config</code> records the state of every resource and detects <strong>configuration drift</strong>.
+          Unlike <code>GuardDuty</code> (threats), <code>Config</code> detects <strong>misconfigurations</strong> — the
+          root cause of most security incidents.</p>
 
         <pre><code><span style="color: #6a9955;"># Auto-remediate S3 public access violations</span>
 <span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_config_remediation_configuration"</span> <span style="color: #ce9178;">"s3_public_block"</span> {
@@ -411,7 +660,8 @@ Detection & Response (spans all layers):
 }</code></pre>
 
         <h2>9. CloudTrail — The Immutable Audit Log</h2>
-        <p><code>CloudTrail</code> is the foundation of everything. Without it, you have no visibility into who did what. Always use <code>is_multi_region_trail = true</code> and <code>is_organization_trail = true</code>.</p>
+        <p><code>CloudTrail</code> is the foundation of everything. Without it, you have no visibility into who did
+          what. Always use <code>is_multi_region_trail = true</code> and <code>is_organization_trail = true</code>.</p>
 
         <h2>10. Architecture Decision Matrix</h2>
         <div style="overflow-x: auto;">
@@ -486,38 +736,49 @@ Detection & Response (spans all layers):
         <h2>11. Common Mistakes & Anti-Patterns</h2>
         <div class="pitfall-card">
           <h4>Mistake 1: GuardDuty Without Automation</h4>
-          <p>Findings without automation are just logs nobody reads. Always wire findings to <code>EventBridge</code> response workflows.</p>
+          <p>Findings without automation are just logs nobody reads. Always wire findings to <code>EventBridge</code>
+            response workflows.</p>
         </div>
         <div class="pitfall-card">
           <h4>Mistake 2: WAF in Count Mode Permanently</h4>
-          <p>Count mode is only for rollout. Leaving it on permanently is a false sense of security — it's not blocking anything.</p>
+          <p>Count mode is only for rollout. Leaving it on permanently is a false sense of security — it's not blocking
+            anything.</p>
         </div>
         <div class="pitfall-card">
           <h4>Mistake 3: Single-Region CloudTrail</h4>
-          <p>A single-region trail misses API activity in other regions. Always use multi-region, organisation-wide trails.</p>
+          <p>A single-region trail misses API activity in other regions. Always use multi-region, organisation-wide
+            trails.</p>
         </div>
         <div class="pitfall-card">
           <h4>Mistake 4: Not Testing Response Pipelines</h4>
-          <p>An incident is not the time to discover your alerting broke. Use <code>create-sample-findings</code> quarterly to test your automation.</p>
+          <p>An incident is not the time to discover your alerting broke. Use <code>create-sample-findings</code>
+            quarterly to test your automation.</p>
         </div>
 
-        <div style="background: var(--aws-highlight); padding: 32px; border-radius: 8px; border: 1px solid var(--aws-border); margin: 40px 0; text-align: center; border-left: 4px solid var(--aws-orange);">
-          <i class="fa-solid fa-fingerprint" style="font-size: 32px; color: var(--aws-orange); margin-bottom: 16px;"></i>
+        <div
+          style="background: var(--aws-highlight); padding: 32px; border-radius: 8px; border: 1px solid var(--aws-border); margin: 40px 0; text-align: center; border-left: 4px solid var(--aws-orange);">
+          <i class="fa-solid fa-fingerprint"
+            style="font-size: 32px; color: var(--aws-orange); margin-bottom: 16px;"></i>
           <h3 style="font-size: 18px; color: var(--aws-text); margin-bottom: 12px;">The Golden Rule</h3>
           <p style="font-size: 15px; color: var(--aws-text-light); font-style: italic; margin-bottom: 0;">
-            "Prevention is your first priority — stop threats before they reach your app. But detection is your safety net. Security Hub is the thread that ties every finding together. treat security tooling costs as insurance — the premium is always less than the claim."
+            "Prevention is your first priority — stop threats before they reach your app. But detection is your safety
+            net. Security Hub is the thread that ties every finding together. Treat security tooling costs as insurance
+            — the premium is always less than the claim."
           </p>
         </div>
 
         <div style="margin: 40px 0;">
-          <span style="font-weight: 700; color: var(--aws-text-light); margin-right: 12px; font-size: 13px;">Tags:</span>
-          <span class="tag">#AWS</span> <span class="tag">#WAF</span> <span class="tag">#GuardDuty</span> <span class="tag">#SecurityHub</span> <span class="tag">#CloudSecurity</span> <span class="tag">#DevSecOps</span>
+          <span
+            style="font-weight: 700; color: var(--aws-text-light); margin-right: 12px; font-size: 13px;">Tags:</span>
+          <span class="tag">#AWS</span> <span class="tag">#WAF</span> <span class="tag">#GuardDuty</span> <span
+            class="tag">#SecurityHub</span> <span class="tag">#CloudSecurity</span> <span class="tag">#DevSecOps</span>
         </div>
       </div>
 
       <div class="share-section">
         <span style="font-weight: 700; color: var(--aws-text-light);">Share this article:</span>
-        <a href="https://www.linkedin.com/sharing/share-offsite/?url=https://www.ankushpanday.com/blog/security/aws-security-in-depth.html" target="_blank" class="share-btn linkedin-btn">
+        <a href="https://www.linkedin.com/sharing/share-offsite/?url=https://www.ankushpanday.com/blog/security/aws-security-in-depth.html"
+          target="_blank" class="share-btn linkedin-btn">
           <i class="fa-brands fa-linkedin"></i> Share on LinkedIn
         </a>
       </div>
@@ -526,14 +787,18 @@ Detection & Response (spans all layers):
         <div class="author-img"><i class="fa-solid fa-user-tie"></i></div>
         <div>
           <h4 style="margin: 0 0 8px 0; color: var(--aws-text);">Ankush Panday</h4>
-          <p style="margin: 0; font-size: 14px; color: var(--aws-text-light);">Specializing in highly scalable AWS infrastructure and automated quality engineering.</p>
-          <a href="https://www.linkedin.com/in/ankush-panday-39b97824/" target="_blank" style="display: inline-block; margin-top: 10px; color: var(--aws-blue); text-decoration: none; font-size: 13px; font-weight: 600;">Connect on LinkedIn <i class="fa-solid fa-external-link" style="font-size: 10px;"></i></a>
+          <p style="margin: 0; font-size: 14px; color: var(--aws-text-light);">Specializing in highly scalable AWS
+            infrastructure and automated quality engineering.</p>
+          <a href="https://www.linkedin.com/in/ankush-panday-39b97824/" target="_blank"
+            style="display: inline-block; margin-top: 10px; color: var(--aws-blue); text-decoration: none; font-size: 13px; font-weight: 600;">Connect
+            on LinkedIn <i class="fa-solid fa-external-link" style="font-size: 10px;"></i></a>
         </div>
       </div>
     </article>
 
     <div class="nav-links">
-      <a href="aws-iam-deep-dive.html" class="nav-link"><i class="fa-solid fa-arrow-left"></i> Previous: AWS IAM Deep Dive</a>
+      <a href="aws-iam-deep-dive.html" class="nav-link"><i class="fa-solid fa-arrow-left"></i> Previous: AWS IAM Deep
+        Dive</a>
       <a href="../index.html" class="nav-link">Return to Blog Hub <i class="fa-solid fa-arrow-right"></i></a>
     </div>
   </div>
@@ -543,4 +808,5 @@ Detection & Response (spans all layers):
   </footer>
 
 </body>
+
 </html>

@@ -591,6 +591,42 @@ IAM Role:  AssumeRole → STS Token (expires in 1h) → Refresh automatically</c
           <span style="color: #9cdcfe;">role-to-assume: arn:aws:iam::123456789012:role/github-actions-deploy-role</span>
           <span style="color: #9cdcfe;">aws-region: eu-west-1</span></code></pre>
 
+        <div style="background: #f0f4f8; padding: 20px; border-left: 4px solid var(--aws-blue); margin: 24px 0;">
+          <h4 style="margin-top: 0; color: var(--aws-blue);"><i class="fa-solid fa-code-branch" style="margin-right: 8px;"></i> The Azure DevOps Pattern (Enterprise Standard)</h4>
+          <p style="font-size: 14px; margin-bottom: 15px;">Since many enterprises (like <strong>Rabobank</strong> or <strong>WCC</strong>) utilize <strong>Azure DevOps</strong>, the OIDC pattern remains the same but uses <strong>Workload Identity Federation</strong> via Service Connections.</p>
+          
+          <pre style="margin-bottom: 15px;"><code><span style="color: #6a9955;"># 1. Trust Policy scoped to ADO Service Connection</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_iam_role"</span> <span style="color: #ce9178;">"ado_deploy"</span> {
+  <span style="color: #9cdcfe;">name</span> = <span style="color: #ce9178;">"azure-devops-deploy-role"</span>
+  <span style="color: #9cdcfe;">assume_role_policy</span> = jsonencode({
+    Version = <span style="color: #ce9178;">"2012-10-17"</span>
+    Statement = [{
+      Effect = <span style="color: #ce9178;">"Allow"</span>
+      Principal = { Federated = aws_iam_openid_connect_provider.azure_devops.arn }
+      Action = <span style="color: #ce9178;">"sts:AssumeRoleWithWebIdentity"</span>
+      Condition = {
+        StringEquals = {
+          <span style="color: #ce9178;">"oidc.azuredevops.com:sub"</span> = <span style="color: #ce9178;">"sc://ankush-org/aws-projects/aws-main-connection"</span>
+        }
+      }
+    }]
+  })
+}
+
+<span style="color: #6a9955;"># 2. Azure Pipelines YAML (azure-pipelines.yml)</span>
+<span style="color: #9cdcfe;">jobs:</span>
+<span style="color: #9cdcfe;">- job: Deploy</span>
+  <span style="color: #9cdcfe;">pool:</span> { <span style="color: #9cdcfe;">vmImage:</span> <span style="color: #ce9178;">'ubuntu-latest'</span> }
+  <span style="color: #9cdcfe;">steps:</span>
+  <span style="color: #9cdcfe;">- task: AWSCLI@1</span>
+    <span style="color: #9cdcfe;">inputs:</span>
+      <span style="color: #9cdcfe;">awsCredentials:</span> <span style="color: #ce9178;">'aws-main-connection'</span> <span style="color: #6a9955;"># Federated Service Connection</span>
+      <span style="color: #9cdcfe;">regionName:</span> <span style="color: #ce9178;">'eu-west-1'</span>
+      <span style="color: #9cdcfe;">awsCommand:</span> <span style="color: #ce9178;">'s3'</span>
+      <span style="color: #9cdcfe;">awsSubCommand:</span> <span style="color: #ce9178;">'sync'</span>
+      <span style="color: #9cdcfe;">addSpacedArguments:</span> <span style="color: #ce9178;">'dist/ s3://my-prod-bucket'</span></code></pre>
+        </div>
+
         <p><code>IAM Access Analyzer</code> automatically scans your resource policies and identifies any resource accessible from outside your <code>AWS</code> account or Organisation — without you having to audit them manually.</p>
 
         <pre><code><span style="color: #6a9955;"># 1. Enable the Analyzer</span>

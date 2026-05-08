@@ -298,6 +298,11 @@ IAM Role:  AssumeRole → STS Token (expires in 1h) → Refresh automatically</c
   })
 }
 
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_iam_instance_profile"</span> <span style="color: #ce9178;">"ec2_profile"</span> {
+  <span style="color: #9cdcfe;">name</span> = <span style="color: #ce9178;">"ec2-app-instance-profile"</span>
+  <span style="color: #9cdcfe;">role</span> = aws_iam_role.ec2_app.name
+}
+
 <span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_iam_role_policy_attachment"</span> <span style="color: #ce9178;">"ec2_attach"</span> {
   <span style="color: #9cdcfe;">role</span>       = aws_iam_role.ec2_app.name
   <span style="color: #9cdcfe;">policy_arn</span> = aws_iam_policy.ec2_app_policy.arn
@@ -575,6 +580,7 @@ IAM Role:  AssumeRole → STS Token (expires in 1h) → Refresh automatically</c
 <span style="color: #6a9955;"># 3. GitHub Actions YAML (.github/workflows/deploy.yml)</span>
 <span style="color: #9cdcfe;">jobs:</span>
   <span style="color: #9cdcfe;">deploy:</span>
+    <span style="color: #9cdcfe;">environment: production</span>
     <span style="color: #9cdcfe;">permissions:</span>
       <span style="color: #9cdcfe;">id-token: write</span>
       <span style="color: #9cdcfe;">contents: read</span>
@@ -589,8 +595,8 @@ IAM Role:  AssumeRole → STS Token (expires in 1h) → Refresh automatically</c
 
         <pre><code><span style="color: #6a9955;"># 1. Enable the Analyzer</span>
 <span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_accessanalyzer_analyzer"</span> <span style="color: #ce9178;">"main"</span> {
-  <span style="color: #9cdcfe;">analyzer_name</span> = <span style="color: #ce9178;">"account-security-analyzer"</span>
-  <span style="color: #9cdcfe;">type</span>          = <span style="color: #ce9178;">"ACCOUNT"</span>
+  <span style="color: #9cdcfe;">analyzer_name</span> = <span style="color: #ce9178;">"organization-security-analyzer"</span>
+  <span style="color: #9cdcfe;">type</span>          = <span style="color: #ce9178;">"ORGANIZATION"</span>
 }
 
 <span style="color: #6a9955;"># 2. Archive Rule for Trusted Partners</span>

@@ -1031,36 +1031,7 @@ spec:
 
         <hr style="border-top: 1px solid var(--aws-border); margin: 40px 0;">
 
-        <h2>4. Real Migration Pattern — On-Premises to ECS Fargate (WCC)</h2>
-        <p>This is the exact pattern I used at WCC Group to migrate 40+ on-premises workloads to ECS Fargate using AWS
-          Application Migration Service (MGN):</p>
-
-        <pre><code>Phase 1: Rehost (lift-and-shift)
-  On-prem server → MGN Agent → EC2 (same OS, same app)
-  Timeline: 2-4 weeks per application
-
-Phase 2: Re-platform (containerise for ECS)
-  EC2 → Dockerise application → ECR → ECS Fargate Task Definition
-  Timeline: 1-2 weeks per application (simple apps)
-
-Phase 3: Optimise (Fargate Spot, auto scaling, observability)
-  Add Fargate Spot capacity providers
-  Tune CPU/memory sizing from CloudWatch Container Insights data
-  Add FireLens log routing, X-Ray tracing
-  Timeline: Ongoing</code></pre>
-
-        <p><strong>The key decision at WCC: why Fargate, not EC2-based ECS?</strong></p>
-        <ul>
-          <li>Teams had no Kubernetes experience — Fargate's zero-node-management model meant they could focus on
-            application delivery</li>
-          <li>Workloads were mostly stateless web services and APIs — perfect Fargate fit</li>
-          <li>No need for daemonsets, custom node configurations, or GPU workloads</li>
-          <li>Cost was predictable: pay per vCPU/memory/second, no idle EC2 capacity</li>
-        </ul>
-
-        <hr style="border-top: 1px solid var(--aws-border); margin: 40px 0;">
-
-        <h2>5. Cost Deep-Dive — The Honest Numbers</h2>
+        <h2>4. Cost Deep-Dive — The Honest Numbers</h2>
 
         <h3>ECS Fargate Pricing</h3>
         <pre><code>vCPU:   $0.04048/vCPU/hour
@@ -1139,7 +1110,7 @@ At Rabobank — 33 microservices, ~50 pods:
 
         <hr style="border-top: 1px solid var(--aws-border); margin: 40px 0;">
 
-        <h2>6. Networking — How Each Integrates with VPC</h2>
+        <h2>5. Networking — How Each Integrates with VPC</h2>
 
         <h3>ECS Fargate Networking</h3>
         <p>Every Fargate task runs in <strong>awsvpc</strong> mode — each task gets its own ENI, its own private IP, and
@@ -1227,7 +1198,7 @@ spec:
 
         <hr style="border-top: 1px solid var(--aws-border); margin: 40px 0;">
 
-        <h2>7. The Decision Framework</h2>
+        <h2>6. The Decision Framework</h2>
         <pre><code>How many containerised services do you need to run?
 ├── 1-10 services?
 │   └── ECS Fargate — less complexity, lower operational overhead
@@ -1265,7 +1236,7 @@ Cost at scale?
 
         <hr style="border-top: 1px solid var(--aws-border); margin: 40px 0;">
 
-        <h2>8. Common Mistakes & Anti-Patterns</h2>
+        <h2>7. Common Mistakes & Anti-Patterns</h2>
 
         <div class="pitfall-card">
           <h4 style="margin-top: 0; color: #d13212;"><i class="fa-solid fa-triangle-exclamation"></i> Mistake 1:

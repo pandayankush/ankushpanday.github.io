@@ -1,0 +1,1486 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- SEO PRIMARY -->
+  <title>AWS ECS Fargate vs EKS — When I Used Both and How to Choose | Ankush Panday</title>
+  <meta name="description"
+    content="Navigating the container landscape. Choosing the right abstraction level for your enterprise workloads based on scale, cost, and operational overhead.">
+  <meta name="keywords"
+    content="AWS, ECS, EKS, Fargate, Kubernetes, Karpenter, ArgoCD, GitOps, Containers, DevSecOps, IaC, Terraform">
+  <link rel="canonical" href="https://www.ankushpanday.com/blog/compute/aws-ecs-fargate-vs-eks.html">
+
+  <!-- OPEN GRAPH -->
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://www.ankushpanday.com/blog/compute/aws-ecs-fargate-vs-eks.html">
+  <meta property="og:title" content="AWS ECS Fargate vs EKS — When I Used Both and How to Choose">
+  <meta property="og:description"
+    content="Real-world decision frameworks and architectural trade-offs from migrating 40+ workloads to ECS and building a 33-microservice platform on EKS.">
+  <meta property="og:image" content="https://www.ankushpanday.com/images/aws-ecs-fargate-vs-eks-architecture.png">
+
+  <link rel="stylesheet" href="../../style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    .blog-page-container {
+      max-width: 900px;
+      margin: 100px auto 40px auto;
+      padding: 0 20px;
+      min-height: calc(100vh - 200px);
+    }
+
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--aws-blue);
+      text-decoration: none;
+      font-weight: 500;
+      margin-bottom: 24px;
+    }
+
+    .blog-content-card {
+      background: var(--aws-white);
+      border: 1px solid var(--aws-border);
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    }
+
+    .blog-header {
+      background: #f8f9fa;
+      padding: 40px;
+      border-bottom: 1px solid var(--aws-border);
+    }
+
+    .blog-body {
+      padding: 40px;
+      line-height: 1.8;
+      font-size: 16px;
+      color: var(--aws-text);
+    }
+
+    .blog-body h2 {
+      margin-top: 48px;
+      font-size: 26px;
+      color: var(--aws-text);
+      border-bottom: 2px solid var(--aws-orange);
+      display: inline-block;
+      padding-bottom: 4px;
+      margin-bottom: 24px;
+    }
+
+    .blog-body h3 {
+      margin-top: 32px;
+      font-size: 22px;
+      color: var(--aws-blue);
+      margin-bottom: 16px;
+    }
+
+    .blog-body h4 {
+      margin-top: 24px;
+      font-size: 18px;
+      color: var(--aws-text);
+      font-weight: 700;
+    }
+
+    .blog-body p {
+      margin-bottom: 20px;
+    }
+
+    .blog-body ul,
+    .blog-body ol {
+      margin-bottom: 24px;
+      padding-left: 24px;
+    }
+
+    .blog-body li {
+      margin-bottom: 12px;
+    }
+
+    .blog-body strong {
+      color: var(--aws-text);
+    }
+
+    .blog-body blockquote {
+      font-style: italic;
+      color: var(--aws-text-light);
+      margin: 30px 0;
+      border-left: 4px solid var(--aws-orange);
+      padding-left: 15px;
+      background: #fcfcfc;
+      padding: 20px;
+    }
+
+    .compare-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+
+    .compare-table th {
+      background: var(--aws-blue);
+      color: white;
+      padding: 12px;
+      border: 1px solid var(--aws-border);
+    }
+
+    .compare-table td {
+      padding: 12px;
+      border: 1px solid var(--aws-border);
+    }
+
+    .compare-table tr:nth-child(even) {
+      background: #f9f9f9;
+    }
+
+    /* Code block styling - synchronized across all blogs */
+    pre {
+      background: #232f3e;
+      color: #f8f8f2;
+      padding: 20px;
+      border-radius: 6px;
+      overflow-x: auto;
+      margin: 24px 0;
+      font-size: 13px;
+      line-height: 1.5;
+      border-left: 4px solid var(--aws-orange);
+    }
+
+    code {
+      font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+      background: #f1f3f5;
+      color: #232f3e;
+      padding: 2px 4px;
+      border-radius: 4px;
+      border: 1px solid #dee2e6;
+      font-size: 0.9em;
+    }
+
+    pre code {
+      background: none;
+      color: inherit;
+      padding: 0;
+      border: none;
+      font-size: inherit;
+    }
+
+    .pitfall-card {
+      background: #fff5f5;
+      border: 1px solid #fed7d7;
+      border-left: 4px solid #d13212;
+      padding: 20px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+    }
+
+    .author-card {
+      display: flex;
+      gap: 20px;
+      align-items: center;
+      padding: 30px;
+      background: #fcfcfc;
+      border-top: 1px solid var(--aws-border);
+    }
+
+    .author-img {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background: var(--aws-highlight);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 30px;
+      color: var(--aws-orange);
+      border: 2px solid var(--aws-border);
+    }
+
+    .nav-links {
+      display: flex;
+      justify-content: space-between;
+      margin: 40px 0;
+      padding: 20px 0;
+      border-top: 1px solid var(--aws-border);
+    }
+
+    .nav-link {
+      text-decoration: none;
+      color: var(--aws-blue);
+      font-weight: 600;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .tag {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-right: 8px;
+    }
+
+    .tag.blue {
+      background: #e7f2fa;
+      color: #0073bb;
+    }
+
+    .tag.purple {
+      background: #f2e7fa;
+      color: #6b3fa0;
+    }
+
+    .share-section {
+      padding: 20px 40px;
+      border-top: 1px solid var(--aws-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #fff;
+    }
+
+    .share-btn {
+      padding: 8px 16px;
+      border: 1px solid var(--aws-border);
+      border-radius: 4px;
+      background: #fff;
+      color: var(--aws-text);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .share-btn:hover {
+      background: #f8f9fa;
+    }
+
+    .linkedin-btn {
+      background: #0077b5;
+      color: white;
+      border: none;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- TOP NAV (Same as other pages) -->
+  <nav class="aws-topnav">
+    <a href="../../index.html" class="logo">
+      <i class="fa-solid fa-cloud" style="color: var(--aws-orange); font-size: 20px;"></i>
+      <span>Ankush Panday</span>
+    </a>
+    <div class="nav-spacer"></div>
+    <div class="nav-icons">
+      <a href="../../index.html" class="nav-icon-btn" style="text-decoration: none;">Portfolio Home</a>
+      <a href="../index.html" class="nav-icon-btn orange" style="text-decoration: none; font-weight: 600;">Blog Hub</a>
+      <button class="nav-icon-btn"><i class="fa-solid fa-earth-europe"
+          style="margin-right: 6px; font-size: 12px; color: var(--aws-orange);"></i> Europe (nl-ams-1)</button>
+      <button class="nav-icon-btn">ankushpandey@hotmail.com <i class="fa-solid fa-caret-down"
+          style="margin-left: 4px;"></i></button>
+    </div>
+  </nav>
+
+  <main class="blog-page-container">
+    <a href="../index.html" class="back-btn"><i class="fa-solid fa-arrow-left"></i> Back to Blog Hub</a>
+
+    <article class="blog-content-card">
+      <header class="blog-header">
+        <h1 style="font-size: 32px; color: var(--aws-text); margin-bottom: 16px; line-height: 1.2;">AWS ECS Fargate vs
+          EKS — When I Used Both and How to Choose</h1>
+        <div
+          style="display: flex; gap: 12px; align-items: center; color: var(--aws-text-light); font-size: 14px; flex-wrap: wrap;">
+          <span>May 13, 2026</span>
+          <span>•</span>
+          <span>22 min read</span>
+          <span class="tag blue">Containers</span>
+          <span class="tag purple">Architecture</span>
+        </div>
+      </header>
+
+      <div class="blog-body">
+        <p
+          style="font-style: italic; color: var(--aws-text-light); margin-bottom: 30px; border-left: 4px solid var(--aws-orange); padding-left: 15px;">
+          <strong>AWS Series | Part 10</strong> — Real-world decision frameworks and architectural trade-offs from
+          migrating 40+ workloads to ECS and building a 33-microservice platform on EKS.
+        </p>
+
+        <!-- Main Image -->
+        <img src="../../images/aws-ecs-fargate-vs-eks-architecture.png"
+          alt="AWS ECS Fargate vs EKS Architecture Diagram"
+          style="display: block; width: 100%; border-radius: 8px; border: 1px solid var(--aws-border); margin-bottom: 40px;">
+
+        <h2>TL;DR Comparison</h2>
+
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th>Feature</th>
+              <th>ECS Fargate</th>
+              <th>Amazon EKS</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Abstraction level</strong></td>
+              <td>AWS-native, higher abstraction</td>
+              <td>Kubernetes — industry standard</td>
+            </tr>
+            <tr>
+              <td><strong>Control plane</strong></td>
+              <td>Fully managed by AWS</td>
+              <td>Managed masters, self-managed nodes</td>
+            </tr>
+            <tr>
+              <td><strong>Node management</strong></td>
+              <td>None — serverless compute</td>
+              <td>EC2 (managed node groups / Karpenter) or Fargate</td>
+            </tr>
+            <tr>
+              <td><strong>Networking</strong></td>
+              <td>AWS VPC native (awsvpc mode)</td>
+              <td>VPC CNI, Calico, Cilium</td>
+            </tr>
+            <tr>
+              <td><strong>Service discovery</strong></td>
+              <td>AWS Cloud Map / ALB</td>
+              <td>CoreDNS + Kubernetes Services</td>
+            </tr>
+            <tr>
+              <td><strong>Autoscaling</strong></td>
+              <td>ECS Service Auto Scaling</td>
+              <td>HPA, VPA, KEDA, Karpenter</td>
+            </tr>
+            <tr>
+              <td><strong>Deployment model</strong></td>
+              <td>Task Definitions + Services</td>
+              <td>Deployments, StatefulSets, DaemonSets</td>
+            </tr>
+            <tr>
+              <td><strong>GitOps</strong></td>
+              <td>Limited (CodePipeline, GitHub Actions)</td>
+              <td>Native (ArgoCD, Flux)</td>
+            </tr>
+            <tr>
+              <td><strong>Multi-tenancy</strong></td>
+              <td>Service-level isolation</td>
+              <td>Namespace-level isolation</td>
+            </tr>
+            <tr>
+              <td><strong>Learning curve</strong></td>
+              <td>Low — AWS-native concepts</td>
+              <td>High — Kubernetes expertise required</td>
+            </tr>
+            <tr>
+              <td><strong>Ecosystem</strong></td>
+              <td>AWS services only</td>
+              <td>Entire CNCF landscape</td>
+            </tr>
+            <tr>
+              <td><strong>Cost model</strong></td>
+              <td>vCPU + memory per second</td>
+              <td>EC2 instances + control plane ($0.10/hour)</td>
+            </tr>
+            <tr>
+              <td><strong>Best for</strong></td>
+              <td>Microservices, lift-and-shift, small teams</td>
+              <td>Complex platforms, 20+ services, GitOps at scale</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h2>Introduction — Two Real Projects, Two Different Answers</h2>
+        <p>I have not written this post from AWS documentation. I have written it from two production environments I
+          built myself — and the lessons I learned the hard way in both.</p>
+
+        <p><strong>At WCC Group</strong>, I led the migration of 40+ on-premises workloads to AWS. The majority of these
+          were legacy monoliths and mid-tier services that needed to be containerised and run reliably in AWS without
+          the team acquiring deep Kubernetes expertise overnight. The answer was <strong>ECS Fargate</strong>. No nodes
+          to manage, no kubelet to debug, no cluster upgrades to plan. Define a Task Definition, wire it to an ALB, set
+          up auto scaling — done. We decommissioned the entire datacenter on schedule with zero downtime.</p>
+
+        <p><strong>At Rabobank</strong>, I inherited a fraud detection platform built on 33 microservices. The team had
+          GitOps requirements, multi-team ownership of namespaces, complex traffic management between services,
+          Karpenter-driven cost optimisation, and Databricks integration. ECS could not have handled this complexity.
+          The answer was <strong>Amazon EKS</strong>. It required significantly more investment in platform engineering
+          — but it gave the team the control, ecosystem, and developer experience that a platform of this scale demands.
+        </p>
+
+        <p>The honest answer to "ECS or EKS?" is: <strong>it depends on the platform you are building, not the
+            technology you prefer</strong>. This post gives you the framework to make that call correctly.</p>
+
+        <hr style="border-top: 1px solid var(--aws-border); margin: 40px 0;">
+
+        <h2>1. ECS Fargate — Serverless Containers Done Right</h2>
+
+        <h3>How It Works</h3>
+        <p>ECS (Elastic Container Service) is AWS's native container orchestration service. In <strong>Fargate</strong>
+          mode, there are no EC2 instances to manage — AWS provisions the compute underneath your containers invisibly.
+          You define what you want to run (the Task Definition) and ECS handles where and how it runs.</p>
+
+        <pre><code>ECS Cluster
+└── Service (desired count: 3, auto scaling: 1-10)
+    ├── Task (Task Definition: app:v2.1)
+    │   ├── Container: app (1 vCPU, 2GB RAM)
+    │   └── Container: log-router (0.1 vCPU, 256MB RAM)
+    ├── Task (running)
+    └── Task (running)</code></pre>
+
+        <h3>Core Concepts You Must Understand</h3>
+        <p><strong>Task Definition</strong> — the blueprint. Defines container images, CPU/memory, environment
+          variables, IAM roles, logging, port mappings, and health checks. Version-controlled — every change creates a
+          new revision.</p>
+        <p><strong>Service</strong> — maintains a desired count of running Tasks. Handles rolling deployments,
+          integrates with ALB for traffic routing, and drives auto scaling.</p>
+        <p><strong>Cluster</strong> — a logical grouping of services. In Fargate mode it is purely a namespace — no
+          underlying infrastructure to manage.</p>
+        <p><strong>awsvpc networking</strong> — every Fargate task gets its own ENI and private IP in your VPC. This
+          means Security Groups apply directly at the task level — not at a shared node level. This is a significant
+          security advantage over traditional EC2-based ECS.</p>
+
+        <h3>Full ECS Fargate Terraform — Production Pattern</h3>
+        <pre><code><span style="color: #6a9955;"># ECS Cluster</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_ecs_cluster"</span> <span style="color: #ce9178;">"main"</span> {
+  <span style="color: #9cdcfe;">name</span> = <span style="color: #ce9178;">"prod-cluster"</span>
+
+  <span style="color: #9cdcfe;">configuration</span> {
+    <span style="color: #9cdcfe;">execute_command_configuration</span> {
+      <span style="color: #9cdcfe;">kms_key_id</span> = aws_kms_key.ecs.arn
+      <span style="color: #9cdcfe;">logging</span>    = <span style="color: #ce9178;">"OVERRIDE"</span>
+
+      <span style="color: #9cdcfe;">log_configuration</span> {
+        <span style="color: #9cdcfe;">cloud_watch_log_group_name</span> = aws_cloudwatch_log_group.ecs_exec.name
+      }
+    }
+  }
+
+  <span style="color: #9cdcfe;">setting</span> {
+    <span style="color: #9cdcfe;">name</span>  = <span style="color: #ce9178;">"containerInsights"</span>
+    <span style="color: #9cdcfe;">value</span> = <span style="color: #ce9178;">"enabled"</span>   <span style="color: #6a9955;"># Container-level metrics in CloudWatch</span>
+  }
+
+  <span style="color: #9cdcfe;">tags</span> = { Name = <span style="color: #ce9178;">"prod-cluster"</span> }
+}
+
+<span style="color: #6a9955;"># Capacity Provider — Fargate + Fargate Spot for cost optimisation</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_ecs_cluster_capacity_providers"</span> <span style="color: #ce9178;">"main"</span> {
+  <span style="color: #9cdcfe;">cluster_name</span> = aws_ecs_cluster.main.name
+
+  <span style="color: #9cdcfe;">capacity_providers</span> = [<span style="color: #ce9178;">"FARGATE"</span>, <span style="color: #ce9178;">"FARGATE_SPOT"</span>]
+
+  <span style="color: #9cdcfe;">default_capacity_provider_strategy</span> {
+    <span style="color: #9cdcfe;">base</span>              = 1              <span style="color: #6a9955;"># At least 1 task on standard Fargate</span>
+    <span style="color: #9cdcfe;">weight</span>            = 20            <span style="color: #6a9955;"># 20% on standard Fargate</span>
+    <span style="color: #9cdcfe;">capacity_provider</span> = <span style="color: #ce9178;">"FARGATE"</span>
+  }
+
+  <span style="color: #9cdcfe;">default_capacity_provider_strategy</span> {
+    <span style="color: #9cdcfe;">weight</span>            = 80            <span style="color: #6a9955;"># 80% on Fargate Spot (up to 70% cheaper)</span>
+    <span style="color: #9cdcfe;">capacity_provider</span> = <span style="color: #ce9178;">"FARGATE_SPOT"</span>
+  }
+}
+
+<span style="color: #6a9955;"># Task Definition</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_ecs_task_definition"</span> <span style="color: #ce9178;">"app"</span> {
+  <span style="color: #9cdcfe;">family</span>                   = <span style="color: #ce9178;">"app"</span>
+  <span style="color: #9cdcfe;">requires_compatibilities</span> = [<span style="color: #ce9178;">"FARGATE"</span>]
+  <span style="color: #9cdcfe;">network_mode</span>             = <span style="color: #ce9178;">"awsvpc"</span>    <span style="color: #6a9955;"># Each task gets its own ENI + private IP</span>
+  <span style="color: #9cdcfe;">cpu</span>                      = <span style="color: #ce9178;">"1024"</span>      <span style="color: #6a9955;"># 1 vCPU</span>
+  <span style="color: #9cdcfe;">memory</span>                   = <span style="color: #ce9178;">"2048"</span>      <span style="color: #6a9955;"># 2 GB RAM</span>
+  <span style="color: #9cdcfe;">execution_role_arn</span>       = aws_iam_role.ecs_execution.arn
+  <span style="color: #9cdcfe;">task_role_arn</span>            = aws_iam_role.ecs_task.arn
+
+  <span style="color: #6a9955;"># FireLens log router — ship logs to CloudWatch + S3</span>
+  <span style="color: #9cdcfe;">container_definitions</span> = jsonencode([
+    {
+      <span style="color: #9cdcfe;">name</span>      = <span style="color: #ce9178;">"log-router"</span>
+      <span style="color: #9cdcfe;">image</span>     = <span style="color: #ce9178;">"public.ecr.aws/aws-observability/aws-for-fluent-bit:stable"</span>
+      <span style="color: #9cdcfe;">essential</span> = <span style="color: #569cd6;">true</span>
+      <span style="color: #9cdcfe;">firelensConfiguration</span> = {
+        <span style="color: #9cdcfe;">type</span> = <span style="color: #ce9178;">"fluentbit"</span>
+        <span style="color: #9cdcfe;">options</span> = { enable-ecs-log-metadata = <span style="color: #ce9178;">"<span style="color: #569cd6;">true</span>"</span> }
+      }
+      <span style="color: #9cdcfe;">logConfiguration</span> = {
+        <span style="color: #9cdcfe;">logDriver</span> = <span style="color: #ce9178;">"awslogs"</span>
+        <span style="color: #9cdcfe;">options</span> = {
+          <span style="color: #ce9178;">"awslogs-group"</span>         = <span style="color: #ce9178;">"/ecs/log-router"</span>
+          <span style="color: #ce9178;">"awslogs-region"</span>        = var.region
+          <span style="color: #ce9178;">"awslogs-stream-prefix"</span> = <span style="color: #ce9178;">"firelens"</span>
+        }
+      }
+      <span style="color: #9cdcfe;">cpu</span>    = 64
+      <span style="color: #9cdcfe;">memory</span> = 128
+    },
+    {
+      <span style="color: #9cdcfe;">name</span>      = <span style="color: #ce9178;">"app"</span>
+      <span style="color: #9cdcfe;">image</span>     = <span style="color: #ce9178;">"${aws_ecr_repository.app.repository_url}:${var.image_tag}"</span>
+      <span style="color: #9cdcfe;">essential</span> = <span style="color: #569cd6;">true</span>
+      <span style="color: #9cdcfe;">cpu</span>       = 960
+      <span style="color: #9cdcfe;">memory</span>    = 1920
+
+      <span style="color: #9cdcfe;">portMappings</span> = [{
+        <span style="color: #9cdcfe;">containerPort</span> = 8080
+        <span style="color: #9cdcfe;">protocol</span>      = <span style="color: #ce9178;">"tcp"</span>
+      }]
+
+      <span style="color: #9cdcfe;">environment</span> = [
+        { name = <span style="color: #ce9178;">"ENV"</span>,    value = <span style="color: #ce9178;">"production"</span> },
+        { name = <span style="color: #ce9178;">"REGION"</span>, value = var.region }
+      ]
+
+      <span style="color: #6a9955;"># Secrets from Secrets Manager — never pass secrets as env vars directly</span>
+      <span style="color: #9cdcfe;">secrets</span> = [
+        {
+          <span style="color: #9cdcfe;">name</span>      = <span style="color: #ce9178;">"DB_PASSWORD"</span>
+          <span style="color: #9cdcfe;">valueFrom</span> = <span style="color: #ce9178;">"arn:aws:secretsmanager:${var.region}:${var.account_id}:secret:prod/db/password"</span>
+        },
+        {
+          <span style="color: #9cdcfe;">name</span>      = <span style="color: #ce9178;">"API_KEY"</span>
+          <span style="color: #9cdcfe;">valueFrom</span> = <span style="color: #ce9178;">"arn:aws:secretsmanager:${var.region}:${var.account_id}:secret:prod/api/key"</span>
+        }
+      ]
+
+      <span style="color: #9cdcfe;">logConfiguration</span> = {
+        <span style="color: #9cdcfe;">logDriver</span> = <span style="color: #ce9178;">"awsfirelens"</span>
+        <span style="color: #9cdcfe;">options</span> = {
+          <span style="color: #9cdcfe;">Name</span>              = <span style="color: #ce9178;">"cloudwatch"</span>
+          <span style="color: #9cdcfe;">region</span>            = var.region
+          <span style="color: #9cdcfe;">log_group_name</span>    = <span style="color: #ce9178;">"/ecs/app"</span>
+          <span style="color: #9cdcfe;">log_stream_prefix</span> = <span style="color: #ce9178;">"app/"</span>
+          <span style="color: #9cdcfe;">auto_create_group</span> = <span style="color: #ce9178;">"<span style="color: #569cd6;">false</span>"</span>
+        }
+      }
+
+      <span style="color: #9cdcfe;">healthCheck</span> = {
+        <span style="color: #9cdcfe;">command</span>     = [<span style="color: #ce9178;">"CMD-SHELL"</span>, <span style="color: #ce9178;">"curl -f http://localhost:8080/health || exit 1"</span>]
+        <span style="color: #9cdcfe;">interval</span>    = 30
+        <span style="color: #9cdcfe;">timeout</span>     = 5
+        <span style="color: #9cdcfe;">retries</span>     = 3
+        <span style="color: #9cdcfe;">startPeriod</span> = 60
+      }
+    }
+  ])
+
+  <span style="color: #9cdcfe;">tags</span> = { Name = <span style="color: #ce9178;">"app-task-definition"</span> }
+}
+
+<span style="color: #6a9955;"># ECS Service — maintains desired count + rolling deployment</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_ecs_service"</span> <span style="color: #ce9178;">"app"</span> {
+  <span style="color: #9cdcfe;">name</span>            = <span style="color: #ce9178;">"app-service"</span>
+  <span style="color: #9cdcfe;">cluster</span>         = aws_ecs_cluster.main.id
+  <span style="color: #9cdcfe;">task_definition</span> = aws_ecs_task_definition.app.arn
+  <span style="color: #9cdcfe;">desired_count</span>   = 3
+
+  <span style="color: #6a9955;"># Deployment configuration — rolling update with rollback</span>
+  <span style="color: #9cdcfe;">deployment_minimum_healthy_percent</span> = 100   <span style="color: #6a9955;"># Never drop below full capacity</span>
+  <span style="color: #9cdcfe;">deployment_maximum_percent</span>         = 200   <span style="color: #6a9955;"># Allow double capacity during deployment</span>
+
+  <span style="color: #9cdcfe;">deployment_circuit_breaker</span> {
+    <span style="color: #9cdcfe;">enable</span>   = <span style="color: #569cd6;">true</span>    <span style="color: #6a9955;"># Automatically roll back on deployment failure</span>
+    <span style="color: #9cdcfe;">rollback</span> = <span style="color: #569cd6;">true</span>
+  }
+
+  <span style="color: #6a9955;"># Capacity provider strategy — Fargate Spot for cost savings</span>
+  <span style="color: #9cdcfe;">capacity_provider_strategy</span> {
+    <span style="color: #9cdcfe;">base</span>              = 1
+    <span style="color: #9cdcfe;">weight</span>            = 20
+    <span style="color: #9cdcfe;">capacity_provider</span> = <span style="color: #ce9178;">"FARGATE"</span>
+  }
+
+  <span style="color: #9cdcfe;">capacity_provider_strategy</span> {
+    <span style="color: #9cdcfe;">weight</span>            = 80
+    <span style="color: #9cdcfe;">capacity_provider</span> = <span style="color: #ce9178;">"FARGATE_SPOT"</span>
+  }
+
+  <span style="color: #9cdcfe;">network_configuration</span> {
+    <span style="color: #9cdcfe;">subnets</span>          = aws_subnet.private[*].id
+    <span style="color: #9cdcfe;">security_groups</span>  = [aws_security_group.ecs_tasks.id]
+    <span style="color: #9cdcfe;">assign_public_ip</span> = <span style="color: #569cd6;">false</span>   <span style="color: #6a9955;"># Never assign public IPs to Fargate tasks</span>
+  }
+
+  <span style="color: #6a9955;"># ALB integration — register tasks with target group</span>
+  <span style="color: #9cdcfe;">load_balancer</span> {
+    <span style="color: #9cdcfe;">target_group_arn</span> = aws_lb_target_group.app.arn
+    <span style="color: #9cdcfe;">container_name</span>   = <span style="color: #ce9178;">"app"</span>
+    <span style="color: #9cdcfe;">container_port</span>   = 8080
+  }
+
+  <span style="color: #6a9955;"># Service discovery — register in Cloud Map for service-to-service communication</span>
+  <span style="color: #9cdcfe;">service_registries</span> {
+    <span style="color: #9cdcfe;">registry_arn</span> = aws_service_discovery_service.app.arn
+  }
+
+  <span style="color: #6a9955;"># Enable ECS Exec — drop into a running container for debugging</span>
+  <span style="color: #9cdcfe;">enable_execute_command</span> = <span style="color: #569cd6;">true</span>
+
+  <span style="color: #9cdcfe;">tags</span> = { Name = <span style="color: #ce9178;">"app-service"</span> }
+}
+
+<span style="color: #6a9955;"># Auto Scaling — scale based on CPU and memory</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_appautoscaling_target"</span> <span style="color: #ce9178;">"ecs"</span> {
+  <span style="color: #9cdcfe;">max_capacity</span>       = 20
+  <span style="color: #9cdcfe;">min_capacity</span>       = 3
+  <span style="color: #9cdcfe;">resource_id</span>        = <span style="color: #ce9178;">"service/${aws_ecs_cluster.main.name}/${aws_ecs_service.app.name}"</span>
+  <span style="color: #9cdcfe;">scalable_dimension</span> = <span style="color: #ce9178;">"ecs:service:DesiredCount"</span>
+  <span style="color: #9cdcfe;">service_namespace</span>  = <span style="color: #ce9178;">"ecs"</span>
+}
+
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_appautoscaling_policy"</span> <span style="color: #ce9178;">"cpu"</span> {
+  <span style="color: #9cdcfe;">name</span>               = <span style="color: #ce9178;">"cpu-scaling"</span>
+  <span style="color: #9cdcfe;">policy_type</span>        = <span style="color: #ce9178;">"TargetTrackingScaling"</span>
+  <span style="color: #9cdcfe;">resource_id</span>        = aws_appautoscaling_target.ecs.resource_id
+  <span style="color: #9cdcfe;">scalable_dimension</span> = aws_appautoscaling_target.ecs.scalable_dimension
+  <span style="color: #9cdcfe;">service_namespace</span>  = aws_appautoscaling_target.ecs.service_namespace
+
+  <span style="color: #9cdcfe;">target_tracking_scaling_policy_configuration</span> {
+    <span style="color: #9cdcfe;">predefined_metric_specification</span> {
+      <span style="color: #9cdcfe;">predefined_metric_type</span> = <span style="color: #ce9178;">"ECSServiceAverageCPUUtilization"</span>
+    }
+    <span style="color: #9cdcfe;">target_value</span>       = 70.0   <span style="color: #6a9955;"># Scale when CPU > 70%</span>
+    <span style="color: #9cdcfe;">scale_in_cooldown</span>  = 300
+    <span style="color: #9cdcfe;">scale_out_cooldown</span> = 60
+  }
+}
+
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_appautoscaling_policy"</span> <span style="color: #ce9178;">"memory"</span> {
+  <span style="color: #9cdcfe;">name</span>               = <span style="color: #ce9178;">"memory-scaling"</span>
+  <span style="color: #9cdcfe;">policy_type</span>        = <span style="color: #ce9178;">"TargetTrackingScaling"</span>
+  <span style="color: #9cdcfe;">resource_id</span>        = aws_appautoscaling_target.ecs.resource_id
+  <span style="color: #9cdcfe;">scalable_dimension</span> = aws_appautoscaling_target.ecs.scalable_dimension
+  <span style="color: #9cdcfe;">service_namespace</span>  = aws_appautoscaling_target.ecs.service_namespace
+
+  <span style="color: #9cdcfe;">target_tracking_scaling_policy_configuration</span> {
+    <span style="color: #9cdcfe;">predefined_metric_specification</span> {
+      <span style="color: #9cdcfe;">predefined_metric_type</span> = <span style="color: #ce9178;">"ECSServiceAverageMemoryUtilization"</span>
+    }
+    <span style="color: #9cdcfe;">target_value</span>       = 75.0
+    <span style="color: #9cdcfe;">scale_in_cooldown</span>  = 300
+    <span style="color: #9cdcfe;">scale_out_cooldown</span> = 60
+  }
+}</code></pre>
+
+        <h3>ECS Service Discovery — Service-to-Service Communication</h3>
+        <p>For microservices that need to call each other directly (without going through an ALB):</p>
+        <pre><code><span style="color: #6a9955;"># Cloud Map namespace — internal DNS for service discovery</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_service_discovery_private_dns_namespace"</span> <span style="color: #ce9178;">"main"</span> {
+  <span style="color: #9cdcfe;">name</span>        = <span style="color: #ce9178;">"internal.prod"</span>
+  <span style="color: #9cdcfe;">description</span> = <span style="color: #ce9178;">"Internal service discovery namespace"</span>
+  <span style="color: #9cdcfe;">vpc</span>         = aws_vpc.main.id
+}
+
+<span style="color: #6a9955;"># Service discovery entry for the app service</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_service_discovery_service"</span> <span style="color: #ce9178;">"app"</span> {
+  <span style="color: #9cdcfe;">name</span> = <span style="color: #ce9178;">"app"</span>
+
+  <span style="color: #9cdcfe;">dns_config</span> {
+    <span style="color: #9cdcfe;">namespace_id</span> = aws_service_discovery_private_dns_namespace.main.id
+
+    <span style="color: #9cdcfe;">dns_records</span> {
+      <span style="color: #9cdcfe;">ttl</span>  = 10
+      <span style="color: #9cdcfe;">type</span> = <span style="color: #ce9178;">"A"</span>
+    }
+
+    <span style="color: #9cdcfe;">routing_policy</span> = <span style="color: #ce9178;">"MULTIVALUE"</span>
+  }
+
+  <span style="color: #9cdcfe;">health_check_custom_config</span> {
+    <span style="color: #9cdcfe;">failure_threshold</span> = 1
+  }
+}
+<span style="color: #6a9955;"># Result: app.internal.prod → resolves to all healthy task IPs</span>
+<span style="color: #6a9955;"># Any service can call http://app.internal.prod:8080 directly</span></code></pre>
+
+        <hr style="border-top: 1px solid var(--aws-border); margin: 40px 0;">
+
+        <h2>2. Amazon EKS — Kubernetes at Enterprise Scale</h2>
+
+        <h3>Why Kubernetes for Complex Platforms</h3>
+        <p>At Rabobank, the fraud detection platform had requirements that simply could not be met with ECS:</p>
+        <ul>
+          <li><strong>33 microservices</strong> owned by multiple teams — namespace-level isolation is essential</li>
+          <li><strong>GitOps</strong> with ArgoCD — Kubernetes is the de facto standard; ECS integration requires custom
+            tooling</li>
+          <li><strong>Karpenter</strong> for intelligent, cost-optimised node provisioning based on actual pod
+            requirements</li>
+          <li><strong>KEDA</strong> for event-driven autoscaling tied to SQS queue depth and Kafka consumer lag</li>
+          <li><strong>Helm</strong> for templated, versioned, reusable infrastructure-as-code at the application layer
+          </li>
+          <li><strong>Service mesh</strong> (AWS App Mesh / Istio) for mutual TLS between services and fine-grained
+            traffic management</li>
+          <li><strong>Custom resource definitions (CRDs)</strong> for Databricks operator, Spark operator, and internal
+            platform tooling</li>
+        </ul>
+        <p>ECS is excellent at running containers. EKS is a platform for building platforms.</p>
+
+        <h3>Full EKS Cluster Terraform — Production Pattern</h3>
+        <pre><code><span style="color: #6a9955;"># EKS Cluster</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_eks_cluster"</span> <span style="color: #ce9178;">"main"</span> {
+  <span style="color: #9cdcfe;">name</span>     = <span style="color: #ce9178;">"prod-eks-cluster"</span>
+  <span style="color: #9cdcfe;">role_arn</span> = aws_iam_role.eks_cluster.arn
+  <span style="color: #9cdcfe;">version</span>  = <span style="color: #ce9178;">"1.30"</span>
+
+  <span style="color: #9cdcfe;">vpc_config</span> {
+    <span style="color: #9cdcfe;">subnet_ids</span>              = concat(aws_subnet.private[*].id, aws_subnet.public[*].id)
+    <span style="color: #9cdcfe;">endpoint_private_access</span> = <span style="color: #569cd6;">true</span>    <span style="color: #6a9955;"># kubectl via private endpoint only</span>
+    <span style="color: #9cdcfe;">endpoint_public_access</span>  = <span style="color: #569cd6;">false</span>   <span style="color: #6a9955;"># No public API server endpoint</span>
+    <span style="color: #9cdcfe;">security_group_ids</span>      = [aws_security_group.eks_cluster.id]
+  }
+
+  <span style="color: #6a9955;"># Envelope encryption for Kubernetes secrets using KMS</span>
+  <span style="color: #9cdcfe;">encryption_config</span> {
+    <span style="color: #569cd6;">provider</span> {
+      <span style="color: #9cdcfe;">key_arn</span> = aws_kms_key.eks.arn
+    }
+    <span style="color: #9cdcfe;">resources</span> = [<span style="color: #ce9178;">"secrets"</span>]
+  }
+
+  <span style="color: #9cdcfe;">enabled_cluster_log_types</span> = [
+    <span style="color: #ce9178;">"api"</span>,            <span style="color: #6a9955;"># API server audit logs</span>
+    <span style="color: #ce9178;">"audit"</span>,          <span style="color: #6a9955;"># Kubernetes audit logs — required for compliance</span>
+    <span style="color: #ce9178;">"authenticator"</span>,  <span style="color: #6a9955;"># Authentication logs</span>
+    <span style="color: #ce9178;">"controllerManager"</span>,
+    <span style="color: #ce9178;">"scheduler"</span>
+  ]
+
+  <span style="color: #9cdcfe;">access_config</span> {
+    <span style="color: #9cdcfe;">authentication_mode</span>                         = <span style="color: #ce9178;">"API_AND_CONFIG_MAP"</span>
+    <span style="color: #9cdcfe;">bootstrap_cluster_creator_admin_permissions</span> = <span style="color: #569cd6;">false</span>   <span style="color: #6a9955;"># Explicit access entries only</span>
+  }
+
+  <span style="color: #9cdcfe;">tags</span> = { Name = <span style="color: #ce9178;">"prod-eks-cluster"</span> }
+
+  <span style="color: #9cdcfe;">depends_on</span> = [
+    aws_iam_role_policy_attachment.eks_cluster_policy,
+    aws_cloudwatch_log_group.eks
+  ]
+}
+
+<span style="color: #6a9955;"># EKS Access Entry — IAM roles mapped to Kubernetes RBAC</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_eks_access_entry"</span> <span style="color: #ce9178;">"platform_team"</span> {
+  <span style="color: #9cdcfe;">cluster_name</span>  = aws_eks_cluster.main.name
+  <span style="color: #9cdcfe;">principal_arn</span> = aws_iam_role.platform_engineer.arn
+  <span style="color: #9cdcfe;">type</span>          = <span style="color: #ce9178;">"STANDARD"</span>
+}
+
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_eks_access_policy_association"</span> <span style="color: #ce9178;">"platform_admin"</span> {
+  <span style="color: #9cdcfe;">cluster_name</span>  = aws_eks_cluster.main.name
+  <span style="color: #9cdcfe;">principal_arn</span> = aws_iam_role.platform_engineer.arn
+  <span style="color: #9cdcfe;">policy_arn</span>    = <span style="color: #ce9178;">"arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"</span>
+
+  <span style="color: #9cdcfe;">access_scope</span> { type = <span style="color: #ce9178;">"cluster"</span> }
+}
+
+<span style="color: #6a9955;"># Dev team — namespace-scoped access only</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_eks_access_entry"</span> <span style="color: #ce9178;">"dev_team"</span> {
+  <span style="color: #9cdcfe;">cluster_name</span>  = aws_eks_cluster.main.name
+  <span style="color: #9cdcfe;">principal_arn</span> = aws_iam_role.developer.arn
+  <span style="color: #9cdcfe;">type</span>          = <span style="color: #ce9178;">"STANDARD"</span>
+}
+
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_eks_access_policy_association"</span> <span style="color: #ce9178;">"dev_namespace"</span> {
+  <span style="color: #9cdcfe;">cluster_name</span>  = aws_eks_cluster.main.name
+  <span style="color: #9cdcfe;">principal_arn</span> = aws_iam_role.developer.arn
+  <span style="color: #9cdcfe;">policy_arn</span>    = <span style="color: #ce9178;">"arn:aws:eks::aws:cluster-access-policy/AmazonEKSEditPolicy"</span>
+
+  <span style="color: #9cdcfe;">access_scope</span> {
+    <span style="color: #9cdcfe;">type</span>       = <span style="color: #ce9178;">"namespace"</span>
+    <span style="color: #9cdcfe;">namespaces</span> = [<span style="color: #ce9178;">"fraud-detection"</span>, <span style="color: #ce9178;">"payments"</span>]   <span style="color: #6a9955;"># Dev team scoped to their namespaces</span>
+  }
+}</code></pre>
+
+        <h3>Karpenter — Intelligent Node Provisioning</h3>
+        <p>This is the single biggest operational advantage we gained at Rabobank over managed node groups. Karpenter
+          provisions exactly the right EC2 instance type for each workload — not a pre-configured node group that you
+          over-provision "just in case."</p>
+
+        <pre><code># Karpenter IAM Role — needs EC2 permissions to launch instances
+resource "aws_iam_role" "karpenter" {
+  name = "karpenter-controller"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Principal = {
+        Federated = aws_iam_openid_connect_provider.eks.arn
+      }
+      Action = "sts:AssumeRoleWithWebIdentity"
+      Condition = {
+        StringEquals = {
+          "${aws_iam_openid_connect_provider.eks.url}:sub" = "system:serviceaccount:karpenter:karpenter"
+          "${aws_iam_openid_connect_provider.eks.url}:aud" = "sts.amazonaws.com"
+        }
+      }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "karpenter" {
+  role       = aws_iam_role.karpenter.name
+  policy_arn = aws_iam_policy.karpenter.arn
+}
+
+# Karpenter Node Pool — defines what nodes Karpenter can provision
+# Applied via kubectl / Helm after cluster creation
+# karpenter-nodepool.yaml:
+# apiVersion: karpenter.sh/v1
+# kind: NodePool
+# metadata:
+#   name: default
+# spec:
+#   template:
+#     spec:
+#       nodeClassRef:
+#         apiVersion: karpenter.k8s.aws/v1
+#         kind: EC2NodeClass
+#         name: default
+#       requirements:
+#         - key: "karpenter.k8s.aws/instance-category"
+#           operator: In
+#           values: ["c", "m", "r"]       # Compute, Memory, General purpose
+#         - key: "karpenter.k8s.aws/instance-cpu"
+#           operator: In
+#           values: ["4", "8", "16", "32"]
+#         - key: "karpenter.sh/capacity-type"
+#           operator: In
+#           values: ["spot", "on-demand"]  # Prefer Spot, fallback to On-Demand
+#         - key: "kubernetes.io/arch"
+#           operator: In
+#           values: ["amd64", "arm64"]    # Support both x86 and Graviton
+#   disruption:
+#     consolidationPolicy: WhenEmptyOrUnderutilized
+#     consolidateAfter: 30s              # Bin-pack and remove underutilised nodes fast
+#   limits:
+#     cpu: 1000
+#     memory: 4000Gi</code></pre>
+
+        <h3>EKS Add-ons — The Essential Set</h3>
+        <pre><code><span style="color: #6a9955;"># EKS Managed Add-ons — AWS handles version management and patching</span>
+<span style="color: #9cdcfe;">locals</span> {
+  <span style="color: #9cdcfe;">eks_addons</span> = {
+    <span style="color: #9cdcfe;">vpc-cni</span> = {
+      <span style="color: #9cdcfe;">version</span> = <span style="color: #ce9178;">"v1.18.1-eksbuild.1"</span>
+      <span style="color: #9cdcfe;">configuration_values</span> = jsonencode({
+        <span style="color: #9cdcfe;">env</span> = {
+          <span style="color: #9cdcfe;">ENABLE_PREFIX_DELEGATION</span> = <span style="color: #ce9178;">"<span style="color: #569cd6;">true</span>"</span>   <span style="color: #6a9955;"># More IPs per node</span>
+          <span style="color: #9cdcfe;">WARM_PREFIX_TARGET</span>       = <span style="color: #ce9178;">"1"</span>
+        }
+      })
+    }
+    <span style="color: #9cdcfe;">coredns</span> = {
+      <span style="color: #9cdcfe;">version</span> = <span style="color: #ce9178;">"v1.11.1-eksbuild.4"</span>
+    }
+    <span style="color: #9cdcfe;">kube-proxy</span> = {
+      <span style="color: #9cdcfe;">version</span> = <span style="color: #ce9178;">"v1.30.0-eksbuild.3"</span>
+    }
+    <span style="color: #9cdcfe;">aws-ebs-csi-driver</span> = {
+      <span style="color: #9cdcfe;">version</span>           = <span style="color: #ce9178;">"v1.30.0-eksbuild.1"</span>
+      <span style="color: #9cdcfe;">service_account_role_arn</span> = aws_iam_role.ebs_csi.arn
+    }
+    <span style="color: #9cdcfe;">eks-pod-identity-agent</span> = {
+      <span style="color: #9cdcfe;">version</span> = <span style="color: #ce9178;">"v1.3.0-eksbuild.1"</span>
+    }
+  }
+}
+
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_eks_addon"</span> <span style="color: #ce9178;">"main"</span> {
+  <span style="color: #9cdcfe;">for_each</span> = local.eks_addons
+
+  <span style="color: #9cdcfe;">cluster_name</span>             = aws_eks_cluster.main.name
+  <span style="color: #9cdcfe;">addon_name</span>               = each.key
+  <span style="color: #9cdcfe;">addon_version</span>            = each.value.version
+  <span style="color: #9cdcfe;">service_account_role_arn</span> = lookup(each.value, <span style="color: #ce9178;">"service_account_role_arn"</span>, null)
+  <span style="color: #9cdcfe;">configuration_values</span>     = lookup(each.value, <span style="color: #ce9178;">"configuration_values"</span>, null)
+
+  <span style="color: #9cdcfe;">resolve_conflicts_on_update</span> = <span style="color: #ce9178;">"PRESERVE"</span>
+
+  <span style="color: #9cdcfe;">tags</span> = { Name = <span style="color: #ce9178;">"addon-${each.key}"</span> }
+}</code></pre>
+
+        <h3>EKS Pod Identity — The Modern Way to Grant AWS Permissions</h3>
+        <p>EKS Pod Identity replaces IRSA (IAM Roles for Service Accounts) as the recommended pattern. Simpler
+          configuration, no OIDC thumbprint management:</p>
+        <pre><code><span style="color: #6a9955;"># Pod Identity Association — maps a Kubernetes ServiceAccount to an IAM role</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_eks_pod_identity_association"</span> <span style="color: #ce9178;">"fraud_service"</span> {
+  <span style="color: #9cdcfe;">cluster_name</span>    = aws_eks_cluster.main.name
+  <span style="color: #9cdcfe;">namespace</span>       = <span style="color: #ce9178;">"fraud-detection"</span>
+  <span style="color: #9cdcfe;">service_account</span> = <span style="color: #ce9178;">"fraud-service"</span>
+  <span style="color: #9cdcfe;">role_arn</span>        = aws_iam_role.fraud_service.arn
+}
+
+<span style="color: #6a9955;"># The IAM role — Kubernetes pod assumes this role automatically</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_iam_role"</span> <span style="color: #ce9178;">"fraud_service"</span> {
+  <span style="color: #9cdcfe;">name</span> = <span style="color: #ce9178;">"fraud-service-pod-role"</span>
+
+  <span style="color: #9cdcfe;">assume_role_policy</span> = jsonencode({
+    <span style="color: #9cdcfe;">Version</span> = <span style="color: #ce9178;">"2012-10-17"</span>
+    <span style="color: #9cdcfe;">Statement</span> = [{
+      <span style="color: #9cdcfe;">Effect</span>    = <span style="color: #ce9178;">"Allow"</span>
+      <span style="color: #9cdcfe;">Principal</span> = { Service = <span style="color: #ce9178;">"pods.eks.amazonaws.com"</span> }
+      <span style="color: #9cdcfe;">Action</span>    = [<span style="color: #ce9178;">"sts:AssumeRole"</span>, <span style="color: #ce9178;">"sts:TagSession"</span>]
+    }]
+  })
+}</code></pre>
+
+        <hr style="border-top: 1px solid var(--aws-border); margin: 40px 0;">
+
+        <h2>3. GitOps with ArgoCD on EKS — The Rabobank Pattern</h2>
+        <p>GitOps was a hard requirement at Rabobank — every change to production must be traceable to a Git commit,
+          peer-reviewed, and auditable. ECS has no native GitOps story. EKS with ArgoCD delivers this out of the box.
+        </p>
+
+        <pre><code><span style="color: #6a9955;"># ArgoCD installed via Helm</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"helm_release"</span> <span style="color: #ce9178;">"argocd"</span> {
+  <span style="color: #9cdcfe;">name</span>             = <span style="color: #ce9178;">"argocd"</span>
+  <span style="color: #9cdcfe;">repository</span>       = <span style="color: #ce9178;">"https://argoproj.github.io/argo-helm"</span>
+  <span style="color: #9cdcfe;">chart</span>            = <span style="color: #ce9178;">"argo-cd"</span>
+  <span style="color: #9cdcfe;">version</span>          = <span style="color: #ce9178;">"7.3.11"</span>
+  <span style="color: #9cdcfe;">namespace</span>        = <span style="color: #ce9178;">"argocd"</span>
+  <span style="color: #9cdcfe;">create_namespace</span> = <span style="color: #569cd6;">true</span>
+
+  <span style="color: #9cdcfe;">values</span> = [yamlencode({
+    <span style="color: #9cdcfe;">server</span> = {
+      <span style="color: #9cdcfe;">ingress</span> = {
+        <span style="color: #9cdcfe;">enabled</span> = <span style="color: #569cd6;">true</span>
+        <span style="color: #9cdcfe;">annotations</span> = {
+          <span style="color: #ce9178;">"kubernetes.io/ingress.class"</span>               = <span style="color: #ce9178;">"alb"</span>
+          <span style="color: #ce9178;">"alb.ingress.kubernetes.io/scheme"</span>          = <span style="color: #ce9178;">"internal"</span>
+          <span style="color: #ce9178;">"alb.ingress.kubernetes.io/target-type"</span>     = <span style="color: #ce9178;">"ip"</span>
+          <span style="color: #ce9178;">"alb.ingress.kubernetes.io/certificate-arn"</span> = var.acm_cert_arn
+        }
+      }
+    }
+    <span style="color: #9cdcfe;">configs</span> = {
+      <span style="color: #9cdcfe;">params</span> = {
+        <span style="color: #ce9178;">"server.insecure"</span> = <span style="color: #569cd6;">false</span>
+      }
+      <span style="color: #9cdcfe;">cm</span> = {
+        <span style="color: #ce9178;">"admin.enabled"</span> = <span style="color: #ce9178;">"<span style="color: #569cd6;">false</span>"</span>   <span style="color: #6a9955;"># Disable local admin — use SSO only</span>
+        <span style="color: #ce9178;">"oidc.config"</span>   = yamlencode({
+          <span style="color: #9cdcfe;">name</span>         = <span style="color: #ce9178;">"Okta"</span>
+          <span style="color: #9cdcfe;">issuer</span>       = var.okta_issuer
+          <span style="color: #9cdcfe;">clientID</span>     = var.okta_client_id
+          <span style="color: #9cdcfe;">clientSecret</span> = <span style="color: #ce9178;">"$oidc.okta.clientSecret"</span>
+          <span style="color: #9cdcfe;">requestedScopes</span> = [<span style="color: #ce9178;">"openid"</span>, <span style="color: #ce9178;">"profile"</span>, <span style="color: #ce9178;">"email"</span>, <span style="color: #ce9178;">"groups"</span>]
+        })
+      }
+    }
+    <span style="color: #6a9955;"># High availability ArgoCD — 3 replicas for production</span>
+    <span style="color: #9cdcfe;">replicaCount</span> = 3
+  })]
+}</code></pre>
+
+        <p><strong>ArgoCD Application — deploy a microservice from Git:</strong></p>
+        <pre><code># fraud-detection-app.yaml — applied by the platform team once per service
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: fraud-detection-service
+  namespace: argocd
+spec:
+  project: fraud-detection
+
+  source:
+    repoURL: https://github.com/rabobank/fraud-detection-infra
+    targetRevision: main
+    path: services/fraud-detection
+    helm:
+      valueFiles:
+        - values-production.yaml
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: fraud-detection
+
+  syncPolicy:
+    automated:
+      prune: true      # Remove resources deleted from Git
+      selfHeal: true   # Revert manual changes — Git is the source of truth
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m</code></pre>
+
+        <blockquote>
+          <strong>Production lesson from Rabobank:</strong> <code>selfHeal: true</code> is essential in regulated
+          environments. Without it, a manual <code>kubectl apply</code> in production bypasses Git review and creates a
+          compliance gap. With selfHeal, any manual change is automatically reverted within seconds — Git is the only
+          source of truth, enforced automatically.
+        </blockquote>
+
+        <hr style="border-top: 1px solid var(--aws-border); margin: 40px 0;">
+
+        <h2>4. Real Migration Pattern — On-Premises to ECS Fargate (WCC)</h2>
+        <p>This is the exact pattern I used at WCC Group to migrate 40+ on-premises workloads to ECS Fargate using AWS
+          Application Migration Service (MGN):</p>
+
+        <pre><code>Phase 1: Rehost (lift-and-shift)
+  On-prem server → MGN Agent → EC2 (same OS, same app)
+  Timeline: 2-4 weeks per application
+
+Phase 2: Re-platform (containerise for ECS)
+  EC2 → Dockerise application → ECR → ECS Fargate Task Definition
+  Timeline: 1-2 weeks per application (simple apps)
+
+Phase 3: Optimise (Fargate Spot, auto scaling, observability)
+  Add Fargate Spot capacity providers
+  Tune CPU/memory sizing from CloudWatch Container Insights data
+  Add FireLens log routing, X-Ray tracing
+  Timeline: Ongoing</code></pre>
+
+        <p><strong>The key decision at WCC: why Fargate, not EC2-based ECS?</strong></p>
+        <ul>
+          <li>Teams had no Kubernetes experience — Fargate's zero-node-management model meant they could focus on
+            application delivery</li>
+          <li>Workloads were mostly stateless web services and APIs — perfect Fargate fit</li>
+          <li>No need for daemonsets, custom node configurations, or GPU workloads</li>
+          <li>Cost was predictable: pay per vCPU/memory/second, no idle EC2 capacity</li>
+        </ul>
+
+        <hr style="border-top: 1px solid var(--aws-border); margin: 40px 0;">
+
+        <h2>5. Cost Deep-Dive — The Honest Numbers</h2>
+
+        <h3>ECS Fargate Pricing</h3>
+        <pre><code>vCPU:   $0.04048/vCPU/hour
+Memory: $0.004445/GB/hour
+
+Example — 10 tasks, each 1 vCPU + 2 GB RAM, running 24/7:
+vCPU:   10 × 1 × $0.04048 × 730h  = $295.50/month
+Memory: 10 × 2 × $0.004445 × 730h =  $64.90/month
+Total:                               $360.40/month
+
+With 80% Fargate Spot (70% discount):
+Standard (20%): 2 tasks × $36.04  =  $72.08/month
+Spot (80%):     8 tasks × $10.81  =  $86.48/month
+Total with Spot:                     $158.56/month — 56% saving</code></pre>
+
+        <h3>EKS Pricing</h3>
+        <pre><code>Control plane:  $0.10/hour × 730h          = $73.00/month (fixed)
+Node group (3× m5.xlarge, 24/7):
+  3 × $0.192/hour × 730h                   = $420.48/month
+  
+With Karpenter + Spot:
+  Karpenter provisions m5.xlarge Spot:
+  3 × $0.057/hour × 730h                   = $124.89/month
+  Control plane:                            = $73.00/month
+  Total with Karpenter Spot:               = $197.89/month
+
+At Rabobank — 33 microservices, ~50 pods:
+  Without Karpenter: ~$1,800/month (6 m5.2xlarge on-demand)
+  With Karpenter + Spot: ~$380/month — 79% saving</code></pre>
+
+        <blockquote>
+          <strong>The Karpenter lesson from Rabobank:</strong> Before Karpenter, we provisioned 6
+          <code>m5.2xlarge</code> nodes to handle peak load — and watched them idle at 20% utilisation at night.
+          Karpenter replaced this with bin-packed, right-sized, mostly Spot nodes that scale to zero overnight and
+          provision fresh instances for the morning peak. The saving was significant enough that EKS became cheaper than
+          ECS Fargate at our scale.
+        </blockquote>
+
+        <h3>Cost Crossover Point</h3>
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th>Scale</th>
+              <th>Winner</th>
+              <th>Reason</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>1-10 services</td>
+              <td><strong>ECS Fargate</strong></td>
+              <td>No $73/month control plane, simpler = less engineering cost</td>
+            </tr>
+            <tr>
+              <td>10-25 services</td>
+              <td><strong>Toss-up</strong></td>
+              <td>Depends on team expertise and GitOps requirements</td>
+            </tr>
+            <tr>
+              <td>25+ services</td>
+              <td><strong>EKS + Karpenter</strong></td>
+              <td>Karpenter savings outweigh control plane cost, namespace isolation essential</td>
+            </tr>
+            <tr>
+              <td>Spot-heavy workloads</td>
+              <td><strong>EKS + Karpenter</strong></td>
+              <td>Karpenter handles Spot interruption + diversification better</td>
+            </tr>
+            <tr>
+              <td>Stateful workloads</td>
+              <td><strong>EKS</strong></td>
+              <td>StatefulSets + EBS CSI driver handle this natively</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <hr style="border-top: 1px solid var(--aws-border); margin: 40px 0;">
+
+        <h2>6. Networking — How Each Integrates with VPC</h2>
+
+        <h3>ECS Fargate Networking</h3>
+        <p>Every Fargate task runs in <strong>awsvpc</strong> mode — each task gets its own ENI, its own private IP, and
+          its own Security Group assignment. This is the cleanest network security model available in AWS container
+          services:</p>
+        <pre><code><span style="color: #6a9955;"># Security Group — one per service, not shared across tasks</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_security_group"</span> <span style="color: #ce9178;">"fraud_service"</span> {
+  <span style="color: #9cdcfe;">name</span>   = <span style="color: #ce9178;">"fraud-service-sg"</span>
+  <span style="color: #9cdcfe;">vpc_id</span> = aws_vpc.main.id
+
+  <span style="color: #9cdcfe;">ingress</span> {
+    <span style="color: #9cdcfe;">from_port</span>       = 8080
+    <span style="color: #9cdcfe;">to_port</span>         = 8080
+    <span style="color: #9cdcfe;">protocol</span>        = <span style="color: #ce9178;">"tcp"</span>
+    <span style="color: #9cdcfe;">security_groups</span> = [aws_security_group.alb.id]   <span style="color: #6a9955;"># ALB only</span>
+  }
+
+  <span style="color: #6a9955;"># Service-to-service: allow from payment service SG</span>
+  <span style="color: #9cdcfe;">ingress</span> {
+    <span style="color: #9cdcfe;">from_port</span>       = 8080
+    <span style="color: #9cdcfe;">to_port</span>         = 8080
+    <span style="color: #9cdcfe;">protocol</span>        = <span style="color: #ce9178;">"tcp"</span>
+    <span style="color: #9cdcfe;">security_groups</span> = [aws_security_group.payment_service.id]
+  }
+
+  <span style="color: #9cdcfe;">egress</span> {
+    <span style="color: #9cdcfe;">from_port</span>   = 0
+    <span style="color: #9cdcfe;">to_port</span>     = 0
+    <span style="color: #9cdcfe;">protocol</span>    = <span style="color: #ce9178;">"-1"</span>
+    <span style="color: #9cdcfe;">cidr_blocks</span> = [<span style="color: #ce9178;">"0.0.0.0/0"</span>]
+  }
+}</code></pre>
+
+        <h3>EKS Networking — VPC CNI + ALB Ingress Controller</h3>
+        <pre><code><span style="color: #6a9955;"># AWS Load Balancer Controller — creates ALBs from Kubernetes Ingress resources</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"helm_release"</span> <span style="color: #ce9178;">"aws_lb_controller"</span> {
+  <span style="color: #9cdcfe;">name</span>       = <span style="color: #ce9178;">"aws-load-balancer-controller"</span>
+  <span style="color: #9cdcfe;">repository</span> = <span style="color: #ce9178;">"https://aws.github.io/eks-charts"</span>
+  <span style="color: #9cdcfe;">chart</span>      = <span style="color: #ce9178;">"aws-load-balancer-controller"</span>
+  <span style="color: #9cdcfe;">namespace</span>  = <span style="color: #ce9178;">"kube-system"</span>
+  <span style="color: #9cdcfe;">version</span>    = <span style="color: #ce9178;">"1.8.1"</span>
+
+  <span style="color: #9cdcfe;">set</span> {
+    <span style="color: #9cdcfe;">name</span>  = <span style="color: #ce9178;">"clusterName"</span>
+    <span style="color: #9cdcfe;">value</span> = aws_eks_cluster.main.name
+  }
+
+  <span style="color: #9cdcfe;">set</span> {
+    <span style="color: #9cdcfe;">name</span>  = <span style="color: #ce9178;">"serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"</span>
+    <span style="color: #9cdcfe;">value</span> = aws_iam_role.aws_lb_controller.arn
+  }
+
+  <span style="color: #6a9955;"># Use Fargate for the controller itself — no dedicated node needed</span>
+  <span style="color: #9cdcfe;">set</span> {
+    <span style="color: #9cdcfe;">name</span>  = <span style="color: #ce9178;">"tolerations[0].key"</span>
+    <span style="color: #9cdcfe;">value</span> = <span style="color: #ce9178;">"eks.amazonaws.com/compute-type"</span>
+  }
+}</code></pre>
+
+        <p><strong>Kubernetes Ingress — creates an ALB automatically:</strong></p>
+        <pre><code>apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: fraud-detection-ingress
+  namespace: fraud-detection
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internal
+    alb.ingress.kubernetes.io/target-type: ip       # Route directly to pod IPs
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:eu-west-1:123:certificate/xxx
+    alb.ingress.kubernetes.io/ssl-policy: ELBSecurityPolicy-TLS13-1-2-2021-06
+    alb.ingress.kubernetes.io/wafv2-acl-arn: arn:aws:wafv2:eu-west-1:123:regional/webacl/xxx
+spec:
+  rules:
+    - host: fraud-api.internal.rabobank.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: fraud-detection-service
+                port:
+                  number: 8080</code></pre>
+
+        <hr style="border-top: 1px solid var(--aws-border); margin: 40px 0;">
+
+        <h2>7. The Decision Framework</h2>
+        <pre><code>How many containerised services do you need to run?
+├── 1-10 services?
+│   └── ECS Fargate — less complexity, lower operational overhead
+└── 10+ services with multi-team ownership?
+    └── EKS — namespace isolation, RBAC, GitOps are worth the investment
+
+Do you have Kubernetes expertise in the team?
+├── YES → EKS (leverage existing skills)
+└── NO
+    ├── Timeline &lt; 3 months? → ECS Fargate (faster to production)
+    └── Timeline &gt; 6 months? → Invest in EKS skills — pays off at scale
+
+Do you need GitOps (ArgoCD/Flux)?
+└── YES → EKS (native GitOps ecosystem)
+    ECS requires custom tooling — significant engineering investment
+
+Do you need advanced autoscaling?
+├── CPU/Memory based? → Both work (ECS App Auto Scaling / HPA)
+├── Event-driven (SQS depth, Kafka lag)? → EKS + KEDA
+└── Cost-optimised node provisioning? → EKS + Karpenter
+
+Do you have stateful workloads?
+├── NO → Both work
+└── YES → EKS (StatefulSets + EBS CSI driver + PersistentVolumes)
+
+Are you migrating from on-premises quickly?
+└── YES → ECS Fargate (lower barrier, faster time-to-production)
+
+Do you need a service mesh (mTLS between services)?
+└── YES → EKS (App Mesh, Istio, Linkerd — native support)
+
+Cost at scale?
+├── &lt;20 pods → ECS Fargate (no control plane cost)
+└── &gt;20 pods → EKS + Karpenter + Spot (savings exceed control plane cost)</code></pre>
+
+        <hr style="border-top: 1px solid var(--aws-border); margin: 40px 0;">
+
+        <h2>8. Common Mistakes & Anti-Patterns</h2>
+
+        <div class="pitfall-card">
+          <h4 style="margin-top: 0; color: #d13212;"><i class="fa-solid fa-triangle-exclamation"></i> Mistake 1:
+            Choosing EKS for a Small Team Because It Sounds More Impressive</h4>
+          <p style="margin-bottom: 0;">Kubernetes is a platform for platform engineers. If your team of 3 engineers
+            spends 40% of their time managing cluster upgrades, debugging kubelet issues, and maintaining Helm charts —
+            you're paying the complexity tax without the benefit. A 5-service startup on ECS Fargate ships faster than
+            the same team wrestling with EKS.</p>
+        </div>
+
+        <div class="pitfall-card">
+          <h4 style="margin-top: 0; color: #d13212;"><i class="fa-solid fa-triangle-exclamation"></i> Mistake 2: Running
+            ECS with EC2 Launch Type Instead of Fargate</h4>
+          <p style="margin-bottom: 0;">EC2 launch type means you manage the underlying instances — patching, capacity
+            planning, bin-packing. This is the worst of both worlds: you get ECS's limited Kubernetes ecosystem AND
+            EC2's operational overhead. Unless you have a specific requirement (GPU workloads, custom kernel modules),
+            always use Fargate.</p>
+        </div>
+
+        <div class="pitfall-card">
+          <h4 style="margin-top: 0; color: #d13212;"><i class="fa-solid fa-triangle-exclamation"></i> Mistake 3: Not
+            Using Fargate Spot for Non-Critical Workloads</h4>
+          <p style="margin-bottom: 0;">Fargate Spot is up to 70% cheaper than standard Fargate. Spot tasks can be
+            interrupted with a 2-minute warning — but for stateless services with proper graceful shutdown handling,
+            interruptions are transparent to users (ALB drains connections before task termination). Not using Spot for
+            background workers, batch jobs, and dev environments is leaving significant money on the table.</p>
+        </div>
+
+        <div class="pitfall-card">
+          <h4 style="margin-top: 0; color: #d13212;"><i class="fa-solid fa-triangle-exclamation"></i> Mistake 4: One EKS
+            Node Group for All Workloads</h4>
+          <p style="margin-bottom: 0;">Running general-purpose services on the same node group as memory-intensive ML
+            workloads or latency-sensitive APIs wastes compute and creates noisy-neighbour problems. Use Karpenter with
+            multiple NodePools — one for general workloads (mixed instance types, Spot), one for ML (GPU instances), one
+            for latency-sensitive (compute-optimised, on-demand, dedicated).</p>
+        </div>
+
+        <div class="pitfall-card">
+          <h4 style="margin-top: 0; color: #d13212;"><i class="fa-solid fa-triangle-exclamation"></i> Mistake 5: Not
+            Setting Resource Requests and Limits on EKS Pods</h4>
+          <p>Without <code>resources.requests</code>, Karpenter cannot make accurate node sizing decisions — it
+            provisions oversized nodes. Without <code>resources.limits</code>, a memory-leaking pod can consume all
+            memory on a node and trigger an OOM cascade. Always set both:</p>
+          <pre style="margin-bottom: 0;"><code>resources:
+  requests:
+    cpu: "500m"       # Half a vCPU — what the pod normally uses
+    memory: "512Mi"   # Normal memory usage
+  limits:
+    cpu: "2000m"      # Allow burst to 2 vCPU
+    memory: "1Gi"     # Hard memory ceiling — OOM kill above this</code></pre>
+        </div>
+
+        <div class="pitfall-card">
+          <h4 style="margin-top: 0; color: #d13212;"><i class="fa-solid fa-triangle-exclamation"></i> Mistake 6: Not
+            Enabling ECS Exec or kubectl exec for Debugging</h4>
+          <p style="margin-bottom: 0;">Production debugging without shell access to running containers is extremely
+            painful. Enable ECS Exec (<code>enable_execute_command = true</code>) for ECS and ensure
+            <code>kubectl exec</code> access is controlled via RBAC on EKS. The alternative is redeploying with debug
+            logging enabled — slow and risky in production.
+          </p>
+        </div>
+
+        <div class="pitfall-card">
+          <h4 style="margin-top: 0; color: #d13212;"><i class="fa-solid fa-triangle-exclamation"></i> Mistake 7:
+            Skipping Container Insights / CloudWatch / Prometheus</h4>
+          <p style="margin-bottom: 0;">Running containers without observability is flying blind. Enable Container
+            Insights on ECS clusters from Day 1. On EKS, deploy the AWS Distro for OpenTelemetry (ADOT) collector or the
+            CloudWatch agent via Helm to ship metrics to CloudWatch and traces to X-Ray.</p>
+        </div>
+
+        <hr style="border-top: 1px solid var(--aws-border); margin: 40px 0;">
+
+        <h2>Architecture Decision Matrix</h2>
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th>Requirement</th>
+              <th>ECS Fargate</th>
+              <th>EKS + Karpenter</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Zero node management</td>
+              <td>✅ Native</td>
+              <td>⚠️ Karpenter handles it</td>
+            </tr>
+            <tr>
+              <td>GitOps (ArgoCD/Flux)</td>
+              <td>❌ Custom tooling needed</td>
+              <td>✅ Native</td>
+            </tr>
+            <tr>
+              <td>Namespace multi-tenancy</td>
+              <td>❌ Service-level only</td>
+              <td>✅ Native</td>
+            </tr>
+            <tr>
+              <td>Stateful workloads</td>
+              <td>⚠️ EFS only</td>
+              <td>✅ EBS + EFS + FSx</td>
+            </tr>
+            <tr>
+              <td>Service mesh (mTLS)</td>
+              <td>⚠️ App Mesh limited</td>
+              <td>✅ Istio, Linkerd, App Mesh</td>
+            </tr>
+            <tr>
+              <td>Event-driven autoscaling</td>
+              <td>⚠️ Limited</td>
+              <td>✅ KEDA</td>
+            </tr>
+            <tr>
+              <td>Cost at &lt;20 pods</td>
+              <td>✅ No control plane cost</td>
+              <td>❌ $73/month control plane</td>
+            </tr>
+            <tr>
+              <td>Cost at &gt;50 pods</td>
+              <td>⚠️ Higher per-pod cost</td>
+              <td>✅ Karpenter + Spot wins</td>
+            </tr>
+            <tr>
+              <td>Learning curve</td>
+              <td>✅ Low</td>
+              <td>❌ High</td>
+            </tr>
+            <tr>
+              <td>AWS-native integration</td>
+              <td>✅ Deep</td>
+              <td>✅ Good (add-ons)</td>
+            </tr>
+            <tr>
+              <td>CNCF ecosystem</td>
+              <td>❌ Limited</td>
+              <td>✅ Full access</td>
+            </tr>
+            <tr>
+              <td>Time to first deployment</td>
+              <td>✅ Days</td>
+              <td>❌ Weeks</td>
+            </tr>
+            <tr>
+              <td>Cluster upgrades</td>
+              <td>✅ Automatic</td>
+              <td>⚠️ Managed but requires planning</td>
+            </tr>
+            <tr>
+              <td>GPU workloads</td>
+              <td>❌ Not supported</td>
+              <td>✅ Supported</td>
+            </tr>
+            <tr>
+              <td>Custom node configuration</td>
+              <td>❌ Not possible</td>
+              <td>✅ EC2NodeClass customisation</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div
+          style="background: var(--aws-highlight); padding: 32px; border-radius: 8px; border: 1px solid var(--aws-border); margin: 40px 0; text-align: center; border-left: 4px solid var(--aws-orange);">
+          <i class="fa-solid fa-boxes-stacked"
+            style="font-size: 32px; color: var(--aws-orange); margin-bottom: 16px;"></i>
+          <h3 style="font-size: 18px; color: var(--aws-text); margin-bottom: 12px;">The Golden Rule</h3>
+          <p style="font-size: 15px; color: var(--aws-text-light); font-style: italic; margin-bottom: 0;">
+            "ECS Fargate when you want to run containers. EKS when you want to build a platform. If your team is smaller
+            than 5 engineers, you have fewer than 15 services, and you don't have Kubernetes expertise — ECS Fargate is
+            almost certainly the right answer and will ship faster. If you have multi-team ownership, GitOps
+            requirements, complex autoscaling needs, stateful workloads, or a platform that other teams build on top of
+            — EKS is worth every hour of investment. The worst decision is choosing EKS because it sounds more
+            impressive, and the second-worst is staying on ECS when your platform has clearly outgrown it."
+          </p>
+        </div>
+
+
+        <div style="margin: 40px 0;">
+          <span
+            style="font-weight: 700; color: var(--aws-text-light); margin-right: 12px; font-size: 13px;">Tags:</span>
+          <span class="tag">#AWS</span> <span class="tag">#ECS</span> <span class="tag">#EKS</span> <span
+            class="tag">#Fargate</span> <span class="tag">#Kubernetes</span> <span class="tag">#Containers</span>
+        </div>
+      </div> <!-- End Blog Body -->
+
+      <div class="share-section">
+        <span style="font-weight: 700; color: var(--aws-text-light);">Share this article:</span>
+        <a href="https://www.linkedin.com/sharing/share-offsite/?url=https://www.ankushpanday.com/blog/compute/aws-ecs-fargate-vs-eks.html"
+          target="_blank" class="share-btn linkedin-btn">
+          <i class="fa-brands fa-linkedin"></i> Share on LinkedIn
+        </a>
+      </div>
+
+      <div class="author-card">
+        <div class="author-img"><i class="fa-solid fa-user-tie"></i></div>
+        <div>
+          <h4 style="margin: 0 0 8px 0; color: var(--aws-text);">Ankush Panday</h4>
+          <p style="margin: 0; font-size: 14px; color: var(--aws-text-light);">Specializing in highly scalable AWS
+            infrastructure and automated quality engineering.</p>
+          <a href="https://www.linkedin.com/in/ankush-panday-39b97824/" target="_blank"
+            style="display: inline-block; margin-top: 10px; color: var(--aws-blue); text-decoration: none; font-size: 13px; font-weight: 600;">Connect
+            on LinkedIn <i class="fa-solid fa-external-link" style="font-size: 10px;"></i></a>
+        </div>
+      </div>
+
+    </article>
+
+    <!-- NAVIGATION LINKS -->
+    <div class="nav-links">
+      <a href="../security/aws-security-in-depth.html" class="nav-link"><i class="fa-solid fa-arrow-left"></i> Previous:
+        AWS Security in Depth (GuardDuty, Security Hub, WAF)</a>
+      <a href="../index.html" class="nav-link">Return to Blog Hub <i class="fa-solid fa-arrow-right"></i></a>
+
+    </div>
+
+  </main>
+
+  <footer class="aws-footer">
+    Built for Performance. Architected for the Cloud. &bull; &copy; 2026 <span>Ankush Panday</span>
+  </footer>
+
+</body>
+
+</html>

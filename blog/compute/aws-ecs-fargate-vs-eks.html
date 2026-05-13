@@ -404,11 +404,16 @@
         <p>I have not written this post from AWS documentation. I have written it from two production environments I
           built myself — and the lessons I learned the hard way in both.</p>
 
-        <p><strong>At WCC Group</strong>, I led the migration of 40+ on-premises workloads to AWS. The majority of these
-          were legacy monoliths and mid-tier services that needed to be containerised and run reliably in AWS without
-          the team acquiring deep Kubernetes expertise overnight. The answer was <strong>ECS Fargate</strong>. No nodes
-          to manage, no kubelet to debug, no cluster upgrades to plan. Define a Task Definition, wire it to an ALB, set
-          up auto scaling — done. We decommissioned the entire datacenter on schedule with zero downtime.</p>
+        <p><strong>At WCC Group</strong>, I worked across two distinct initiatives. The first was migrating 40+
+          on-premises
+          workloads to AWS using <strong>AWS Application Migration Service (MGN)</strong> — a lift-and-shift to EC2
+          focused entirely on speed
+          and zero-downtime datacenter decommission. ECS played no part in that migration. The second was a separate
+          greenfield project: architecting an <strong>ECS Fargate platform</strong> to deploy an internal product across
+          multiple client
+          environments. No legacy to carry, no Kubernetes expertise in the team, and a hard requirement to onboard new
+          clients quickly and consistently. ECS Fargate was the right tool — no nodes to manage, no kubelet to debug,
+          repeatable per-client Terraform modules, and awsvpc networking for clean client isolation. </p>
 
         <p><strong>At Rabobank</strong>, I inherited a fraud detection platform built on 33 microservices. The team had
           GitOps requirements, multi-team ownership of namespaces, complex traffic management between services,

@@ -1426,8 +1426,32 @@ Cost at scale?
 
         <div
           style="background: var(--aws-highlight); padding: 32px; border-radius: 8px; border: 1px solid var(--aws-border); margin: 40px 0; text-align: center; border-left: 4px solid var(--aws-orange);">
-          <i class="fa-solid fa-boxes-stacked"
-            style="font-size: 32px; color: var(--aws-orange); margin-bottom: 16px;"></i>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512" style="width: 70px; height: 70px; fill: var(--aws-orange); margin-bottom: 16px;">
+            <!-- Main Container Body -->
+            <rect x="32" y="128" width="576" height="256" rx="4" />
+            <!-- Vertical Ribs (Corrugation) -->
+            <g fill="#000" fill-opacity="0.2">
+              <rect x="70" y="150" width="15" height="212" />
+              <rect x="110" y="150" width="15" height="212" />
+              <rect x="150" y="150" width="15" height="212" />
+              <rect x="190" y="150" width="15" height="212" />
+              <rect x="230" y="150" width="15" height="212" />
+              <rect x="270" y="150" width="15" height="212" />
+              <rect x="310" y="150" width="15" height="212" />
+              <rect x="350" y="150" width="15" height="212" />
+              <rect x="390" y="150" width="15" height="212" />
+              <rect x="430" y="150" width="15" height="212" />
+              <rect x="470" y="150" width="15" height="212" />
+            </g>
+            <!-- Frame / Structural Bars -->
+            <rect x="32" y="128" width="576" height="20" fill="#000" fill-opacity="0.1" />
+            <rect x="32" y="364" width="576" height="20" fill="#000" fill-opacity="0.1" />
+            <rect x="32" y="128" width="20" height="256" fill="#000" fill-opacity="0.1" />
+            <rect x="588" y="128" width="20" height="256" fill="#000" fill-opacity="0.1" />
+            <!-- Door Handles / Locking Bars on the right -->
+            <rect x="530" y="160" width="8" height="192" fill="#000" fill-opacity="0.3" />
+            <rect x="550" y="160" width="8" height="192" fill="#000" fill-opacity="0.3" />
+          </svg>
           <h3 style="font-size: 18px; color: var(--aws-text); margin-bottom: 12px;">The Golden Rule</h3>
           <p style="font-size: 15px; color: var(--aws-text-light); font-style: italic; margin-bottom: 0;">
             "ECS Fargate when you want to run containers. EKS when you want to build a platform. If your team is smaller

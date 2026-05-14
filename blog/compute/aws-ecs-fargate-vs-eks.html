@@ -301,7 +301,7 @@
           EKS — When I Used Both and How to Choose</h1>
         <div
           style="display: flex; gap: 12px; align-items: center; color: var(--aws-text-light); font-size: 14px; flex-wrap: wrap;">
-          <span>May 13, 2026</span>
+          <span>May 15, 2026</span>
           <span>•</span>
           <span>22 min read</span>
           <span class="tag blue">Containers</span>
@@ -705,6 +705,33 @@
 }
 <span style="color: #6a9955;"># Result: app.internal.prod → resolves to all healthy task IPs</span>
 <span style="color: #6a9955;"># Any service can call http://app.internal.prod:8080 directly</span></code></pre>
+
+
+        <h3>Scale and Consistency — The Multi-Client Module Pattern</h3>
+        <p>In the WCC project, we needed to deploy the same application stack for multiple clients with total isolation. By wrapping the ECS pattern into a single Terraform module, we could onboard a new client in minutes with a few lines of code. This ensured that every client environment had the same security groups, logging configuration, and auto-scaling rules.</p>
+
+        <pre><code><span style="color: #6a9955;"># Multi-client deployment using a standardized ECS module</span>
+<span style="color: #569cd6;">module</span> <span style="color: #ce9178;">"client_a"</span> {
+  <span style="color: #9cdcfe;">source</span> = <span style="color: #ce9178;">"./modules/ecs-platform"</span>
+
+  <span style="color: #9cdcfe;">client_name</span>   = <span style="color: #ce9178;">"client-a"</span>
+  <span style="color: #9cdcfe;">vpc_id</span>        = var.client_a_vpc_id
+  <span style="color: #9cdcfe;">subnets</span>       = var.client_a_subnets
+  <span style="color: #9cdcfe;">cpu</span>           = 1024
+  <span style="color: #9cdcfe;">memory</span>        = 2048
+  <span style="color: #9cdcfe;">image_tag</span>     = <span style="color: #ce9178;">"v2.1.0"</span>
+}
+
+<span style="color: #569cd6;">module</span> <span style="color: #ce9178;">"client_b"</span> {
+  <span style="color: #9cdcfe;">source</span> = <span style="color: #ce9178;">"./modules/ecs-platform"</span>
+
+  <span style="color: #9cdcfe;">client_name</span>   = <span style="color: #ce9178;">"client-b"</span>
+  <span style="color: #9cdcfe;">vpc_id</span>        = var.client_b_vpc_id
+  <span style="color: #9cdcfe;">subnets</span>       = var.client_b_subnets
+  <span style="color: #9cdcfe;">cpu</span>           = 512
+  <span style="color: #9cdcfe;">memory</span>        = 1024
+  <span style="color: #9cdcfe;">image_tag</span>     = <span style="color: #ce9178;">"v2.0.8"</span>   <span style="color: #6a9955;"># Clients can be on different versions</span>
+}</code></pre>
 
         <hr style="border-top: 1px solid var(--aws-border); margin: 40px 0;">
 

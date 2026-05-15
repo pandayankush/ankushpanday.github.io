@@ -42,7 +42,7 @@ body {
 
 /* ===== TOP NAV ===== */
 .aws-topnav {
-  background: var(--aws-header);
+  background: var(--aws-navy);
   height: 48px;
   display: flex;
   align-items: center;
@@ -150,7 +150,7 @@ body {
 /* ===== SIDEBAR ===== */
 .sidebar {
   width: 240px;
-  background: var(--aws-sidebar);
+  background: var(--aws-navy);
   position: fixed;
   top: 80px; left: 0; bottom: 0;
   overflow-y: auto;
@@ -222,7 +222,7 @@ body {
 
 /* ===== HERO PROFILE CARD ===== */
 .hero-card {
-  background: linear-gradient(135deg, var(--aws-header) 0%, #1a2c45 100%);
+  background: linear-gradient(135deg, #0f1b2d 0%, #1a2a3a 100%);
   border-radius: 8px;
   padding: 32px;
   margin-bottom: 24px;
@@ -583,7 +583,7 @@ body {
 
 /* ===== FOOTER ===== */
 .aws-footer {
-  background: var(--aws-header);
+  background: var(--aws-navy);
   color: #8a9ab0;
   text-align: center;
   padding: 20px;

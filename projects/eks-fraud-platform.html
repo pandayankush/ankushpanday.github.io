@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- SEO PRIMARY -->
+  <title>EKS Fraud Detection Platform — Architecture Case Study | Ankush Panday</title>
+  <meta name="description"
+    content="How I architected a 33-microservice fraud detection platform on Amazon EKS at Rabobank — from zero EKS knowledge to production with GitOps, Karpenter, and DORA compliance.">
+  <meta name="keywords"
+    content="Amazon EKS, Kubernetes, ArgoCD, GitOps, Helm, Karpenter, Terraform, Fraud Detection, DORA, Rabobank, Cloud Architecture">
+  <link rel="canonical" href="https://www.ankushpanday.com/projects/eks-fraud-platform.html">
+
+  <!-- OPEN GRAPH -->
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://www.ankushpanday.com/projects/eks-fraud-platform.html">
+  <meta property="og:title" content="EKS Fraud Detection Platform — Architecture Case Study">
+  <meta property="og:description"
+    content="Architecting a 33-microservice fraud detection platform on EKS at Rabobank. GitOps with ArgoCD, Karpenter autoscaling, Terraform-first IaC, and DORA compliance — built nearly solo.">
+
+  <link rel="stylesheet" href="../style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <style>
+    .project-page-container {
+      max-width: 960px;
+      margin: 80px auto 40px auto;
+      padding: 0 20px;
+      min-height: calc(100vh - 200px);
+    }
+
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--aws-blue);
+      text-decoration: none;
+      font-weight: 500;
+      margin-bottom: 24px;
+      font-size: 14px;
+    }
+
+    .back-btn:hover { text-decoration: underline; }
+
+    .project-content-card {
+      background: var(--aws-white);
+      border: 1px solid var(--aws-border);
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    }
+
+    .project-header {
+      background: linear-gradient(135deg, #0f1b2d 0%, #1a2a3a 100%);
+      padding: 40px 48px;
+      border-bottom: 3px solid var(--aws-orange);
+    }
+
+    .project-badge-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+
+    .project-badge {
+      background: rgba(255,153,0,0.15);
+      color: var(--aws-orange);
+      border: 1px solid rgba(255,153,0,0.3);
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+    }
+
+    .project-badge.blue {
+      background: rgba(0,115,187,0.15);
+      color: #5bb8ff;
+      border-color: rgba(0,115,187,0.3);
+    }
+
+    .project-badge.green {
+      background: rgba(39,174,96,0.15);
+      color: #5fd68a;
+      border-color: rgba(39,174,96,0.3);
+    }
+
+    .project-header h1 {
+      color: #ffffff;
+      font-size: 30px;
+      font-weight: 800;
+      line-height: 1.3;
+      margin-bottom: 12px;
+    }
+
+    .project-header .subtitle {
+      color: #9ab0c8;
+      font-size: 16px;
+      margin-bottom: 28px;
+      line-height: 1.5;
+    }
+
+    .project-meta-row {
+      display: flex;
+      gap: 28px;
+      flex-wrap: wrap;
+    }
+
+    .project-meta-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #c8d6e5;
+      font-size: 13px;
+    }
+
+    .project-meta-item i { color: var(--aws-orange); }
+
+    .metrics-strip {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      border-bottom: 1px solid var(--aws-border);
+    }
+
+    .metric-cell {
+      padding: 20px 24px;
+      text-align: center;
+      border-right: 1px solid var(--aws-border);
+    }
+
+    .metric-cell:last-child { border-right: none; }
+
+    .metric-number {
+      font-size: 28px;
+      font-weight: 800;
+      color: var(--aws-orange);
+      line-height: 1;
+    }
+
+    .metric-number.blue { color: var(--aws-blue); }
+    .metric-number.green { color: var(--aws-green-light); }
+
+    .metric-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      color: var(--aws-text-light);
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      margin-top: 6px;
+    }
+
+    .project-body {
+      padding: 40px 48px;
+      line-height: 1.8;
+      font-size: 15px;
+      color: var(--aws-text);
+    }
+
+    .project-body h2 {
+      margin-top: 52px;
+      font-size: 24px;
+      color: var(--aws-text);
+      border-bottom: 2px solid var(--aws-orange);
+      display: inline-block;
+      padding-bottom: 4px;
+      margin-bottom: 24px;
+    }
+
+    .project-body h2:first-child { margin-top: 0; }
+
+    .project-body h3 {
+      margin-top: 32px;
+      font-size: 19px;
+      color: var(--aws-blue);
+      margin-bottom: 12px;
+    }
+
+    .project-body h4 {
+      margin-top: 24px;
+      font-size: 16px;
+      color: var(--aws-text);
+      font-weight: 700;
+    }
+
+    .project-body p { margin-bottom: 18px; }
+
+    .project-body ul, .project-body ol {
+      margin-bottom: 20px;
+      padding-left: 24px;
+    }
+
+    .project-body li { margin-bottom: 10px; }
+
+    .decision-card {
+      background: var(--aws-highlight);
+      border: 1px solid var(--aws-border);
+      border-left: 4px solid var(--aws-orange);
+      border-radius: 6px;
+      padding: 20px 24px;
+      margin: 20px 0;
+    }
+
+    .decision-card.blue { border-left-color: var(--aws-blue); }
+    .decision-card.green { border-left-color: var(--aws-green-light); }
+    .decision-card.red { border-left-color: var(--aws-red); }
+
+    .decision-title {
+      font-weight: 700;
+      font-size: 14px;
+      color: var(--aws-text);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .arch-diagram {
+      background: #0f1b2d;
+      border: 1px solid #2a3a4a;
+      border-radius: 8px;
+      padding: 28px 32px;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      color: #c8d6e5;
+      line-height: 1.7;
+      margin: 24px 0;
+      overflow-x: auto;
+    }
+
+    .arch-diagram .arch-orange { color: #ff9900; }
+    .arch-diagram .arch-blue { color: #5bb8ff; }
+    .arch-diagram .arch-green { color: #5fd68a; }
+    .arch-diagram .arch-purple { color: #c792ea; }
+    .arch-diagram .arch-muted { color: #546e7a; }
+
+    .tradeoff-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+      font-size: 14px;
+    }
+
+    .tradeoff-table th {
+      background: var(--aws-header);
+      color: var(--aws-white);
+      padding: 10px 16px;
+      text-align: left;
+      font-weight: 600;
+    }
+
+    .tradeoff-table td {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--aws-border);
+      vertical-align: top;
+    }
+
+    .tradeoff-table tr:nth-child(even) td { background: #f8f9fa; }
+
+    .tradeoff-table .green-check { color: var(--aws-green-light); font-weight: 700; }
+    .tradeoff-table .red-x { color: var(--aws-red); font-weight: 700; }
+
+    .lesson-card {
+      display: flex;
+      gap: 16px;
+      background: var(--aws-white);
+      border: 1px solid var(--aws-border);
+      border-radius: 8px;
+      padding: 20px;
+      margin: 16px 0;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+    }
+
+    .lesson-number {
+      width: 36px;
+      height: 36px;
+      min-width: 36px;
+      background: var(--aws-orange);
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 15px;
+    }
+
+    .lesson-content { flex: 1; }
+    .lesson-title { font-weight: 700; font-size: 14px; margin-bottom: 6px; }
+    .lesson-text { font-size: 14px; color: var(--aws-text-light); line-height: 1.6; }
+
+    .callout {
+      background: #e8f4fd;
+      border: 1px solid #b8d8f5;
+      border-left: 4px solid var(--aws-blue);
+      border-radius: 6px;
+      padding: 16px 20px;
+      margin: 20px 0;
+      font-size: 14px;
+    }
+
+    .callout.orange {
+      background: var(--aws-highlight);
+      border-color: #fad7a0;
+      border-left-color: var(--aws-orange);
+    }
+
+    .callout-title {
+      font-weight: 700;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .tech-tag {
+      display: inline-block;
+      background: var(--aws-tag-bg);
+      color: var(--aws-tag-text);
+      border: 1px solid #b8d8f5;
+      border-radius: 4px;
+      padding: 2px 8px;
+      font-size: 12px;
+      font-weight: 600;
+      margin: 2px;
+    }
+
+    .tech-tag.orange {
+      background: #fff3e0;
+      color: #e65100;
+      border-color: #ffcc80;
+    }
+
+    .tech-tag.green {
+      background: #e8f5e9;
+      color: #2e7d32;
+      border-color: #a5d6a7;
+    }
+
+    .project-footer {
+      background: #f8f9fa;
+      border-top: 1px solid var(--aws-border);
+      padding: 32px 48px;
+    }
+
+    .related-links {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .related-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--aws-white);
+      border: 1px solid var(--aws-border);
+      border-radius: 6px;
+      padding: 12px 18px;
+      text-decoration: none;
+      color: var(--aws-blue);
+      font-size: 13px;
+      font-weight: 600;
+      transition: var(--transition);
+    }
+
+    .related-link:hover {
+      border-color: var(--aws-blue);
+      box-shadow: 0 2px 8px rgba(0,115,187,0.1);
+    }
+
+    @media (max-width: 768px) {
+      .project-header { padding: 28px 24px; }
+      .project-body { padding: 28px 24px; }
+      .project-footer { padding: 24px; }
+      .project-header h1 { font-size: 22px; }
+      .metrics-strip { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- TOP NAV -->
+  <nav class="aws-topnav">
+    <a href="../index.html" class="logo">
+      <i class="fa-solid fa-cloud" style="color: var(--aws-orange); font-size: 20px;"></i>
+      <span>Ankush Panday</span>
+    </a>
+    <div class="nav-service-label">
+      <i class="fa-solid fa-diagram-project"></i>
+      <span>Architecture Cases</span>
+    </div>
+    <div class="nav-spacer"></div>
+    <div class="nav-icons">
+      <a href="../blog/index.html" class="nav-icon-btn orange" style="text-decoration: none; font-weight: 600;">Blog Hub</a>
+      <button class="nav-icon-btn"><i class="fa-solid fa-earth-europe" style="margin-right: 6px; font-size: 12px; color: var(--aws-orange);"></i> Europe (nl-ams-1)</button>
+      <button class="nav-icon-btn">ankushpandey@hotmail.com <i class="fa-solid fa-caret-down" style="margin-left: 4px;"></i></button>
+    </div>
+  </nav>
+
+  <div class="project-page-container">
+
+    <a href="../index.html#projects" class="back-btn">
+      <i class="fa-solid fa-arrow-left"></i> Back to Portfolio
+    </a>
+
+    <!-- BREADCRUMB -->
+    <div style="font-size: 12px; color: var(--aws-text-muted); margin-bottom: 20px;">
+      <a href="../index.html" style="color: var(--aws-blue); text-decoration: none;">Home</a>
+      <span style="margin: 0 8px;">/</span>
+      <a href="../index.html#projects" style="color: var(--aws-blue); text-decoration: none;">Projects</a>
+      <span style="margin: 0 8px;">/</span>
+      <span>EKS Fraud Detection Platform</span>
+    </div>
+
+    <div class="project-content-card">
+
+      <!-- HEADER -->
+      <div class="project-header">
+        <div class="project-badge-row">
+          <span class="project-badge"><i class="fa-brands fa-aws" style="margin-right: 4px;"></i> Amazon EKS</span>
+          <span class="project-badge blue">GitOps / ArgoCD</span>
+          <span class="project-badge blue">Karpenter</span>
+          <span class="project-badge green">DORA Compliant</span>
+          <span class="project-badge" style="background: rgba(194,97,255,0.12); color: #c792ea; border-color: rgba(194,97,255,0.25);">Databricks</span>
+        </div>
+        <h1>EKS Fraud Detection Platform</h1>
+        <p class="subtitle">
+          How I architected a production-grade fraud detection platform on Amazon EKS at Rabobank — 33 microservices,
+          Terraform-first IaC, GitOps deployment, and DORA compliance — starting from zero EKS experience.
+        </p>
+        <div class="project-meta-row">
+          <div class="project-meta-item"><i class="fa-solid fa-building"></i> Rabobank, Utrecht</div>
+          <div class="project-meta-item"><i class="fa-solid fa-calendar"></i> Oct 2023 – Present</div>
+          <div class="project-meta-item"><i class="fa-solid fa-user"></i> Cloud Specialist</div>
+          <div class="project-meta-item"><i class="fa-solid fa-shield-halved"></i> Financial Services / Fraud</div>
+        </div>
+      </div>
+
+      <!-- METRICS STRIP -->
+      <div class="metrics-strip">
+        <div class="metric-cell">
+          <div class="metric-number">33</div>
+          <div class="metric-label">Microservices on EKS</div>
+        </div>
+        <div class="metric-cell">
+          <div class="metric-number blue">&lt;200ms</div>
+          <div class="metric-label">P99 Scoring Latency</div>
+        </div>
+        <div class="metric-cell">
+          <div class="metric-number green">100%</div>
+          <div class="metric-label">GitOps Deployments</div>
+        </div>
+        <div class="metric-cell">
+          <div class="metric-number" style="color: #c792ea;">2</div>
+          <div class="metric-label">Engineers Trained</div>
+        </div>
+        <div class="metric-cell">
+          <div class="metric-number blue">DORA</div>
+          <div class="metric-label">Compliant Platform</div>
+        </div>
+      </div>
+
+      <!-- BODY -->
+      <div class="project-body">
+
+        <!-- CONTEXT -->
+        <h2>Context &amp; Problem Statement</h2>
+
+        <p>
+          Rabobank needed a new cloud-native platform to run its fraud detection software — a distributed system of
+          <strong>33 microservices</strong> performing real-time transaction scoring at sub-second latency. The software
+          vendor had a clear recommendation: <strong>Amazon EKS</strong>. At the time, EKS was new territory for our
+          team. We had deep AWS and ECS experience from previous work, but Kubernetes at this scale was a different
+          beast entirely.
+        </p>
+
+        <p>
+          The platform had to satisfy two competing constraints simultaneously: financial-grade reliability and
+          operational compliance. Rabobank operates under DORA regulation — every change to production infrastructure
+          must be auditable, reversible, and documented. That constraint shaped every architectural decision we made.
+        </p>
+
+        <div class="callout orange">
+          <div class="callout-title"><i class="fa-solid fa-lightbulb" style="color: var(--aws-orange);"></i> Starting Point</div>
+          The project started with two engineers. My colleague left after three months, leaving me as the sole
+          architect and operator for four to five months. Everything had to be built so that one person could understand,
+          operate, and hand off the entire platform. That constraint turned out to be one of the best design pressures
+          I've ever worked under.
+        </div>
+
+        <!-- ARCHITECTURE -->
+        <h2>Platform Architecture</h2>
+
+        <p>
+          The platform runs on a single EKS cluster spanning two availability zones (<strong>eu-west-1a</strong> and
+          <strong>eu-west-1b</strong>), with Karpenter managing node provisioning and ArgoCD driving all deployments
+          via GitOps. Every AWS resource — the EKS cluster, VPC, IAM roles, RDS, Amazon MQ, ECR — is defined in
+          Terraform. No manual console changes, ever.
+        </p>
+
+        <p>
+          Pods are distributed across AZs using <strong>Kubernetes topology spread constraints</strong> configured in
+          Helm — each service runs one replica per zone, so the platform survives an AZ failure without any manual
+          intervention. Keycloak (authentication) runs four pods — two per AZ — to handle the higher session load.
+          Amazon MQ and RDS are each deployed as Multi-AZ pairs with automatic failover.
+        </p>
+
+        <div class="callout">
+          <div class="callout-title"><i class="fa-solid fa-diagram-project" style="color: var(--aws-blue);"></i> Architecture Diagram</div>
+          A full architecture diagram (AWS + Kubernetes icons, multi-AZ layout) is being added. It covers the complete
+          request path from Android/iOS/Web endpoints through Route 53, NLB, Nginx Ingress, EKS pods, Amazon MQ,
+          RDS Multi-AZ, and the Databricks data layer.
+        </div>
+
+        <h3>Technology Stack</h3>
+        <p>
+          <span class="tech-tag orange">Amazon EKS</span>
+          <span class="tech-tag orange">Karpenter</span>
+          <span class="tech-tag">ArgoCD</span>
+          <span class="tech-tag">Helm</span>
+          <span class="tech-tag orange">Terraform</span>
+          <span class="tech-tag" style="background:#f3e8ff; color:#6b21a8; border-color:#d8b4fe;">Databricks EC2</span>
+          <span class="tech-tag green">GitOps</span>
+          <span class="tech-tag">AWS IAM / IRSA</span>
+          <span class="tech-tag">Nginx Ingress</span>
+          <span class="tech-tag orange">Amazon MQ</span>
+          <span class="tech-tag" style="background:#ede7f6; color:#4527a0; border-color:#d1c4e9;">Amazon RDS Multi-AZ</span>
+          <span class="tech-tag" style="background:#fff3e0; color:#e65100; border-color:#ffcc80;">Keycloak</span>
+          <span class="tech-tag orange">AWS FIS</span>
+          <span class="tech-tag orange">Amazon CloudWatch</span>
+          <span class="tech-tag" style="background:#fff3e0; color:#e65100; border-color:#ffcc80;">CloudWatch EKS Addon</span>
+          <span class="tech-tag" style="background:#f3e8ff; color:#6b21a8; border-color:#d8b4fe;">Splunk</span>
+          <span class="tech-tag orange">AWS VPC</span>
+          <span class="tech-tag">k9s</span>
+        </p>
+
+        <!-- KEY DECISIONS -->
+        <h2>Key Architecture Decisions</h2>
+
+        <h3>Why EKS Over ECS?</h3>
+        <p>
+          The fraud detection software vendor mandated Kubernetes. Our prior work at Rabobank and WCC had been
+          primarily ECS-based, so this was a deliberate step into new territory. The vendor's software assumed
+          Kubernetes-native primitives — custom resources, namespace isolation, pod-level networking — that don't
+          translate cleanly to ECS.
+        </p>
+        <p>
+          Rather than fight the abstraction, we leaned in. We learned EKS on the job, structured everything
+          for observability from day one, and built documentation as we went so the knowledge wouldn't live in
+          a single person's head.
+        </p>
+
+        <div class="decision-card">
+          <div class="decision-title"><i class="fa-solid fa-scale-balanced" style="color: var(--aws-orange);"></i> Trade-off: ECS familiarity vs EKS ecosystem</div>
+          ECS would have been faster to start — we knew it well. EKS added initial complexity: IRSA for pod-level IAM,
+          CoreDNS tuning, node lifecycle management. The payoff was access to the full Kubernetes ecosystem (Karpenter,
+          ArgoCD, Helm) and a platform the vendor fully supported.
+        </div>
+
+        <h3>Terraform-First: No Console Changes</h3>
+        <p>
+          Every resource — the EKS cluster, VPC, IAM roles, node pools, Karpenter NodePools, ALB, RDS, ECR — is
+          defined in Terraform. This was non-negotiable from the start, and it paid off repeatedly: when the solo
+          operation period hit, the Terraform state was the single source of truth. No undocumented manual resources,
+          no drift.
+        </p>
+
+        <div class="decision-card blue">
+          <div class="decision-title"><i class="fa-solid fa-code-branch" style="color: var(--aws-blue);"></i> Design principle: automation as the only path</div>
+          If something could be clicked in the AWS console, it had to be coded instead. This sounds like overhead;
+          it's actually how one person can operate a 33-microservice platform without burning out.
+        </div>
+
+        <h3>Karpenter Over Managed Node Groups</h3>
+        <p>
+          We chose Karpenter over EKS Managed Node Groups for two reasons: provisioning speed and Spot Instance
+          handling. With fraud detection, load isn't perfectly predictable — transaction spikes happen. Karpenter
+          provisions the right instance type for pending pods in seconds, not minutes, and handles Spot interruptions
+          gracefully by pre-emptively migrating workloads before the instance is reclaimed.
+        </p>
+        <p>
+          The cost benefit of Spot Instances applied to non-latency-critical workloads — Databricks EC2 worker nodes
+          (which run ML training jobs and can tolerate interruption), batch processors, and background enrichment
+          services. The real-time fraud scoring pods run on On-Demand nodes, protecting the sub-200ms p99 SLA.
+        </p>
+
+        <h3>High Availability: Pod Topology Spread</h3>
+        <p>
+          Rather than running dedicated "primary" and "standby" pod pairs, we distributed replicas across AZs using
+          Kubernetes <strong>topology spread constraints</strong> configured in each service's Helm chart. The
+          pattern is simple: <code>maxSkew: 1</code>, <code>topologyKey: topology.kubernetes.io/zone</code>,
+          <code>whenUnsatisfiable: DoNotSchedule</code>. EKS and Karpenter enforce the spread automatically — if
+          eu-west-1a goes down, pods in eu-west-1b continue serving with no manual intervention.
+        </p>
+
+        <div class="decision-card green">
+          <div class="decision-title"><i class="fa-solid fa-arrows-split-up-and-left" style="color: var(--aws-green-light);"></i> How services are distributed</div>
+          <ul style="margin: 10px 0 0 0; padding-left: 20px; font-size: 14px; color: var(--aws-text-light);">
+            <li><strong>Most services</strong> — 1 replica per AZ (2 total). Topology spread constraint in Helm ensures one pod per zone.</li>
+            <li><strong>Keycloak (auth)</strong> — 2 replicas per AZ (4 total). Higher replica count handles session load; spread still enforced per zone.</li>
+            <li><strong>Amazon MQ</strong> — Active broker in eu-west-1a, Standby in eu-west-1b. Automatic failover on AZ loss.</li>
+            <li><strong>RDS Multi-AZ</strong> — Primary in eu-west-1a, synchronous standby in eu-west-1b. Automatic promotion on Primary failure.</li>
+          </ul>
+        </div>
+
+        <!-- HARD PROBLEM -->
+        <h2>The Hard Problem: Helm Values at Scale</h2>
+
+        <p>
+          Managing Helm chart configuration for 33 microservices across multiple environments — dev, staging,
+          and production — sounds like a bookkeeping problem. It isn't. It's an architectural problem that breaks
+          your deployment model if you get it wrong.
+        </p>
+
+        <p>
+          Early on, the naive approach was one <code>values.yaml</code> per service per environment. That's 99+
+          files before you've deployed anything to production. Changes to a shared configuration (an image registry
+          URL, a resource limit policy) required touching dozens of files. Drift between environments was invisible
+          until something broke in production that worked fine in staging.
+        </p>
+
+        <h3>What We Built Instead</h3>
+
+        <div class="decision-card green">
+          <div class="decision-title"><i class="fa-solid fa-layer-group" style="color: var(--aws-green-light);"></i> Values hierarchy: base → environment → service overrides</div>
+          <ul style="margin: 10px 0 0 0; padding-left: 20px; font-size: 14px; color: var(--aws-text-light);">
+            <li><strong>Base values</strong> — shared defaults for all services (registry, resource limits, probes)</li>
+            <li><strong>Environment overlay</strong> — values that differ per environment (replica counts, resource quotas, secrets refs)</li>
+            <li><strong>Service override</strong> — only what's genuinely different per service (image tag, specific env vars)</li>
+          </ul>
+        </div>
+
+        <p>
+          ArgoCD ApplicationSets drove deployment from this structure — each application declared its own path to
+          the relevant Helm values, while the majority of configuration was inherited from the base and environment
+          layers. A change to the base propagated to all 33 services consistently. Environment-specific values
+          stayed isolated. Service-specific exceptions were immediately visible as deliberate divergences, not
+          hidden drift.
+        </p>
+
+        <div class="callout">
+          <div class="callout-title"><i class="fa-solid fa-circle-check" style="color: var(--aws-blue);"></i> What this solved</div>
+          Configuration drift between environments dropped to near zero. Onboarding a new microservice became
+          a 10-minute task — write a service override values file with just the divergences, point ArgoCD at it,
+          done. The first time I trained a new engineer on deployments, they were shipping independently within
+          a day.
+        </div>
+
+        <!-- DATABRICKS -->
+        <h2>Databricks Integration</h2>
+
+        <p>
+          The fraud detection platform has two distinct processing paths: <strong>real-time transaction scoring</strong>
+          (EKS microservices) and <strong>ML model training with batch scoring</strong> (Databricks). These run on
+          separate infrastructure and are owned by different teams.
+        </p>
+
+        <p>
+          Databricks runs on EC2 worker nodes provisioned across multiple AZs and is owned entirely by the
+          <strong>Data Science team</strong> — they manage their own jobs, clusters, and model training pipelines
+          without needing Kubernetes expertise. My role was the AWS integration: VPC connectivity, IAM roles for
+          cross-service access, S3 permissions for the data lake, and ensuring the Databricks EC2 workers were
+          correctly placed within the VPC to reach the EKS services they depend on.
+        </p>
+
+        <p>
+          The training pipeline ingests historical transaction data from the S3 data lake, trains and validates
+          new fraud model versions, and publishes model artifacts back to S3. The real-time scoring microservices
+          on EKS load model versions from S3 at startup and serve inference on live transactions — targeting the
+          sub-200ms p99 latency requirement.
+        </p>
+
+        <div class="decision-card" style="border-left-color: #c792ea;">
+          <div class="decision-title"><i class="fa-solid fa-arrows-spin" style="color: #c792ea;"></i> Architecture split: train in Databricks, serve from EKS</div>
+          Training is compute-intensive with high latency tolerance (minutes to hours per job). Inference is
+          latency-critical and runs at transaction volume (thousands of requests per second). Splitting them lets
+          each system be right-sized independently — Databricks EC2 workers on Spot for cost efficiency, EKS
+          scoring pods on On-Demand for reliability. The Data Science team gets full autonomy over their tooling
+          without touching Kubernetes.
+        </div>
+
+        <!-- DORA -->
+        <h2>DORA Compliance Through GitOps</h2>
+
+        <p>
+          DORA regulation (Digital Operational Resilience Act) requires financial institutions to demonstrate
+          that changes to production systems are controlled, traceable, and reversible. This isn't optional at
+          Rabobank. The audit requirements shaped every layer of the delivery pipeline.
+        </p>
+
+        <table class="tradeoff-table">
+          <thead>
+            <tr>
+              <th>DORA Requirement</th>
+              <th>How We Satisfied It</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Change audit trail</strong></td>
+              <td>Every deployment is a Git commit — author, timestamp, what changed, and a PR review before merge. ArgoCD records the sync state for every deployment.</td>
+            </tr>
+            <tr>
+              <td><strong>Rollback capability</strong></td>
+              <td>GitOps means rollback is a Git revert. ArgoCD can roll back to any previous sync state in seconds. No manual steps, no console access required.</td>
+            </tr>
+            <tr>
+              <td><strong>Change approval</strong></td>
+              <td>Pull request required for any change to infrastructure or application config. ArgoCD only syncs what Git says — no direct kubectl apply to production.</td>
+            </tr>
+            <tr>
+              <td><strong>Environment segregation</strong></td>
+              <td>Namespace isolation in EKS. Separate Terraform workspaces per environment. ArgoCD projects scoped by environment with RBAC.</td>
+            </tr>
+            <tr>
+              <td><strong>Resilience testing</strong></td>
+              <td><strong>AWS Fault Injection Simulator (FIS)</strong> was used to run structured disaster recovery scenarios as required by DORA — AZ failover, pod termination, node drain, RDS primary failover, and Amazon MQ broker failover. Each scenario was run in staging first, with documented pass/fail evidence, before sign-off for production.</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <p>
+          The key insight is that GitOps and DORA are naturally aligned. GitOps gives you the audit trail, the
+          approval gates, and the rollback mechanism that compliance requires — not as bolt-on process, but as
+          the default behaviour of the system.
+        </p>
+
+        <!-- LESSONS LEARNED -->
+        <h2>Lessons Learned</h2>
+
+        <div class="lesson-card">
+          <div class="lesson-number">1</div>
+          <div class="lesson-content">
+            <div class="lesson-title">Learning a new technology in production forces depth</div>
+            <div class="lesson-text">
+              EKS was new when we started. There was no time for a sandbox phase — we built the production
+              platform as we learned. That pressure is uncomfortable, but it produces a different quality of
+              understanding than coursework. When you debug a Karpenter scheduling failure at 11pm with no one
+              to ask, you learn the system properly.
+            </div>
+          </div>
+        </div>
+
+        <div class="lesson-card">
+          <div class="lesson-number">2</div>
+          <div class="lesson-content">
+            <div class="lesson-title">Sole ownership clarifies priorities fast</div>
+            <div class="lesson-text">
+              Operating solo for four months meant every decision had to pass a single test: "can I understand,
+              debug, and explain this at 2am?" Anything unnecessarily complex got simplified. The platform that
+              came out of that period was more operable than if it had been built by a full team from the start,
+              precisely because there was no one else to absorb the complexity.
+            </div>
+          </div>
+        </div>
+
+        <div class="lesson-card">
+          <div class="lesson-number">3</div>
+          <div class="lesson-content">
+            <div class="lesson-title">k9s changed how I debug Kubernetes</div>
+            <div class="lesson-text">
+              Early Kubernetes troubleshooting via raw <code>kubectl</code> was slow — switching between
+              <code>describe</code>, <code>logs</code>, <code>exec</code>, and event streams across namespaces
+              takes time when you're hunting a live incident. k9s's interactive TUI collapsed that workflow
+              dramatically. Watching pod restarts, log streaming, and event correlation in a single view is a
+              meaningful productivity difference in a 33-service cluster.
+            </div>
+          </div>
+        </div>
+
+        <div class="lesson-card">
+          <div class="lesson-number">4</div>
+          <div class="lesson-content">
+            <div class="lesson-title">Documentation written during solo operation is the best documentation</div>
+            <div class="lesson-text">
+              When I eventually onboarded two new engineers, the runbooks I had written for myself — during
+              the solo months, under pressure — were the training material. They were accurate because I had
+              written them for a real audience: future me, who might be tired and under pressure. Both engineers
+              were deploying independently within a week of joining.
+            </div>
+          </div>
+        </div>
+
+        <div class="lesson-card">
+          <div class="lesson-number">5</div>
+          <div class="lesson-content">
+            <div class="lesson-title">Helm values structure is an architecture decision, not a config task</div>
+            <div class="lesson-text">
+              How you organise Helm values across environments determines your operational toil for the life of
+              the platform. Getting the base/environment/service-override hierarchy right early saved hundreds
+              of hours of configuration drift debugging later. Treat it like you'd treat your Terraform module
+              structure — design it upfront, refactor it deliberately.
+            </div>
+          </div>
+        </div>
+
+        <!-- IMPACT -->
+        <h2>Outcomes &amp; Impact</h2>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-top: 16px;">
+          <div style="background: var(--aws-highlight); border: 1px solid var(--aws-border); border-radius: 8px; padding: 20px; text-align: center;">
+            <div style="font-size: 32px; font-weight: 800; color: var(--aws-orange);">33</div>
+            <div style="font-size: 12px; text-transform: uppercase; color: var(--aws-text-light); font-weight: 700; letter-spacing: 0.5px; margin-top: 4px;">Microservices in Production</div>
+          </div>
+          <div style="background: #e8f4fd; border: 1px solid #b8d8f5; border-radius: 8px; padding: 20px; text-align: center;">
+            <div style="font-size: 32px; font-weight: 800; color: var(--aws-blue);">&lt;200ms</div>
+            <div style="font-size: 12px; text-transform: uppercase; color: var(--aws-text-light); font-weight: 700; letter-spacing: 0.5px; margin-top: 4px;">P99 Scoring Latency</div>
+          </div>
+          <div style="background: #e8f5e9; border: 1px solid #a5d6a7; border-radius: 8px; padding: 20px; text-align: center;">
+            <div style="font-size: 32px; font-weight: 800; color: var(--aws-green-light);">2</div>
+            <div style="font-size: 12px; text-transform: uppercase; color: var(--aws-text-light); font-weight: 700; letter-spacing: 0.5px; margin-top: 4px;">Engineers Trained on K8s + GitOps</div>
+          </div>
+          <div style="background: #f3e8ff; border: 1px solid #d8b4fe; border-radius: 8px; padding: 20px; text-align: center;">
+            <div style="font-size: 32px; font-weight: 800; color: #7c3aed;">100%</div>
+            <div style="font-size: 12px; text-transform: uppercase; color: var(--aws-text-light); font-weight: 700; letter-spacing: 0.5px; margin-top: 4px;">IaC Coverage (Terraform)</div>
+          </div>
+          <div style="background: var(--aws-highlight); border: 1px solid var(--aws-border); border-radius: 8px; padding: 20px; text-align: center;">
+            <div style="font-size: 32px; font-weight: 800; color: var(--aws-orange);">DORA</div>
+            <div style="font-size: 12px; text-transform: uppercase; color: var(--aws-text-light); font-weight: 700; letter-spacing: 0.5px; margin-top: 4px;">Regulation Compliant</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- FOOTER -->
+      <div class="project-footer">
+        <div style="font-size: 13px; color: var(--aws-text-light); margin-bottom: 20px; font-weight: 600;">
+          <i class="fa-solid fa-link" style="color: var(--aws-orange); margin-right: 6px;"></i>
+          Related Technical Writing
+        </div>
+        <div class="related-links">
+          <a href="../blog/compute/aws-ecs-fargate-vs-eks.html" class="related-link">
+            <i class="fa-solid fa-book-open"></i> ECS Fargate vs EKS — When I Used Both
+          </a>
+          <a href="../blog/networking/advanced-vpc-scaling.html" class="related-link">
+            <i class="fa-solid fa-book-open"></i> Advanced VPC Scaling Patterns
+          </a>
+          <a href="../blog/security/aws-iam-deep-dive.html" class="related-link">
+            <i class="fa-solid fa-book-open"></i> AWS IAM Deep Dive
+          </a>
+          <a href="../index.html#projects" class="related-link" style="color: var(--aws-orange);">
+            <i class="fa-solid fa-arrow-left"></i> Back to Portfolio
+          </a>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</body>
+</html>

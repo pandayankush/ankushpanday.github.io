@@ -1,0 +1,1420 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- SEO PRIMARY -->
+  <title>Production-Grade EKS Architecture: Multi-Env Setup, Node Groups & Isolation | Ankush Panday</title>
+  <meta name="description"
+    content="The full EKS blueprint: multi-environment cluster strategy, three-tier node groups, namespace isolation with NetworkPolicies, RBAC, Helm values hierarchy, upgrade strategy, and cost optimisation.">
+  <meta name="keywords"
+    content="AWS, EKS, Kubernetes, Karpenter, ArgoCD, GitOps, Terraform, Helm, NetworkPolicy, RBAC, Multi-Environment, Node Groups, DevSecOps, DORA, Production">
+  <link rel="canonical" href="https://www.ankushpanday.com/blog/compute/eks-production-architecture-multi-env.html">
+
+  <!-- OPEN GRAPH -->
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://www.ankushpanday.com/blog/compute/eks-production-architecture-multi-env.html">
+  <meta property="og:title"
+    content="Production-Grade EKS Architecture: Multi-Env Setup, Node Groups & Isolation Strategy">
+  <meta property="og:description"
+    content="The full EKS blueprint — multi-environment cluster strategy, three-tier node groups, namespace isolation, RBAC, Helm values, and zero-downtime upgrade patterns.">
+  <meta property="og:image"
+    content="https://www.ankushpanday.com/images/aws-eks-production-multi-env-architecture.png">
+
+  <link rel="stylesheet" href="../../style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    .blog-page-container { max-width: 900px; margin: 100px auto 40px auto; padding: 0 20px; min-height: calc(100vh - 200px); }
+    .back-btn { display: inline-flex; align-items: center; gap: 8px; color: var(--aws-blue); text-decoration: none; font-weight: 500; margin-bottom: 24px; }
+    .blog-content-card { background: var(--aws-white); border: 1px solid var(--aws-border); border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+    .blog-header { background: #f8f9fa; padding: 40px; border-bottom: 1px solid var(--aws-border); }
+    .blog-body { padding: 40px; line-height: 1.8; font-size: 16px; color: var(--aws-text); }
+    .blog-body h2 { margin-top: 48px; font-size: 26px; color: var(--aws-text); border-bottom: 2px solid var(--aws-orange); display: inline-block; padding-bottom: 4px; margin-bottom: 24px; }
+    .blog-body h3 { margin-top: 32px; font-size: 22px; color: var(--aws-blue); margin-bottom: 16px; }
+    .blog-body h4 { margin-top: 24px; font-size: 18px; color: var(--aws-text); font-weight: 700; }
+    .blog-body p { margin-bottom: 20px; }
+    .blog-body ul, .blog-body ol { margin-bottom: 24px; padding-left: 24px; }
+    .blog-body li { margin-bottom: 12px; }
+    .blog-body strong { color: var(--aws-text); }
+    .blog-body blockquote { font-style: italic; color: var(--aws-text-light); margin: 30px 0; border-left: 4px solid var(--aws-orange); background: #fcfcfc; padding: 20px; }
+    .compare-table { width: 100%; border-collapse: collapse; text-align: left; margin-bottom: 30px; font-size: 14px; }
+    .compare-table th { background: var(--aws-blue); color: white; padding: 12px; border: 1px solid var(--aws-border); }
+    .compare-table td { padding: 12px; border: 1px solid var(--aws-border); }
+    .compare-table tr:nth-child(even) { background: #f9f9f9; }
+    pre { background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; margin: 24px 0; font-size: 13px; line-height: 1.5; border-left: 4px solid var(--aws-orange); }
+    code { font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; background: #f1f3f5; color: #232f3e; padding: 2px 4px; border-radius: 4px; border: 1px solid #dee2e6; font-size: 0.9em; }
+    pre code { background: none; color: inherit; padding: 0; border: none; font-size: inherit; }
+    .pitfall-card {
+      background: #fff5f5;
+      border: 1px solid #fed7d7;
+      border-left: 4px solid #d13212;
+      padding: 20px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+    }
+
+    .author-card {
+      display: flex;
+      gap: 20px;
+      align-items: center;
+      padding: 30px;
+      background: #fcfcfc;
+      border-top: 1px solid var(--aws-border);
+    }
+
+    .author-img {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background: var(--aws-highlight);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 30px;
+      color: var(--aws-orange);
+      border: 2px solid var(--aws-border);
+    }
+
+    .nav-links {
+      display: flex;
+      justify-content: space-between;
+      margin: 40px 0;
+      padding: 20px 0;
+      border-top: 1px solid var(--aws-border);
+    }
+
+    .nav-link {
+      text-decoration: none;
+      color: var(--aws-blue);
+      font-weight: 600;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .tag {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-right: 8px;
+    }
+
+    .tag.blue {
+      background: #e7f2fa;
+      color: #0073bb;
+    }
+
+    .tag.purple {
+      background: #f2e7fa;
+      color: #6b3fa0;
+    }
+
+    .share-section {
+      padding: 20px 40px;
+      border-top: 1px solid var(--aws-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #fff;
+    }
+
+    .share-btn {
+      padding: 8px 16px;
+      border: 1px solid var(--aws-border);
+      border-radius: 4px;
+      background: #fff;
+      color: var(--aws-text);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .share-btn:hover {
+      background: #f8f9fa;
+    }
+
+    .linkedin-btn {
+      background: #0077b5;
+      color: white;
+      border: none;
+    }
+  </style>
+</head>
+
+<body>
+
+  <nav class="aws-topnav">
+    <a href="../../index.html" class="logo">
+      <i class="fa-solid fa-cloud" style="color: var(--aws-orange); font-size: 20px;"></i>
+      <span>Ankush Panday</span>
+    </a>
+    <div class="nav-spacer"></div>
+    <div class="nav-icons">
+      <a href="../../index.html" class="nav-icon-btn" style="text-decoration: none;">Portfolio Home</a>
+      <a href="../index.html" class="nav-icon-btn orange" style="text-decoration: none; font-weight: 600;">Blog Hub</a>
+      <button class="nav-icon-btn"><i class="fa-solid fa-earth-europe"
+          style="margin-right: 6px; font-size: 12px; color: var(--aws-orange);"></i> Europe (nl-ams-1)</button>
+      <button class="nav-icon-btn">ankushpandey@hotmail.com <i class="fa-solid fa-caret-down"
+          style="margin-left: 4px;"></i></button>
+    </div>
+  </nav>
+
+  <main class="blog-page-container">
+    <a href="../index.html" class="back-btn"><i class="fa-solid fa-arrow-left"></i> Back to Blog Hub</a>
+
+    <article class="blog-content-card">
+      <header class="blog-header">
+        <h1 style="font-size: 32px; color: var(--aws-text); margin-bottom: 16px; line-height: 1.2;">Production-Grade EKS
+          Architecture: Multi-Env Setup, Node Groups &amp; Isolation Strategy</h1>
+        <div
+          style="display: flex; gap: 12px; align-items: center; color: var(--aws-text-light); font-size: 14px; flex-wrap: wrap;">
+          <span>May 16, 2026</span>
+          <span>•</span>
+          <span>25 min read</span>
+          <span class="tag blue">Kubernetes</span>
+          <span class="tag purple">Architecture</span>
+        </div>
+      </header>
+
+      <div class="blog-body">
+        <p
+          style="font-style: italic; color: var(--aws-text-light); margin-bottom: 30px; border-left: 4px solid var(--aws-orange); padding-left: 15px;">
+          <strong>AWS Series | Part 11</strong> — Building secure, cost-optimised, cloud-native infrastructure on AWS.
+        </p>
+
+        <!-- Main Image -->
+        <img src="../../images/aws-eks-production-multi-env-architecture.png"
+          alt="Production-Grade EKS Architecture — Multi-Environment, Node Groups and Isolation Strategy"
+          style="display: block; width: 100%; border-radius: 8px; border: 1px solid var(--aws-border); margin-bottom: 40px;">
+
+        <h2>TL;DR</h2>
+
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th>Decision</th>
+              <th>Development</th>
+              <th>Staging</th>
+              <th>Production</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Cluster strategy</strong></td>
+              <td>Shared cluster</td>
+              <td>Shared cluster</td>
+              <td>Dedicated cluster</td>
+            </tr>
+            <tr>
+              <td><strong>Node strategy</strong></td>
+              <td>Karpenter Spot only</td>
+              <td>Karpenter mixed</td>
+              <td>MNG bootstrap + Karpenter</td>
+            </tr>
+            <tr>
+              <td><strong>Namespace isolation</strong></td>
+              <td>Per-team namespaces</td>
+              <td>Per-app namespaces</td>
+              <td>Per-app + network policies</td>
+            </tr>
+            <tr>
+              <td><strong>Access control</strong></td>
+              <td>Developer edit access</td>
+              <td>Read + deploy via ArgoCD</td>
+              <td>ArgoCD only, no kubectl</td>
+            </tr>
+            <tr>
+              <td><strong>Resource quotas</strong></td>
+              <td>Loose</td>
+              <td>Moderate</td>
+              <td>Strict</td>
+            </tr>
+            <tr>
+              <td><strong>Scaling</strong></td>
+              <td>Manual / low min replicas</td>
+              <td>HPA enabled</td>
+              <td>HPA + topology spread</td>
+            </tr>
+            <tr>
+              <td><strong>Observability</strong></td>
+              <td>Basic CloudWatch</td>
+              <td>Full CloudWatch</td>
+              <td>CloudWatch + Splunk + traces</td>
+            </tr>
+            <tr>
+              <td><strong>Cost priority</strong></td>
+              <td>Minimise</td>
+              <td>Balance</td>
+              <td>Reliability first</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h2>Introduction</h2>
+
+        <p>Blog 10 answered the question: ECS or EKS? This post answers the follow-up question every engineer asks after
+          choosing EKS: <em>how do I actually structure this for multiple environments without creating a mess I can't
+            operate?</em></p>
+
+        <p>The wrong answer is to replicate your production cluster setup into dev and staging, spend three times the
+          money, and still end up with environments that drift from each other because "they're just dev." The other
+          wrong answer is to run everything on one cluster with environment labels on namespaces and discover at 2am that
+          a noisy dev workload has starved your production scoring service of CPU.</p>
+
+        <p>The right answer sits between those extremes — and it depends on your scale, your team structure, and your
+          compliance requirements. I'll give you the full blueprint: multi-environment cluster strategy, node group
+          design patterns, namespace isolation with network policies, RBAC that dev teams can actually work with, and the
+          Terraform structure that makes all of it repeatable.</p>
+
+        <p>Everything in this post is grounded in the Rabobank fraud detection platform and what I'd do differently
+          starting fresh today.</p>
+
+        <hr style="border-top: 1px solid var(--aws-border); margin: 40px 0;">
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <h2>1. Multi-Environment Strategy — Cluster Per Environment or Shared?</h2>
+
+        <p>This is the first and most consequential decision. Get it wrong and you're either overspending or risking
+          production stability.</p>
+
+        <h3>Option A — One Cluster, Multiple Namespaces</h3>
+
+        <pre><code>prod-eks-cluster
+├── namespace: fraud-detection-prod
+├── namespace: fraud-detection-staging
+├── namespace: fraud-detection-dev
+└── namespace: kube-system</code></pre>
+
+        <p><strong>When this works:</strong> Small teams (&lt;10 engineers), limited budget, early stage, workloads are
+          not highly regulated.</p>
+
+        <p><strong>Why it breaks down:</strong> A runaway batch job in dev can consume cluster-level resources. Network
+          policies become complex to maintain. Compliance auditors ask uncomfortable questions about prod/non-prod
+          separation. EKS cluster upgrades affect all environments simultaneously.</p>
+
+        <h3>Option B — Cluster Per Environment (Recommended for Production Platforms)</h3>
+
+        <pre><code>dev-eks-cluster     (shared dev + staging, Spot-heavy, low cost)
+prod-eks-cluster    (production only, On-Demand for critical path)</code></pre>
+
+        <p><strong>When this is right:</strong> Regulated environments (DORA, PCI-DSS, SOC 2), multi-team platforms,
+          10+ services, compliance requirements for production isolation.</p>
+
+        <p><strong>Cost reality:</strong> Two clusters = two control plane charges ($0.10/hour each = ~$146/month). At
+          enterprise scale, this is negligible compared to the operational safety and compliance benefits.</p>
+
+        <p>At Rabobank, production ran on a dedicated cluster. Dev and staging shared a second cluster with namespace
+          isolation between them. This is the pattern I'd recommend starting with for any regulated workload.</p>
+
+        <h3>Terraform — Multi-Cluster Pattern</h3>
+
+        <pre><code><span style="color:#6a9955"># environments/dev/main.tf</span>
+<span style="color:#569cd6">module</span> <span style="color:#ce9178">"eks_dev"</span> {
+  <span style="color:#9cdcfe">source</span>  = <span style="color:#ce9178">"../../modules/eks-cluster"</span>
+
+  <span style="color:#9cdcfe">cluster_name</span>    = <span style="color:#ce9178">"dev-eks-cluster"</span>
+  <span style="color:#9cdcfe">cluster_version</span> = <span style="color:#ce9178">"1.30"</span>
+  <span style="color:#9cdcfe">environment</span>     = <span style="color:#ce9178">"dev"</span>
+
+  <span style="color:#9cdcfe">node_strategy</span> = <span style="color:#ce9178">"spot_only"</span>
+  <span style="color:#9cdcfe">vpc_id</span>        = module.vpc_dev.vpc_id
+  <span style="color:#9cdcfe">subnet_ids</span>    = module.vpc_dev.private_subnet_ids
+
+  <span style="color:#9cdcfe">endpoint_public_access</span>  = true
+  <span style="color:#9cdcfe">endpoint_private_access</span> = true
+
+  <span style="color:#9cdcfe">enabled_cluster_log_types</span> = [<span style="color:#ce9178">"api"</span>, <span style="color:#ce9178">"audit"</span>]
+
+  <span style="color:#9cdcfe">tags</span> = { Environment = <span style="color:#ce9178">"dev"</span>, CostCentre = <span style="color:#ce9178">"platform-dev"</span> }
+}
+
+<span style="color:#6a9955"># environments/prod/main.tf</span>
+<span style="color:#569cd6">module</span> <span style="color:#ce9178">"eks_prod"</span> {
+  <span style="color:#9cdcfe">source</span>  = <span style="color:#ce9178">"../../modules/eks-cluster"</span>
+
+  <span style="color:#9cdcfe">cluster_name</span>    = <span style="color:#ce9178">"prod-eks-cluster"</span>
+  <span style="color:#9cdcfe">cluster_version</span> = <span style="color:#ce9178">"1.30"</span>
+  <span style="color:#9cdcfe">environment</span>     = <span style="color:#ce9178">"prod"</span>
+
+  <span style="color:#9cdcfe">node_strategy</span> = <span style="color:#ce9178">"mng_plus_karpenter"</span>
+  <span style="color:#9cdcfe">vpc_id</span>        = module.vpc_prod.vpc_id
+  <span style="color:#9cdcfe">subnet_ids</span>    = module.vpc_prod.private_subnet_ids
+
+  <span style="color:#9cdcfe">endpoint_public_access</span>  = false
+  <span style="color:#9cdcfe">endpoint_private_access</span> = true
+
+  <span style="color:#9cdcfe">enabled_cluster_log_types</span> = [
+    <span style="color:#ce9178">"api"</span>, <span style="color:#ce9178">"audit"</span>, <span style="color:#ce9178">"authenticator"</span>, <span style="color:#ce9178">"controllerManager"</span>, <span style="color:#ce9178">"scheduler"</span>
+  ]
+
+  <span style="color:#9cdcfe">tags</span> = { Environment = <span style="color:#ce9178">"prod"</span>, CostCentre = <span style="color:#ce9178">"platform-prod"</span> }
+}</code></pre>
+
+        <h3>The Reusable EKS Cluster Module</h3>
+
+        <pre><code><span style="color:#6a9955"># modules/eks-cluster/main.tf</span>
+<span style="color:#569cd6">resource</span> <span style="color:#ce9178">"aws_eks_cluster"</span> <span style="color:#ce9178">"this"</span> {
+  <span style="color:#9cdcfe">name</span>     = var.cluster_name
+  <span style="color:#9cdcfe">role_arn</span> = aws_iam_role.cluster.arn
+  <span style="color:#9cdcfe">version</span>  = var.cluster_version
+
+  <span style="color:#9cdcfe">vpc_config</span> {
+    <span style="color:#9cdcfe">subnet_ids</span>              = var.subnet_ids
+    <span style="color:#9cdcfe">endpoint_public_access</span>  = var.endpoint_public_access
+    <span style="color:#9cdcfe">endpoint_private_access</span> = var.endpoint_private_access
+    <span style="color:#9cdcfe">security_group_ids</span>      = [aws_security_group.cluster.id]
+  }
+
+  <span style="color:#9cdcfe">encryption_config</span> {
+    <span style="color:#9cdcfe">provider</span>  { <span style="color:#9cdcfe">key_arn</span> = aws_kms_key.secrets.arn }
+    <span style="color:#9cdcfe">resources</span> = [<span style="color:#ce9178">"secrets"</span>]
+  }
+
+  <span style="color:#9cdcfe">enabled_cluster_log_types</span> = var.enabled_cluster_log_types
+
+  <span style="color:#9cdcfe">access_config</span> {
+    <span style="color:#9cdcfe">authentication_mode</span>                         = <span style="color:#ce9178">"API_AND_CONFIG_MAP"</span>
+    <span style="color:#9cdcfe">bootstrap_cluster_creator_admin_permissions</span> = false
+  }
+
+  <span style="color:#9cdcfe">tags</span>       = merge(var.tags, { Name = var.cluster_name })
+  <span style="color:#9cdcfe">depends_on</span> = [
+    aws_iam_role_policy_attachment.cluster_policy,
+    aws_cloudwatch_log_group.cluster,
+  ]
+}
+
+<span style="color:#569cd6">resource</span> <span style="color:#ce9178">"aws_kms_key"</span> <span style="color:#ce9178">"secrets"</span> {
+  <span style="color:#9cdcfe">description</span>             = <span style="color:#ce9178">"EKS secrets encryption — ${var.cluster_name}"</span>
+  <span style="color:#9cdcfe">deletion_window_in_days</span> = var.environment == <span style="color:#ce9178">"prod"</span> ? 30 : 7
+  <span style="color:#9cdcfe">enable_key_rotation</span>     = true
+  <span style="color:#9cdcfe">tags</span>                    = var.tags
+}
+
+<span style="color:#569cd6">resource</span> <span style="color:#ce9178">"aws_cloudwatch_log_group"</span> <span style="color:#ce9178">"cluster"</span> {
+  <span style="color:#9cdcfe">name</span>              = <span style="color:#ce9178">"/aws/eks/${var.cluster_name}/cluster"</span>
+  <span style="color:#9cdcfe">retention_in_days</span> = var.environment == <span style="color:#ce9178">"prod"</span> ? 90 : 14
+  <span style="color:#9cdcfe">tags</span>              = var.tags
+}</code></pre>
+
+        <hr style="border-top: 1px solid var(--aws-border); margin: 40px 0;">
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <h2>2. Node Group Strategy — The Three-Tier Pattern</h2>
+
+        <p>Every production EKS cluster should have three distinct compute tiers. Running all workloads on a single node
+          group is the most common mistake — and the one that causes the most production incidents.</p>
+
+        <h3>Tier 1 — System Node Group (Managed, On-Demand, Always-On)</h3>
+
+        <p>Small, fixed, always-on. Hosts cluster-critical DaemonSets that cannot tolerate Spot interruption: CloudWatch
+          agent, Splunk forwarder, kube-proxy, VPC CNI. These pods must survive an AZ interruption without Kubernetes
+          having to reschedule them from a terminated Spot node.</p>
+
+        <pre><code><span style="color:#569cd6">resource</span> <span style="color:#ce9178">"aws_eks_node_group"</span> <span style="color:#ce9178">"system"</span> {
+  <span style="color:#9cdcfe">cluster_name</span>    = aws_eks_cluster.this.name
+  <span style="color:#9cdcfe">node_group_name</span> = <span style="color:#ce9178">"system"</span>
+  <span style="color:#9cdcfe">node_role_arn</span>   = aws_iam_role.node.arn
+  <span style="color:#9cdcfe">subnet_ids</span>      = var.private_subnet_ids
+
+  <span style="color:#9cdcfe">instance_types</span> = [<span style="color:#ce9178">"m5.large"</span>]
+
+  <span style="color:#9cdcfe">scaling_config</span> {
+    <span style="color:#9cdcfe">desired_size</span> = 2
+    <span style="color:#9cdcfe">min_size</span>     = 2
+    <span style="color:#9cdcfe">max_size</span>     = 4
+  }
+
+  <span style="color:#9cdcfe">taint</span> {
+    <span style="color:#9cdcfe">key</span>    = <span style="color:#ce9178">"node-role"</span>
+    <span style="color:#9cdcfe">value</span>  = <span style="color:#ce9178">"system"</span>
+    <span style="color:#9cdcfe">effect</span> = <span style="color:#ce9178">"NO_SCHEDULE"</span>
+  }
+
+  <span style="color:#9cdcfe">update_config</span> {
+    <span style="color:#9cdcfe">max_unavailable</span> = 1
+  }
+
+  <span style="color:#9cdcfe">labels</span> = {
+    <span style="color:#ce9178">"node-role"</span>   = <span style="color:#ce9178">"system"</span>
+    <span style="color:#ce9178">"environment"</span> = var.environment
+  }
+
+  <span style="color:#9cdcfe">tags</span> = merge(var.tags, { Name = <span style="color:#ce9178">"system-node-group"</span> })
+}</code></pre>
+
+        <p><strong>Why the taint matters:</strong> Without <code>NO_SCHEDULE</code> on system nodes, Kubernetes will
+          happily schedule application pods on your system nodes. During a spike, application pods can consume all
+          CPU/memory and starve the CloudWatch agent — you lose observability exactly when you need it most.</p>
+
+        <h3>Tier 2 — On-Demand Application Node Pool (Karpenter)</h3>
+
+        <p>Handles latency-sensitive workloads. On-Demand only — no Spot interruption risk for the critical path.</p>
+
+        <pre><code># karpenter/nodepools/on-demand.yaml
+apiVersion: karpenter.sh/v1
+kind: NodePool
+metadata:
+  name: on-demand
+spec:
+  template:
+    metadata:
+      labels:
+        node-pool: on-demand
+    spec:
+      nodeClassRef:
+        apiVersion: karpenter.k8s.aws/v1
+        kind: EC2NodeClass
+        name: default
+      requirements:
+        - key: "karpenter.sh/capacity-type"
+          operator: In
+          values: ["on-demand"]
+        - key: "karpenter.k8s.aws/instance-category"
+          operator: In
+          values: ["c", "m"]
+        - key: "karpenter.k8s.aws/instance-cpu"
+          operator: In
+          values: ["4", "8", "16"]
+        - key: "kubernetes.io/arch"
+          operator: In
+          values: ["amd64", "arm64"]
+      taints:
+        - key: "workload-type"
+          value: "latency-sensitive"
+          effect: NoSchedule
+  disruption:
+    consolidationPolicy: WhenEmpty
+    consolidateAfter: 5m
+  limits:
+    cpu: 500
+    memory: 2000Gi</code></pre>
+
+        <h3>Tier 3 — Spot Batch Node Pool (Karpenter)</h3>
+
+        <p>Handles background processors, ML batch jobs, enrichment services. Spot-only, aggressively bin-packed.</p>
+
+        <pre><code># karpenter/nodepools/spot-batch.yaml
+apiVersion: karpenter.sh/v1
+kind: NodePool
+metadata:
+  name: spot-batch
+spec:
+  template:
+    metadata:
+      labels:
+        node-pool: spot-batch
+    spec:
+      nodeClassRef:
+        apiVersion: karpenter.k8s.aws/v1
+        kind: EC2NodeClass
+        name: default
+      requirements:
+        - key: "karpenter.sh/capacity-type"
+          operator: In
+          values: ["spot"]
+        - key: "karpenter.k8s.aws/instance-category"
+          operator: In
+          values: ["c", "m", "r"]
+        - key: "karpenter.k8s.aws/instance-cpu"
+          operator: In
+          values: ["4", "8", "16", "32"]
+  disruption:
+    consolidationPolicy: WhenEmptyOrUnderutilized
+    consolidateAfter: 30s
+  limits:
+    cpu: 1000
+    memory: 4000Gi</code></pre>
+
+        <h3>EC2NodeClass — Shared Configuration</h3>
+
+        <pre><code># karpenter/nodeclass.yaml
+apiVersion: karpenter.k8s.aws/v1
+kind: EC2NodeClass
+metadata:
+  name: default
+spec:
+  amiFamily: AL2023
+  role: karpenter-node-role
+
+  subnetSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: prod-eks-cluster
+
+  securityGroupSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: prod-eks-cluster
+
+  blockDeviceMappings:
+    - deviceName: /dev/xvda
+      ebs:
+        volumeSize: 50Gi
+        volumeType: gp3
+        encrypted: true
+        kmsKeyID: arn:aws:kms:eu-west-1:123456789012:key/xxx
+
+  userData: |
+    #!/bin/bash
+    echo "net.core.somaxconn=65535" >> /etc/sysctl.conf
+    echo "net.ipv4.tcp_max_syn_backlog=65535" >> /etc/sysctl.conf
+    sysctl -p
+
+  tags:
+    Environment: production
+    ManagedBy: karpenter</code></pre>
+
+        <h3>Assigning Pods to the Right Node Pool</h3>
+
+        <pre><code># Helm values — scoring service (latency-sensitive path)
+tolerations:
+  - key: "workload-type"
+    value: "latency-sensitive"
+    operator: Equal
+    effect: NoSchedule
+nodeSelector:
+  node-pool: on-demand
+
+---
+# Helm values — batch enrichment service (Spot-tolerant)
+tolerations: []
+nodeSelector:
+  node-pool: spot-batch</code></pre>
+
+        <hr style="border-top: 1px solid var(--aws-border); margin: 40px 0;">
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <h2>3. Namespace Isolation — The Multi-Team Model</h2>
+
+        <p>Namespaces are the primary isolation unit in Kubernetes. Getting the namespace structure right early prevents
+          months of painful refactoring.</p>
+
+        <h3>Namespace Design — By Domain, Not By Team</h3>
+
+        <pre><code>prod-eks-cluster
+├── kube-system        # Kubernetes system components — hands off
+├── kube-public        # Public cluster info — hands off
+├── argocd             # GitOps control plane — platform team only
+├── monitoring         # Prometheus, Grafana, OTEL collector
+├── fraud-detection    # Fraud scoring microservices
+├── payments           # Payment processing services
+├── identity           # Keycloak, auth services
+├── data-pipeline      # Kafka consumers, enrichment workers
+└── shared-services    # Shared tooling accessible by all teams</code></pre>
+
+        <p><strong>Why by domain, not by team:</strong> Teams change. Services get reassigned. If namespaces are named
+          after teams, you end up with <code>team-alpha</code> owning services in <code>team-beta</code>'s namespace
+          after a reorg. Domain-based namespaces outlast team structures.</p>
+
+        <h3>Terraform — Namespace + ResourceQuota + LimitRange</h3>
+
+        <pre><code><span style="color:#6a9955"># modules/eks-namespace/main.tf</span>
+<span style="color:#569cd6">resource</span> <span style="color:#ce9178">"kubernetes_namespace"</span> <span style="color:#ce9178">"this"</span> {
+  <span style="color:#9cdcfe">metadata</span> {
+    <span style="color:#9cdcfe">name</span>        = var.namespace_name
+    <span style="color:#9cdcfe">labels</span>      = {
+      <span style="color:#ce9178">"app.kubernetes.io/managed-by"</span> = <span style="color:#ce9178">"terraform"</span>
+      <span style="color:#ce9178">"environment"</span>                  = var.environment
+      <span style="color:#ce9178">"domain"</span>                       = var.domain
+    }
+    <span style="color:#9cdcfe">annotations</span> = {
+      <span style="color:#ce9178">"team"</span>        = var.owning_team
+      <span style="color:#ce9178">"cost-centre"</span> = var.cost_centre
+    }
+  }
+}
+
+<span style="color:#569cd6">resource</span> <span style="color:#ce9178">"kubernetes_resource_quota"</span> <span style="color:#ce9178">"this"</span> {
+  <span style="color:#9cdcfe">metadata</span> {
+    <span style="color:#9cdcfe">name</span>      = <span style="color:#ce9178">"${var.namespace_name}-quota"</span>
+    <span style="color:#9cdcfe">namespace</span> = kubernetes_namespace.this.metadata[0].name
+  }
+  <span style="color:#9cdcfe">spec</span> {
+    <span style="color:#9cdcfe">hard</span> = {
+      <span style="color:#ce9178">"requests.cpu"</span>           = var.cpu_request_limit
+      <span style="color:#ce9178">"requests.memory"</span>        = var.memory_request_limit
+      <span style="color:#ce9178">"limits.cpu"</span>             = var.cpu_limit
+      <span style="color:#ce9178">"limits.memory"</span>          = var.memory_limit
+      <span style="color:#ce9178">"pods"</span>                   = var.max_pods
+      <span style="color:#ce9178">"persistentvolumeclaims"</span> = var.max_pvcs
+    }
+  }
+}
+
+<span style="color:#569cd6">resource</span> <span style="color:#ce9178">"kubernetes_limit_range"</span> <span style="color:#ce9178">"this"</span> {
+  <span style="color:#9cdcfe">metadata</span> {
+    <span style="color:#9cdcfe">name</span>      = <span style="color:#ce9178">"${var.namespace_name}-limits"</span>
+    <span style="color:#9cdcfe">namespace</span> = kubernetes_namespace.this.metadata[0].name
+  }
+  <span style="color:#9cdcfe">spec</span> {
+    <span style="color:#9cdcfe">limit</span> {
+      <span style="color:#9cdcfe">type</span>            = <span style="color:#ce9178">"Container"</span>
+      <span style="color:#9cdcfe">default</span>         = { <span style="color:#ce9178">"cpu"</span> = <span style="color:#ce9178">"500m"</span>, <span style="color:#ce9178">"memory"</span> = <span style="color:#ce9178">"512Mi"</span> }
+      <span style="color:#9cdcfe">default_request</span> = { <span style="color:#ce9178">"cpu"</span> = <span style="color:#ce9178">"100m"</span>, <span style="color:#ce9178">"memory"</span> = <span style="color:#ce9178">"128Mi"</span> }
+      <span style="color:#9cdcfe">max</span>             = { <span style="color:#ce9178">"cpu"</span> = <span style="color:#ce9178">"4"</span>,     <span style="color:#ce9178">"memory"</span> = <span style="color:#ce9178">"8Gi"</span>   }
+    }
+    <span style="color:#9cdcfe">limit</span> {
+      <span style="color:#9cdcfe">type</span> = <span style="color:#ce9178">"Pod"</span>
+      <span style="color:#9cdcfe">max</span>  = { <span style="color:#ce9178">"cpu"</span> = <span style="color:#ce9178">"8"</span>, <span style="color:#ce9178">"memory"</span> = <span style="color:#ce9178">"16Gi"</span> }
+    }
+  }
+}
+
+<span style="color:#569cd6">module</span> <span style="color:#ce9178">"fraud_detection_namespace"</span> {
+  <span style="color:#9cdcfe">source</span> = <span style="color:#ce9178">"./modules/eks-namespace"</span>
+
+  <span style="color:#9cdcfe">namespace_name</span>       = <span style="color:#ce9178">"fraud-detection"</span>
+  <span style="color:#9cdcfe">environment</span>          = <span style="color:#ce9178">"prod"</span>
+  <span style="color:#9cdcfe">domain</span>               = <span style="color:#ce9178">"fraud"</span>
+  <span style="color:#9cdcfe">owning_team</span>          = <span style="color:#ce9178">"fraud-platform"</span>
+  <span style="color:#9cdcfe">cost_centre</span>          = <span style="color:#ce9178">"RISK-001"</span>
+  <span style="color:#9cdcfe">cpu_request_limit</span>    = <span style="color:#ce9178">"16"</span>
+  <span style="color:#9cdcfe">memory_request_limit</span> = <span style="color:#ce9178">"32Gi"</span>
+  <span style="color:#9cdcfe">cpu_limit</span>            = <span style="color:#ce9178">"32"</span>
+  <span style="color:#9cdcfe">memory_limit</span>         = <span style="color:#ce9178">"64Gi"</span>
+  <span style="color:#9cdcfe">max_pods</span>             = <span style="color:#ce9178">"100"</span>
+  <span style="color:#9cdcfe">max_pvcs</span>             = <span style="color:#ce9178">"5"</span>
+}</code></pre>
+
+        <h3>Network Policies — Namespace-Level Traffic Control</h3>
+
+        <p>By default, all pods in a Kubernetes cluster can talk to all other pods — across namespaces. This is a
+          significant security gap in a multi-team platform. Network Policies enforce which namespaces and pods can
+          communicate.</p>
+
+        <pre><code># Default deny — apply to every namespace as the baseline
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: fraud-detection
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+
+---
+# Allow ingress from the identity namespace (Keycloak auth)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-from-identity
+  namespace: fraud-detection
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: identity
+
+---
+# Allow egress to data-pipeline namespace (Kafka)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-to-data-pipeline
+  namespace: fraud-detection
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: data-pipeline
+      ports:
+        - protocol: TCP
+          port: 9092
+
+---
+# Allow DNS — ALWAYS include this with default-deny or name resolution breaks
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns
+  namespace: fraud-detection
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+
+---
+# Allow egress to AWS services via VPC endpoints
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-aws-endpoints
+  namespace: fraud-detection
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - ipBlock:
+            cidr: 10.0.0.0/8
+      ports:
+        - protocol: TCP
+          port: 443</code></pre>
+
+        <blockquote>
+          <strong>Critical:</strong> Always add the DNS allow rule when using default-deny. Forgetting it silently
+          breaks all service discovery — pods can't resolve each other's names, and the error looks like a service
+          failure, not a DNS failure. This is the most common Network Policy mistake.
+        </blockquote>
+
+        <hr style="border-top: 1px solid var(--aws-border); margin: 40px 0;">
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <h2>4. RBAC — Least Privilege for Multi-Team Access</h2>
+
+        <h3>The Access Model</h3>
+
+        <pre><code>Platform Team:  cluster-admin on all namespaces (via EKS Access Entry)
+Domain Teams:   edit on their namespace(s) only
+CI/CD (ArgoCD): specific permissions per namespace via ArgoCD RBAC
+Read-Only:      view on all namespaces (architects, SREs, auditors)
+No Direct Prod: nobody runs kubectl apply in production — ArgoCD only</code></pre>
+
+        <h3>Terraform — EKS Access Entries</h3>
+
+        <pre><code><span style="color:#6a9955"># Platform team — full cluster access</span>
+<span style="color:#569cd6">resource</span> <span style="color:#ce9178">"aws_eks_access_entry"</span> <span style="color:#ce9178">"platform_team"</span> {
+  <span style="color:#9cdcfe">cluster_name</span>  = aws_eks_cluster.this.name
+  <span style="color:#9cdcfe">principal_arn</span> = aws_iam_role.platform_engineer.arn
+  <span style="color:#9cdcfe">type</span>          = <span style="color:#ce9178">"STANDARD"</span>
+}
+
+<span style="color:#569cd6">resource</span> <span style="color:#ce9178">"aws_eks_access_policy_association"</span> <span style="color:#ce9178">"platform_admin"</span> {
+  <span style="color:#9cdcfe">cluster_name</span>  = aws_eks_cluster.this.name
+  <span style="color:#9cdcfe">principal_arn</span> = aws_iam_role.platform_engineer.arn
+  <span style="color:#9cdcfe">policy_arn</span>    = <span style="color:#ce9178">"arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"</span>
+  <span style="color:#9cdcfe">access_scope</span>  { <span style="color:#9cdcfe">type</span> = <span style="color:#ce9178">"cluster"</span> }
+}
+
+<span style="color:#6a9955"># Fraud detection team — edit access to their namespace only</span>
+<span style="color:#569cd6">resource</span> <span style="color:#ce9178">"aws_eks_access_entry"</span> <span style="color:#ce9178">"fraud_team"</span> {
+  <span style="color:#9cdcfe">cluster_name</span>  = aws_eks_cluster.this.name
+  <span style="color:#9cdcfe">principal_arn</span> = aws_iam_role.fraud_team.arn
+  <span style="color:#9cdcfe">type</span>          = <span style="color:#ce9178">"STANDARD"</span>
+}
+
+<span style="color:#569cd6">resource</span> <span style="color:#ce9178">"aws_eks_access_policy_association"</span> <span style="color:#ce9178">"fraud_team_edit"</span> {
+  <span style="color:#9cdcfe">cluster_name</span>  = aws_eks_cluster.this.name
+  <span style="color:#9cdcfe">principal_arn</span> = aws_iam_role.fraud_team.arn
+  <span style="color:#9cdcfe">policy_arn</span>    = <span style="color:#ce9178">"arn:aws:eks::aws:cluster-access-policy/AmazonEKSEditPolicy"</span>
+  <span style="color:#9cdcfe">access_scope</span> {
+    <span style="color:#9cdcfe">type</span>       = <span style="color:#ce9178">"namespace"</span>
+    <span style="color:#9cdcfe">namespaces</span> = [<span style="color:#ce9178">"fraud-detection"</span>]
+  }
+}
+
+<span style="color:#6a9955"># Read-only access — architects, auditors</span>
+<span style="color:#569cd6">resource</span> <span style="color:#ce9178">"aws_eks_access_entry"</span> <span style="color:#ce9178">"read_only"</span> {
+  <span style="color:#9cdcfe">cluster_name</span>  = aws_eks_cluster.this.name
+  <span style="color:#9cdcfe">principal_arn</span> = aws_iam_role.read_only.arn
+  <span style="color:#9cdcfe">type</span>          = <span style="color:#ce9178">"STANDARD"</span>
+}
+
+<span style="color:#569cd6">resource</span> <span style="color:#ce9178">"aws_eks_access_policy_association"</span> <span style="color:#ce9178">"read_only_view"</span> {
+  <span style="color:#9cdcfe">cluster_name</span>  = aws_eks_cluster.this.name
+  <span style="color:#9cdcfe">principal_arn</span> = aws_iam_role.read_only.arn
+  <span style="color:#9cdcfe">policy_arn</span>    = <span style="color:#ce9178">"arn:aws:eks::aws:cluster-access-policy/AmazonEKSViewPolicy"</span>
+  <span style="color:#9cdcfe">access_scope</span>  { <span style="color:#9cdcfe">type</span> = <span style="color:#ce9178">"cluster"</span> }
+}</code></pre>
+
+        <h3>Custom RBAC — Fine-Grained Namespace Permissions</h3>
+
+        <p>The AWS managed <code>AmazonEKSEditPolicy</code> is broad. For regulated environments, create a custom Role
+          that gives developers exactly what they need — no more:</p>
+
+        <pre><code># Read + debug only — no direct deployments in prod
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: developer-prod-readonly
+  namespace: fraud-detection
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "pods/log", "services", "endpoints", "configmaps"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods/exec"]
+    verbs: ["create"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "replicasets", "statefulsets"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["autoscaling"]
+    resources: ["horizontalpodautoscalers"]
+    verbs: ["get", "list", "watch"]
+  # CANNOT: create, update, delete, patch — no direct deploys in prod
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: fraud-team-prod-readonly
+  namespace: fraud-detection
+subjects:
+  - kind: Group
+    name: fraud-platform-engineers
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: Role
+  name: developer-prod-readonly
+  apiGroup: rbac.authorization.k8s.io</code></pre>
+
+        <hr style="border-top: 1px solid var(--aws-border); margin: 40px 0;">
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <h2>5. Multi-Environment Helm Values Strategy</h2>
+
+        <p>This is the section that prevents the most operational pain. How you structure Helm values across environments
+          determines your deployment toil for the life of the platform.</p>
+
+        <h3>The Three-Layer Hierarchy</h3>
+
+        <pre><code>charts/
+└── fraud-detection-service/
+    ├── Chart.yaml
+    ├── values.yaml           # Base — defaults for ALL environments
+    ├── values-dev.yaml       # Dev overrides
+    ├── values-staging.yaml   # Staging overrides
+    └── values-prod.yaml      # Production overrides</code></pre>
+
+        <pre><code># values.yaml — base defaults
+replicaCount: 1
+
+image:
+  repository: 123456789012.dkr.ecr.eu-west-1.amazonaws.com/fraud-detection-service
+  pullPolicy: IfNotPresent
+  tag: ""
+
+service:
+  type: ClusterIP
+  port: 8080
+
+resources:
+  requests:
+    cpu: "200m"
+    memory: "256Mi"
+  limits:
+    cpu: "1000m"
+    memory: "1Gi"
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 70
+
+topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: topology.kubernetes.io/zone
+    whenUnsatisfiable: ScheduleAnyway
+
+livenessProbe:
+  httpGet:
+    path: /health
+    port: 8080
+  initialDelaySeconds: 30
+  periodSeconds: 10
+
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: 8080
+  initialDelaySeconds: 15
+  periodSeconds: 5</code></pre>
+
+        <pre><code># values-dev.yaml — development overrides
+replicaCount: 1
+
+resources:
+  requests:
+    cpu: "100m"
+    memory: "128Mi"
+  limits:
+    cpu: "500m"
+    memory: "512Mi"
+
+autoscaling:
+  enabled: false
+
+topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: topology.kubernetes.io/zone
+    whenUnsatisfiable: ScheduleAnyway</code></pre>
+
+        <pre><code># values-prod.yaml — production overrides
+replicaCount: 2
+
+resources:
+  requests:
+    cpu: "500m"
+    memory: "512Mi"
+  limits:
+    cpu: "2000m"
+    memory: "2Gi"
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 20
+  targetCPUUtilizationPercentage: 65
+
+topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: topology.kubernetes.io/zone
+    whenUnsatisfiable: DoNotSchedule  # Hard constraint — never allow AZ imbalance
+
+tolerations:
+  - key: "workload-type"
+    value: "latency-sensitive"
+    operator: Equal
+    effect: NoSchedule
+
+nodeSelector:
+  node-pool: on-demand</code></pre>
+
+        <h3>ArgoCD ApplicationSet — Deploy to All Environments from One Definition</h3>
+
+        <pre><code># applicationset.yaml — one definition, three environments
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: fraud-detection-service
+  namespace: argocd
+spec:
+  generators:
+    - list:
+        elements:
+          - env: dev
+            cluster: dev-eks-cluster
+            namespace: fraud-detection
+            valuesFile: values-dev.yaml
+            autoSync: "true"
+          - env: staging
+            cluster: dev-eks-cluster
+            namespace: fraud-detection-staging
+            valuesFile: values-staging.yaml
+            autoSync: "true"
+          - env: prod
+            cluster: prod-eks-cluster
+            namespace: fraud-detection
+            valuesFile: values-prod.yaml
+            autoSync: "false"   # Manual sync in prod — always review the diff first
+
+  template:
+    metadata:
+      name: "fraud-detection-service-{{env}}"
+      namespace: argocd
+    spec:
+      project: fraud-detection
+      source:
+        repoURL: https://github.com/org/fraud-detection-infra
+        targetRevision: main
+        path: charts/fraud-detection-service
+        helm:
+          valueFiles:
+            - values.yaml        # Base always loaded first
+            - "{{valuesFile}}"   # Environment-specific override on top
+      destination:
+        server: "https://{{cluster}}.example.com"
+        namespace: "{{namespace}}"
+      syncPolicy:
+        automated:
+          prune: "{{autoSync}}"
+          selfHeal: "{{autoSync}}"
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true</code></pre>
+
+        <blockquote>
+          <strong>Production lesson:</strong> <code>autoSync: false</code> on production is not bureaucracy — it's the
+          safety gate that prevents a bad <code>values-prod.yaml</code> change from immediately rolling out to all 33
+          services without a human checking the ArgoCD diff first. In staging you want fast feedback. In production you
+          want deliberate control.
+        </blockquote>
+
+        <hr style="border-top: 1px solid var(--aws-border); margin: 40px 0;">
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <h2>6. Cluster Upgrade Strategy — Zero-Downtime EKS Version Bumps</h2>
+
+        <p>EKS cluster upgrades are not optional — AWS ends support for old versions and stops providing security
+          patches. A cluster upgrade with 33 microservices running is a non-trivial operation. Here is the safe
+          pattern.</p>
+
+        <h3>Upgrade Sequence</h3>
+
+        <ol>
+          <li><strong>Check add-on compatibility</strong> — every EKS managed add-on has a supported version range per
+            Kubernetes version.<br>
+            <code>aws eks describe-addon-versions --kubernetes-version 1.31</code>
+          </li>
+          <li><strong>Update control plane first</strong> — control plane and nodes can be one minor version apart.<br>
+            <code>aws eks update-cluster-version --name prod-eks-cluster --kubernetes-version 1.31</code>
+          </li>
+          <li><strong>Update managed add-ons</strong> — CoreDNS, kube-proxy, VPC CNI — update each to versions
+            compatible with 1.31.</li>
+          <li><strong>Update Managed Node Group (system tier)</strong> — rolling update, one node at a time: cordon +
+            drain + replace.<br>
+            <code>aws eks update-nodegroup-version --cluster-name prod-eks-cluster --nodegroup-name system</code>
+          </li>
+          <li><strong>Update Karpenter node pools</strong> — update <code>amiFamily</code> in EC2NodeClass. Force
+            refresh:<br>
+            <code>kubectl annotate nodepool on-demand karpenter.sh/do-disrupt=true</code>
+          </li>
+          <li><strong>Validate</strong> — check all pods running, verify add-on versions, run smoke tests via ArgoCD
+            sync.</li>
+        </ol>
+
+        <h3>Terraform — Controlled Version Bumps</h3>
+
+        <pre><code><span style="color:#569cd6">variable</span> <span style="color:#ce9178">"cluster_version"</span> {
+  <span style="color:#9cdcfe">description</span> = <span style="color:#ce9178">"EKS Kubernetes version — change here to trigger upgrade"</span>
+  <span style="color:#9cdcfe">type</span>        = string
+  <span style="color:#9cdcfe">default</span>     = <span style="color:#ce9178">"1.30"</span>
+}
+
+<span style="color:#569cd6">resource</span> <span style="color:#ce9178">"aws_eks_cluster"</span> <span style="color:#ce9178">"this"</span> {
+  <span style="color:#9cdcfe">version</span> = var.cluster_version
+  <span style="color:#6a9955"># ...</span>
+}
+
+<span style="color:#569cd6">locals</span> {
+  <span style="color:#9cdcfe">eks_addon_versions</span> = {
+    <span style="color:#ce9178">"1.30"</span> = {
+      vpc-cni    = <span style="color:#ce9178">"v1.18.1-eksbuild.1"</span>
+      coredns    = <span style="color:#ce9178">"v1.11.1-eksbuild.4"</span>
+      kube-proxy = <span style="color:#ce9178">"v1.30.0-eksbuild.3"</span>
+    }
+    <span style="color:#ce9178">"1.31"</span> = {
+      vpc-cni    = <span style="color:#ce9178">"v1.19.0-eksbuild.1"</span>
+      coredns    = <span style="color:#ce9178">"v1.11.3-eksbuild.1"</span>
+      kube-proxy = <span style="color:#ce9178">"v1.31.0-eksbuild.2"</span>
+    }
+  }
+}
+
+<span style="color:#569cd6">resource</span> <span style="color:#ce9178">"aws_eks_addon"</span> <span style="color:#ce9178">"vpc_cni"</span> {
+  <span style="color:#9cdcfe">cluster_name</span>  = aws_eks_cluster.this.name
+  <span style="color:#9cdcfe">addon_name</span>    = <span style="color:#ce9178">"vpc-cni"</span>
+  <span style="color:#9cdcfe">addon_version</span> = local.eks_addon_versions[var.cluster_version][<span style="color:#ce9178">"vpc-cni"</span>]
+
+  <span style="color:#9cdcfe">resolve_conflicts_on_update</span> = <span style="color:#ce9178">"PRESERVE"</span>
+}</code></pre>
+
+        <hr style="border-top: 1px solid var(--aws-border); margin: 40px 0;">
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <h2>7. Cost Optimisation — Environment-Level Controls</h2>
+
+        <h3>Dev Cluster — Scale to Zero Overnight</h3>
+
+        <pre><code><span style="color:#569cd6">resource</span> <span style="color:#ce9178">"aws_scheduler_schedule"</span> <span style="color:#ce9178">"dev_scale_down"</span> {
+  <span style="color:#9cdcfe">name</span> = <span style="color:#ce9178">"dev-cluster-scale-down"</span>
+
+  <span style="color:#9cdcfe">flexible_time_window</span> { <span style="color:#9cdcfe">mode</span> = <span style="color:#ce9178">"OFF"</span> }
+  <span style="color:#9cdcfe">schedule_expression</span> = <span style="color:#ce9178">"cron(0 20 ? * MON-FRI *)"</span>
+
+  <span style="color:#9cdcfe">target</span> {
+    <span style="color:#9cdcfe">arn</span>      = aws_lambda_function.cluster_scaler.arn
+    <span style="color:#9cdcfe">role_arn</span> = aws_iam_role.scheduler.arn
+
+    <span style="color:#9cdcfe">input</span> = jsonencode({
+      cluster    = <span style="color:#ce9178">"dev-eks-cluster"</span>
+      action     = <span style="color:#ce9178">"scale_down"</span>
+      namespaces = [<span style="color:#ce9178">"fraud-detection"</span>, <span style="color:#ce9178">"payments"</span>, <span style="color:#ce9178">"identity"</span>]
+    })
+  }
+}
+
+<span style="color:#569cd6">resource</span> <span style="color:#ce9178">"aws_scheduler_schedule"</span> <span style="color:#ce9178">"dev_scale_up"</span> {
+  <span style="color:#9cdcfe">name</span> = <span style="color:#ce9178">"dev-cluster-scale-up"</span>
+
+  <span style="color:#9cdcfe">flexible_time_window</span> { <span style="color:#9cdcfe">mode</span> = <span style="color:#ce9178">"OFF"</span> }
+  <span style="color:#9cdcfe">schedule_expression</span> = <span style="color:#ce9178">"cron(0 7 ? * MON-FRI *)"</span>
+
+  <span style="color:#9cdcfe">target</span> {
+    <span style="color:#9cdcfe">arn</span>      = aws_lambda_function.cluster_scaler.arn
+    <span style="color:#9cdcfe">role_arn</span> = aws_iam_role.scheduler.arn
+
+    <span style="color:#9cdcfe">input</span> = jsonencode({
+      cluster    = <span style="color:#ce9178">"dev-eks-cluster"</span>
+      action     = <span style="color:#ce9178">"scale_up"</span>
+      namespaces = [<span style="color:#ce9178">"fraud-detection"</span>, <span style="color:#ce9178">"payments"</span>, <span style="color:#ce9178">"identity"</span>]
+    })
+  }
+}</code></pre>
+
+        <h3>Kubecost — Per-Namespace Cost Visibility</h3>
+
+        <pre><code><span style="color:#569cd6">resource</span> <span style="color:#ce9178">"helm_release"</span> <span style="color:#ce9178">"kubecost"</span> {
+  <span style="color:#9cdcfe">name</span>             = <span style="color:#ce9178">"kubecost"</span>
+  <span style="color:#9cdcfe">repository</span>       = <span style="color:#ce9178">"https://kubecost.github.io/cost-analyzer/"</span>
+  <span style="color:#9cdcfe">chart</span>            = <span style="color:#ce9178">"cost-analyzer"</span>
+  <span style="color:#9cdcfe">version</span>          = <span style="color:#ce9178">"2.3.0"</span>
+  <span style="color:#9cdcfe">namespace</span>        = <span style="color:#ce9178">"kubecost"</span>
+  <span style="color:#9cdcfe">create_namespace</span> = true
+
+  <span style="color:#9cdcfe">set</span> {
+    <span style="color:#9cdcfe">name</span>  = <span style="color:#ce9178">"kubecostToken"</span>
+    <span style="color:#9cdcfe">value</span> = var.kubecost_token
+  }
+
+  <span style="color:#9cdcfe">set</span> {
+    <span style="color:#9cdcfe">name</span>  = <span style="color:#ce9178">"global.prometheus.enabled"</span>
+    <span style="color:#9cdcfe">value</span> = <span style="color:#ce9178">"true"</span>
+  }
+}</code></pre>
+
+        <h3>Cost Summary — Multi-Environment</h3>
+
+        <pre><code>Dev Cluster  (Spot-heavy, scaled down overnight)
+  Control plane:           $73/month
+  Karpenter Spot nodes:   ~$80/month  (avg 2-3 nodes, business hours)
+  ─────────────────────────────────────────
+  Total dev:              ~$153/month
+
+Prod Cluster  (MNG system + Karpenter)
+  Control plane:           $73/month
+  System MNG (2×m5.large): $67/month
+  Karpenter on-demand:    ~$200/month  (fraud scoring)
+  Karpenter Spot:         ~$40/month   (batch)
+  ─────────────────────────────────────────
+  Total prod:             ~$380/month
+
+  Both clusters:          ~$533/month</code></pre>
+
+        <hr style="border-top: 1px solid var(--aws-border); margin: 40px 0;">
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <h2>8. Common Mistakes &amp; Anti-Patterns</h2>
+
+        <div class="pitfall-card">
+          <h4>Mistake 1: One Giant Node Group for Everything</h4>
+          <p>The most common starting mistake. General workloads compete with latency-sensitive services. A
+            memory-hungry batch job starves the fraud scoring pod. Use at least two Karpenter NodePools: one for
+            latency-sensitive On-Demand, one for batch Spot.</p>
+        </div>
+
+        <div class="pitfall-card">
+          <h4>Mistake 2: No ResourceQuotas on Namespaces</h4>
+          <p>Without quotas, one team's misconfigured deployment can consume all cluster CPU and starve every other
+            namespace. This is a multi-tenancy fundamental. Always apply ResourceQuotas and LimitRanges before any team
+            deploys to a shared cluster.</p>
+        </div>
+
+        <div class="pitfall-card">
+          <h4>Mistake 3: Network Policies Without the DNS Rule</h4>
+          <p>Applying a default-deny NetworkPolicy and forgetting to allow UDP/TCP port 53 to kube-system breaks all
+            service discovery silently. Every service-to-service call fails with a timeout, not a DNS error — it's
+            extremely confusing to debug. Always add the DNS allow rule as part of the default-deny template.</p>
+        </div>
+
+        <div class="pitfall-card">
+          <h4>Mistake 4: Skipping the System Node Group</h4>
+          <p>Running DaemonSets (CloudWatch, Splunk, VPC CNI) on Spot nodes means a Spot interruption can temporarily
+            orphan your observability. Add a small, always-on system Managed Node Group. The cost (~$67/month for
+            2×m5.large) is trivial compared to operating blind during an incident.</p>
+        </div>
+
+        <div class="pitfall-card">
+          <h4>Mistake 5: Auto-Syncing ArgoCD to Production</h4>
+          <p><code>autoSync: true</code> on production means a bad values file merge goes live immediately. Always set
+            <code>autoSync: false</code> in production — every production sync should be a deliberate human action with
+            a diff review in the ArgoCD UI.</p>
+        </div>
+
+        <div class="pitfall-card">
+          <h4>Mistake 6: No Upgrade Strategy Until It's Forced</h4>
+          <p>AWS will end-of-life your EKS version and stop providing patches. When that happens under pressure it's a
+            crisis. Run a planned cluster upgrade at least once per year, follow the add-on compatibility matrix, and
+            validate in dev before touching staging or prod.</p>
+        </div>
+
+        <div class="pitfall-card">
+          <h4>Mistake 7: Sharing a Cluster Between Prod and Non-Prod</h4>
+          <p>A noisy dev deployment consuming Karpenter's node limit can prevent production pods from scaling. A
+            misconfigured Network Policy in staging can accidentally reach production services. If you're in a regulated
+            environment, keep prod on a dedicated cluster.</p>
+        </div>
+
+        <hr style="border-top: 1px solid var(--aws-border); margin: 40px 0;">
+
+        <h2>Architecture Decision Matrix</h2>
+
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th>Decision</th>
+              <th>Single Cluster + Namespaces</th>
+              <th>Cluster Per Environment</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Cost</strong></td>
+              <td>✅ One control plane</td>
+              <td>❌ Two control planes (~$146/month)</td>
+            </tr>
+            <tr>
+              <td><strong>Blast radius</strong></td>
+              <td>❌ Dev affects prod</td>
+              <td>✅ Fully isolated</td>
+            </tr>
+            <tr>
+              <td><strong>Compliance (DORA, PCI)</strong></td>
+              <td>❌ Hard to satisfy</td>
+              <td>✅ Clean separation</td>
+            </tr>
+            <tr>
+              <td><strong>Upgrade risk</strong></td>
+              <td>❌ All envs affected simultaneously</td>
+              <td>✅ Upgrade dev first, validate, then prod</td>
+            </tr>
+            <tr>
+              <td><strong>Operational complexity</strong></td>
+              <td>✅ Simpler</td>
+              <td>⚠️ Two clusters to manage</td>
+            </tr>
+            <tr>
+              <td><strong>Network policy complexity</strong></td>
+              <td>❌ Cross-namespace rules get complex</td>
+              <td>✅ Simpler per-cluster</td>
+            </tr>
+            <tr>
+              <td><strong>Best for</strong></td>
+              <td>Small teams, early stage</td>
+              <td>Regulated, multi-team, production platforms</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Golden Rule Callout -->
+        <div
+          style="background: var(--aws-highlight); padding: 32px; border-radius: 8px; border: 1px solid var(--aws-border); margin: 40px 0; text-align: center; border-left: 4px solid var(--aws-orange);">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"
+            style="width: 70px; height: 70px; fill: var(--aws-orange); margin-bottom: 16px;">
+            <circle cx="320" cy="256" r="80" fill="none" stroke="currentColor" stroke-width="30" />
+            <circle cx="320" cy="80" r="36" />
+            <circle cx="320" cy="432" r="36" />
+            <circle cx="152" cy="168" r="36" />
+            <circle cx="488" cy="168" r="36" />
+            <circle cx="152" cy="344" r="36" />
+            <circle cx="488" cy="344" r="36" />
+            <line x1="320" y1="176" x2="320" y2="116" stroke="currentColor" stroke-width="20" />
+            <line x1="320" y1="336" x2="320" y2="396" stroke="currentColor" stroke-width="20" />
+            <line x1="252" y1="216" x2="204" y2="192" stroke="currentColor" stroke-width="20" />
+            <line x1="388" y1="216" x2="436" y2="192" stroke="currentColor" stroke-width="20" />
+            <line x1="252" y1="296" x2="204" y2="320" stroke="currentColor" stroke-width="20" />
+            <line x1="388" y1="296" x2="436" y2="320" stroke="currentColor" stroke-width="20" />
+          </svg>
+          <h3 style="font-size: 18px; color: var(--aws-text); margin-bottom: 12px;">The Golden Rule</h3>
+          <p style="font-size: 15px; color: var(--aws-text-light); font-style: italic; margin-bottom: 0;">
+            "Start with the simplest structure that satisfies your compliance requirements — not the most impressive one.
+            For most regulated platforms, that means a dedicated production cluster with three compute tiers (system MNG
+            + on-demand Karpenter + Spot Karpenter), namespace isolation with ResourceQuotas and NetworkPolicies, ArgoCD
+            with manual sync in production and auto-sync in dev, and Helm values organised as
+            base/environment/service-override. Build the dev cluster cheap. Build the prod cluster right. And never
+            share a cluster between production and non-production if you're operating under DORA, PCI-DSS, or SOC 2."
+          </p>
+        </div>
+
+        <div style="margin: 40px 0;">
+          <span
+            style="font-weight: 700; color: var(--aws-text-light); margin-right: 12px; font-size: 13px;">Tags:</span>
+          <span class="tag">#AWS</span>
+          <span class="tag">#EKS</span>
+          <span class="tag">#Kubernetes</span>
+          <span class="tag">#Karpenter</span>
+          <span class="tag">#ArgoCD</span>
+          <span class="tag">#GitOps</span>
+          <span class="tag">#Terraform</span>
+          <span class="tag">#DevSecOps</span>
+          <span class="tag">#MultiEnvironment</span>
+        </div>
+      </div> <!-- End Blog Body -->
+
+      <div class="share-section">
+        <span style="font-weight: 700; color: var(--aws-text-light);">Share this article:</span>
+        <a href="https://www.linkedin.com/sharing/share-offsite/?url=https://www.ankushpanday.com/blog/compute/eks-production-architecture-multi-env.html"
+          target="_blank" class="share-btn linkedin-btn">
+          <i class="fa-brands fa-linkedin"></i> Share on LinkedIn
+        </a>
+      </div>
+
+      <div class="author-card">
+        <div class="author-img"><i class="fa-solid fa-user-tie"></i></div>
+        <div>
+          <h4 style="margin: 0 0 8px 0; color: var(--aws-text);">Ankush Panday</h4>
+          <p style="margin: 0; font-size: 14px; color: var(--aws-text-light);">Specializing in highly scalable AWS
+            infrastructure and automated quality engineering.</p>
+          <a href="https://www.linkedin.com/in/ankush-panday-39b97824/" target="_blank"
+            style="display: inline-block; margin-top: 10px; color: var(--aws-blue); text-decoration: none; font-size: 13px; font-weight: 600;">Connect
+            on LinkedIn <i class="fa-solid fa-external-link" style="font-size: 10px;"></i></a>
+        </div>
+      </div>
+
+    </article>
+
+    <!-- NAVIGATION LINKS -->
+    <div class="nav-links">
+      <a href="../compute/aws-ecs-fargate-vs-eks.html" class="nav-link">
+        <i class="fa-solid fa-arrow-left"></i> Previous: AWS ECS Fargate vs EKS
+      </a>
+      <a href="../index.html" class="nav-link">
+        Return to Blog Hub <i class="fa-solid fa-arrow-right"></i>
+      </a>
+    </div>
+
+  </main>
+
+  <footer class="aws-footer">
+    Built for Performance. Architected for the Cloud. &bull; &copy; 2026 <span>Ankush Panday</span>
+  </footer>
+
+  <script>
+    if (window.location.protocol === 'file:') {
+      document.querySelectorAll('a').forEach(link => {
+        let href = link.getAttribute('href');
+        if (href && !href.startsWith('http') && !href.startsWith('#')) {
+          let path = href.split('#')[0];
+          let anchor = href.split('#')[1] ? '#' + href.split('#')[1] : '';
+          if (path && !path.endsWith('.html') && !path.endsWith('/')) {
+            link.setAttribute('href', path + '/index.html' + anchor);
+          } else if (path && path.endsWith('/')) {
+            link.setAttribute('href', path + 'index.html' + anchor);
+          }
+        }
+      });
+    }
+  </script>
+</body>
+
+</html>

@@ -512,11 +512,13 @@
           Amazon MQ and RDS are each deployed as Multi-AZ pairs with automatic failover.
         </p>
 
-        <div class="callout">
-          <div class="callout-title"><i class="fa-solid fa-diagram-project" style="color: var(--aws-blue);"></i> Architecture Diagram</div>
-          A full architecture diagram (AWS + Kubernetes icons, multi-AZ layout) is being added. It covers the complete
-          request path from Android/iOS/Web endpoints through Route 53, NLB, Nginx Ingress, EKS pods, Amazon MQ,
-          RDS Multi-AZ, and the Databricks data layer.
+        <div style="margin: 2rem 0; text-align: center;">
+          <img src="../images/aws-eks-fraud-platform-architecture.png"
+               alt="EKS Fraud Detection Platform — Multi-AZ Architecture (AWS + Kubernetes)"
+               style="max-width: 100%; border-radius: 8px; box-shadow: 0 4px 24px rgba(0,0,0,0.18); border: 1px solid #2a3a4a;" />
+          <p style="margin-top: 0.75rem; font-size: 0.85rem; color: #8899aa; font-style: italic;">
+            Full platform architecture — Route 53 → NLB → Nginx Ingress → EKS Multi-AZ (Karpenter) → Amazon MQ → RDS Multi-AZ → Databricks / S3 data layer
+          </p>
         </div>
 
         <h3>Technology Stack</h3>

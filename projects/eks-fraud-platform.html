@@ -623,6 +623,110 @@
           </ul>
         </div>
 
+        <!-- TRADE-OFFS TABLE -->
+        <h2>Architecture Trade-offs</h2>
+        <p>Every decision on this platform involved a deliberate trade-off. Here are the most significant ones:</p>
+        <table class="tradeoff-table">
+          <thead>
+            <tr>
+              <th>Decision</th>
+              <th>What We Chose</th>
+              <th>Benefit</th>
+              <th>Trade-off</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Orchestrator</strong></td>
+              <td>EKS over ECS</td>
+              <td>Full Kubernetes ecosystem, vendor-supported, ArgoCD native</td>
+              <td>Higher initial complexity — IRSA, CoreDNS tuning, node lifecycle</td>
+            </tr>
+            <tr>
+              <td><strong>Node strategy</strong></td>
+              <td>Managed Node Group + Karpenter</td>
+              <td>Cost efficiency, right-sized nodes, Spot for batch workloads</td>
+              <td>Two node tiers to reason about; Karpenter requires careful NodePool design</td>
+            </tr>
+            <tr>
+              <td><strong>Deployment model</strong></td>
+              <td>GitOps (ArgoCD)</td>
+              <td>Full audit trail, DORA compliance, rollback via Git revert</td>
+              <td>Every change must go through Git — no fast hotfixes via kubectl</td>
+            </tr>
+            <tr>
+              <td><strong>Compute for scoring</strong></td>
+              <td>On-Demand only for real-time path</td>
+              <td>Eliminates Spot interruption risk for sub-200ms SLA</td>
+              <td>Higher compute cost vs Spot</td>
+            </tr>
+            <tr>
+              <td><strong>Ingress</strong></td>
+              <td>Nginx Ingress over AWS ALB Ingress</td>
+              <td>Fine-grained routing control, Helm-native configuration</td>
+              <td>Additional component to manage; ALB is more AWS-native</td>
+            </tr>
+            <tr>
+              <td><strong>IaC</strong></td>
+              <td>Terraform-only, no console</td>
+              <td>Single source of truth, reproducible, auditable</td>
+              <td>Every change requires a plan/apply cycle — no quick console fixes</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- FAILURE & SCALING SCENARIOS -->
+        <h2>What Happens When Things Fail?</h2>
+        <p>Reliability was not an afterthought — it was tested using AWS Fault Injection Simulator (FIS) before production sign-off. Here is what the platform does under each failure scenario:</p>
+        <table class="tradeoff-table">
+          <thead>
+            <tr>
+              <th>Failure Scenario</th>
+              <th>What Happens</th>
+              <th>Recovery Time</th>
+              <th>Tested With</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>AZ-a unavailable</strong></td>
+              <td>ALB stops routing to AZ-a. Pods in AZ-b continue serving. Karpenter provisions replacement nodes in AZ-b.</td>
+              <td>&lt; 30 seconds</td>
+              <td>AWS FIS AZ outage experiment</td>
+            </tr>
+            <tr>
+              <td><strong>Spot node interrupted</strong></td>
+              <td>Karpenter receives 2-minute warning. Pods gracefully migrated to available nodes before reclaim. On-Demand fallback if no Spot available.</td>
+              <td>&lt; 2 minutes</td>
+              <td>AWS FIS Spot interruption</td>
+            </tr>
+            <tr>
+              <td><strong>Pod OOM / crash loop</strong></td>
+              <td>Kubernetes restarts the pod automatically. Topology spread constraint ensures other AZ continues serving.</td>
+              <td>&lt; 10 seconds</td>
+              <td>kubectl delete pod + monitoring</td>
+            </tr>
+            <tr>
+              <td><strong>RDS Primary failure</strong></td>
+              <td>Multi-AZ standby promoted automatically. Connection string unchanged (CNAME).</td>
+              <td>60–120 seconds</td>
+              <td>AWS FIS RDS failover</td>
+            </tr>
+            <tr>
+              <td><strong>Amazon MQ broker failure</strong></td>
+              <td>Active/Standby failover. Consumers reconnect automatically via failover URL.</td>
+              <td>&lt; 30 seconds</td>
+              <td>AWS FIS + manual broker stop</td>
+            </tr>
+            <tr>
+              <td><strong>ArgoCD sync failure</strong></td>
+              <td>Deployment halted. Previous version continues running. Alert fired. Manual review required.</td>
+              <td>No impact to running services</td>
+              <td>Simulated bad Helm values push</td>
+            </tr>
+          </tbody>
+        </table>
+
         <!-- HARD PROBLEM -->
         <h2>The Hard Problem: Helm Values at Scale</h2>
 

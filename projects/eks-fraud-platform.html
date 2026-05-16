@@ -497,9 +497,12 @@
 
         <p>
           The platform runs on a single EKS cluster spanning two availability zones (<strong>eu-west-1a</strong> and
-          <strong>eu-west-1b</strong>), with Karpenter managing node provisioning and ArgoCD driving all deployments
-          via GitOps. Every AWS resource — the EKS cluster, VPC, IAM roles, RDS, Amazon MQ, ECR — is defined in
-          Terraform. No manual console changes, ever.
+          <strong>eu-west-1b</strong>), with a two-tier node strategy: a <strong>Managed Node Group</strong>
+          (On-Demand, always-on) bootstraps the cluster and hosts critical system DaemonSets, while
+          <strong>Karpenter</strong> dynamically provisions application nodes — On-Demand for latency-sensitive
+          scoring services, Spot for batch and ML workloads. ArgoCD drives all deployments via GitOps. Every
+          AWS resource — the EKS cluster, VPC, IAM roles, RDS, Amazon MQ, ECR — is defined in Terraform.
+          No manual console changes, ever.
         </p>
 
         <p>
@@ -575,17 +578,28 @@
           it's actually how one person can operate a 33-microservice platform without burning out.
         </div>
 
-        <h3>Karpenter Over Managed Node Groups</h3>
+        <h3>Node Strategy: Managed Node Group + Karpenter</h3>
         <p>
-          We chose Karpenter over EKS Managed Node Groups for two reasons: provisioning speed and Spot Instance
-          handling. With fraud detection, load isn't perfectly predictable — transaction spikes happen. Karpenter
-          provisions the right instance type for pending pods in seconds, not minutes, and handles Spot interruptions
-          gracefully by pre-emptively migrating workloads before the instance is reclaimed.
+          The cluster runs two distinct node tiers working together. A <strong>Managed Node Group</strong> (On-Demand,
+          always-on, one node per AZ) handles cluster bootstrap and hosts system-level DaemonSets that must run on
+          every node and cannot tolerate Spot interruptions: <code>amazon-cloudwatch</code> (Container Insights),
+          the Splunk log forwarder, <code>kube-proxy</code>, and other EKS add-ons. These nodes are small and
+          fixed — their purpose is to make the cluster operational, not to run application workloads.
         </p>
         <p>
-          The cost benefit of Spot Instances applied to non-latency-critical workloads — Databricks EC2 worker nodes
-          (which run ML training jobs and can tolerate interruption), batch processors, and background enrichment
-          services. The real-time fraud scoring pods run on On-Demand nodes, protecting the sub-200ms p99 SLA.
+          <strong>Karpenter</strong> handles everything else. It provisions application nodes dynamically on
+          pending pod events — in seconds, not minutes — using two NodePools:
+        </p>
+        <ul style="font-size: 15px; color: var(--aws-text-light); padding-left: 22px; line-height: 1.8;">
+          <li><strong>On-Demand NodePool</strong> — fraud detection scoring services. Latency-sensitive,
+          sub-200ms p99 SLA. Spot interruption risk is unacceptable here.</li>
+          <li><strong>Spot NodePool</strong> — batch processors, background enrichment, and Databricks EC2
+          ML workers. These jobs tolerate interruption; Karpenter handles graceful migration before reclaim.</li>
+        </ul>
+        <p>
+          This split kept compute costs down significantly while protecting the real-time path. The Managed Node
+          Group ensured the cluster's own observability (CloudWatch, Splunk) was never at risk from a Spot
+          interruption.
         </p>
 
         <h3>High Availability: Pod Topology Spread</h3>

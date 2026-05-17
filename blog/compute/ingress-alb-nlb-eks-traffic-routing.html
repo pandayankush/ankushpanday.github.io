@@ -1210,7 +1210,7 @@ terminationGracePeriodSeconds: 45              # Must be &gt; deregistration del
             <circle cx="320" cy="334" r="42" />
             <circle cx="480" cy="334" r="42" />
           </svg>
-          <h3 style="font-size: 18px; color: var(--aws-text); margin-bottom: 12px;">The Golden Rule</h3>
+          <h3 style="font-size: 18px; color: var(--aws-text); margin-top: 0; margin-bottom: 12px;">The Golden Rule</h3>
           <p style="font-size: 15px; color: var(--aws-text-light); font-style: italic; margin-bottom: 0;">
             "Use ClusterIP for everything that doesn't need external access — it's free, fast, and scales automatically. Use Nginx Ingress when you have multiple services, need cross-namespace routing, canary deployments, or rate limiting. Use ALB Ingress when you need WAF integration, ACM certificate management, or a fully AWS-managed Layer 7 load balancer for a small number of services. Use NLB when you need gRPC, static IPs, TCP/UDP protocols, or ultra-low latency. And always use <code>ip</code> target mode — routing to pod IPs directly is faster, more secure, and enables pod-level Security Groups."
           </p>

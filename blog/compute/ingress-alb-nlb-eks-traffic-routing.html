@@ -1,0 +1,1287 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- SEO PRIMARY -->
+  <title>Ingress vs ALB vs NLB in EKS — Real Traffic Routing Patterns Explained | Ankush Panday</title>
+  <meta name="description"
+    content="EKS networking deep dive: Nginx Ingress vs AWS ALB Ingress Controller vs NLB. Real production patterns from Rabobank fraud platform — full Terraform, Kubernetes YAML, and cost analysis.">
+  <meta name="keywords"
+    content="AWS, EKS, Kubernetes, Ingress, ALB, NLB, Nginx, Traffic Routing, AWS Load Balancer Controller, VPC CNI, cert-manager, Terraform, Helm, DevSecOps, Rabobank">
+  <link rel="canonical" href="https://www.ankushpanday.com/blog/compute/ingress-alb-nlb-eks-traffic-routing.html">
+
+  <!-- OPEN GRAPH -->
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://www.ankushpanday.com/blog/compute/ingress-alb-nlb-eks-traffic-routing.html">
+  <meta property="og:title" content="Ingress vs ALB vs NLB in EKS — Real Traffic Routing Patterns Explained">
+  <meta property="og:description"
+    content="The Rabobank hybrid pattern — Nginx+NLB for 33 microservices, ALB for ArgoCD UI, NLB passthrough for Amazon MQ — with full Terraform, cost comparison ($36/month vs $542/month), and the 7 most dangerous production mistakes.">
+  <meta property="og:image" content="https://www.ankushpanday.com/images/aws-eks-ingress-alb-nlb-traffic-routing.png">
+
+  <link rel="stylesheet" href="../../style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    .blog-page-container { max-width: 900px; margin: 100px auto 40px auto; padding: 0 20px; min-height: calc(100vh - 200px); }
+    .back-btn { display: inline-flex; align-items: center; gap: 8px; color: var(--aws-blue); text-decoration: none; font-weight: 500; margin-bottom: 24px; }
+    .blog-content-card { background: var(--aws-white); border: 1px solid var(--aws-border); border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+    .blog-header { background: #f8f9fa; padding: 40px; border-bottom: 1px solid var(--aws-border); }
+    .blog-body { padding: 40px; line-height: 1.8; font-size: 16px; color: var(--aws-text); }
+    .blog-body h2 { margin-top: 48px; font-size: 26px; color: var(--aws-text); border-bottom: 2px solid var(--aws-orange); display: inline-block; padding-bottom: 4px; margin-bottom: 24px; }
+    .blog-body h3 { margin-top: 32px; font-size: 22px; color: var(--aws-blue); margin-bottom: 16px; }
+    .blog-body h4 { margin-top: 24px; font-size: 18px; color: var(--aws-text); font-weight: 700; }
+    .blog-body p { margin-bottom: 20px; }
+    .blog-body ul, .blog-body ol { margin-bottom: 24px; padding-left: 24px; }
+    .blog-body li { margin-bottom: 12px; }
+    .blog-body strong { color: var(--aws-text); }
+    .blog-body blockquote { font-style: italic; color: var(--aws-text-light); margin: 30px 0; border-left: 4px solid var(--aws-orange); background: #fcfcfc; padding: 20px; }
+    .compare-table { width: 100%; border-collapse: collapse; text-align: left; margin-bottom: 30px; font-size: 14px; }
+    .compare-table th { background: var(--aws-blue); color: white; padding: 12px; border: 1px solid var(--aws-border); }
+    .compare-table td { padding: 12px; border: 1px solid var(--aws-border); }
+    .compare-table tr:nth-child(even) { background: #f9f9f9; }
+    pre { background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; margin: 24px 0; font-size: 13px; line-height: 1.5; border-left: 4px solid var(--aws-orange); }
+    code { font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; background: #f1f3f5; color: #232f3e; padding: 2px 4px; border-radius: 4px; border: 1px solid #dee2e6; font-size: 0.9em; }
+    pre code { background: none; color: inherit; padding: 0; border: none; font-size: inherit; }
+    .pitfall-card {
+      background: #fff5f5;
+      border: 1px solid #fed7d7;
+      border-left: 4px solid #d13212;
+      padding: 20px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+    }
+    .author-card {
+      display: flex;
+      gap: 20px;
+      align-items: center;
+      padding: 30px;
+      background: #fcfcfc;
+      border-top: 1px solid var(--aws-border);
+    }
+    .author-img {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background: var(--aws-highlight);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 30px;
+      color: var(--aws-orange);
+      border: 2px solid var(--aws-border);
+    }
+    .nav-links {
+      display: flex;
+      justify-content: space-between;
+      margin: 40px 0;
+      padding: 20px 0;
+      border-top: 1px solid var(--aws-border);
+    }
+    .nav-link {
+      text-decoration: none;
+      color: var(--aws-blue);
+      font-weight: 600;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .tag {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-right: 8px;
+    }
+    .tag.blue { background: #e7f2fa; color: #0073bb; }
+    .tag.purple { background: #f2e7fa; color: #6b3fa0; }
+    .share-section {
+      padding: 20px 40px;
+      border-top: 1px solid var(--aws-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #fff;
+    }
+    .share-btn {
+      padding: 8px 16px;
+      border: 1px solid var(--aws-border);
+      border-radius: 4px;
+      background: #fff;
+      color: var(--aws-text);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .share-btn:hover { background: #f8f9fa; }
+    .linkedin-btn { background: #0077b5; color: white; border: none; }
+  </style>
+</head>
+
+<body>
+
+  <nav class="aws-topnav">
+    <a href="../../index.html" class="logo">
+      <i class="fa-solid fa-cloud" style="color: var(--aws-orange); font-size: 20px;"></i>
+      <span>Ankush Panday</span>
+    </a>
+    <div class="nav-spacer"></div>
+    <div class="nav-icons">
+      <a href="../../index.html" class="nav-icon-btn" style="text-decoration: none;">Portfolio Home</a>
+      <a href="../index.html" class="nav-icon-btn orange" style="text-decoration: none; font-weight: 600;">Blog Hub</a>
+      <button class="nav-icon-btn"><i class="fa-solid fa-earth-europe"
+          style="margin-right: 6px; font-size: 12px; color: var(--aws-orange);"></i> Europe (nl-ams-1)</button>
+      <button class="nav-icon-btn">ankushpandey@hotmail.com <i class="fa-solid fa-caret-down"
+          style="margin-left: 4px;"></i></button>
+    </div>
+  </nav>
+
+  <main class="blog-page-container">
+    <a href="../index.html" class="back-btn"><i class="fa-solid fa-arrow-left"></i> Back to Blog Hub</a>
+
+    <article class="blog-content-card">
+      <header class="blog-header">
+        <h1 style="font-size: 32px; color: var(--aws-text); margin-bottom: 16px; line-height: 1.2;">Ingress vs ALB vs NLB in EKS — Real Traffic Routing Patterns Explained</h1>
+        <div
+          style="display: flex; gap: 12px; align-items: center; color: var(--aws-text-light); font-size: 14px; flex-wrap: wrap;">
+          <span>May 17, 2026</span>
+          <span>•</span>
+          <span>22 min read</span>
+          <span class="tag blue">Kubernetes</span>
+          <span class="tag purple">Networking</span>
+        </div>
+      </header>
+
+      <div class="blog-body">
+        <p
+          style="font-style: italic; color: var(--aws-text-light); margin-bottom: 30px; border-left: 4px solid var(--aws-orange); padding-left: 15px;">
+          <strong>AWS Series | Part 12</strong> — Building secure, cost-optimised, cloud-native infrastructure on AWS.
+        </p>
+
+        <!-- Main Image -->
+        <img src="../../images/aws-eks-ingress-alb-nlb-traffic-routing.png"
+          alt="EKS Ingress ALB NLB Traffic Routing Architecture Diagram"
+          style="display: block; width: 100%; border-radius: 8px; border: 1px solid var(--aws-border); margin-bottom: 40px;">
+
+        <h2>TL;DR Comparison</h2>
+
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th></th>
+              <th>Kubernetes Ingress (Nginx)</th>
+              <th>AWS ALB Ingress Controller</th>
+              <th>AWS NLB (Service LoadBalancer)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>OSI Layer</strong></td>
+              <td>Layer 7 (HTTP/HTTPS)</td>
+              <td>Layer 7 (HTTP/HTTPS)</td>
+              <td>Layer 4 (TCP/UDP/TLS)</td>
+            </tr>
+            <tr>
+              <td><strong>Traffic routing</strong></td>
+              <td>Path + host based</td>
+              <td>Path + host based</td>
+              <td>Port based only</td>
+            </tr>
+            <tr>
+              <td><strong>TLS termination</strong></td>
+              <td>At Nginx pod</td>
+              <td>At ALB</td>
+              <td>At NLB or pass-through</td>
+            </tr>
+            <tr>
+              <td><strong>WebSocket support</strong></td>
+              <td>✅ Native</td>
+              <td>✅ Native</td>
+              <td>✅ Native</td>
+            </tr>
+            <tr>
+              <td><strong>gRPC support</strong></td>
+              <td>✅ Native</td>
+              <td>✅ HTTP/2 required</td>
+              <td>✅ Native (TCP passthrough)</td>
+            </tr>
+            <tr>
+              <td><strong>WAF integration</strong></td>
+              <td>❌ Manual</td>
+              <td>✅ Native annotation</td>
+              <td>❌ Not supported</td>
+            </tr>
+            <tr>
+              <td><strong>Target type</strong></td>
+              <td>ClusterIP via Service</td>
+              <td>Pod IP direct (ip mode)</td>
+              <td>Pod IP or Node port</td>
+            </tr>
+            <tr>
+              <td><strong>Cross-namespace routing</strong></td>
+              <td>✅ Via IngressClass</td>
+              <td>❌ Per-namespace</td>
+              <td>❌ Per-namespace</td>
+            </tr>
+            <tr>
+              <td><strong>Static IP</strong></td>
+              <td>❌</td>
+              <td>❌ (DNS only)</td>
+              <td>✅ Elastic IP</td>
+            </tr>
+            <tr>
+              <td><strong>Preserve client IP</strong></td>
+              <td>✅ Via X-Forwarded-For</td>
+              <td>✅ Via X-Forwarded-For</td>
+              <td>✅ Native (Layer 4)</td>
+            </tr>
+            <tr>
+              <td><strong>Cost</strong></td>
+              <td>EC2 nodes for Nginx pods</td>
+              <td>Per ALB + LCU charges</td>
+              <td>Per NLB + LCU charges</td>
+            </tr>
+            <tr>
+              <td><strong>Best for</strong></td>
+              <td>Complex routing, cross-namespace, cost at scale</td>
+              <td>AWS-native, WAF, simple path routing</td>
+              <td>gRPC, static IP, TCP workloads, ultra-low latency</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h2>Introduction</h2>
+
+        <p>EKS networking trips up engineers at every seniority level. The question sounds simple: <em>how do I get traffic from the internet into my pods?</em> The answer has at least five legitimate options, each with different trade-offs that matter enormously at production scale.</p>
+
+        <p>I have seen three patterns used at the Rabobank fraud detection platform — Nginx Ingress for the application tier, NLB for the message broker (Amazon MQ), and ALB for the ArgoCD UI. Each was the right choice for its specific traffic pattern. Using the wrong one is not just a performance problem — it's a cost problem, a security problem, and sometimes a capability problem (try routing gRPC through a Layer 7 ALB without HTTP/2 and watch it fail silently).</p>
+
+        <p>This post covers the full picture: what each option actually does at the packet level, when each is the right choice, the full Terraform and Kubernetes YAML for every pattern, the production gotchas that documentation doesn't mention, and the architecture I'd use starting fresh today.</p>
+
+        <hr style="border-top: 1px solid var(--aws-border); margin: 40px 0;">
+
+        <h2>1. The Traffic Path — What Actually Happens</h2>
+
+        <p>Before choosing any option, understand the full traffic path into your EKS cluster:</p>
+
+<pre><code>Internet
+    ↓
+Route 53 (DNS)
+    ↓
+Load Balancer (ALB or NLB) — lives in PUBLIC subnets
+    ↓
+[Option A] Nginx Ingress pods — in PRIVATE subnets (ClusterIP service)
+    ↓ (Nginx proxies to)
+Application pods — in PRIVATE subnets
+
+[Option B] ALB → Pod IPs directly (ip target mode)
+    ↓ (ALB routes to pod ENI directly)
+Application pods — in PRIVATE subnets
+
+[Option C] NLB → Pod IPs (ip target mode) or Node ports
+    ↓
+Application pods — in PRIVATE subnets</code></pre>
+
+        <p><strong>The key insight:</strong> In all cases, your application pods stay in private subnets. The load balancer is the only component with internet exposure. The question is only about what does the routing between the load balancer and your pods.</p>
+
+        <h2>2. Kubernetes Ingress with Nginx — Fine-Grained Routing Control</h2>
+
+        <h3>What It Is</h3>
+
+        <p>An Ingress is a Kubernetes API object that defines routing rules — "requests to <code>/api/fraud</code> go to the fraud service, requests to <code>/api/payments</code> go to the payments service." On its own, an Ingress object does nothing. It requires an <strong>Ingress Controller</strong> — a pod (or set of pods) that reads the Ingress rules and implements them.</p>
+
+        <p><strong>Nginx Ingress Controller</strong> is the most widely used. It runs as a Deployment in your cluster, reads all Ingress objects cluster-wide, and programs an Nginx reverse proxy accordingly. An NLB or ALB sits in front of the Nginx pods and forwards all traffic to them — Nginx then handles the Layer 7 routing.</p>
+
+<pre><code>Internet → NLB (L4, TCP passthrough) → Nginx Ingress pods → Application pods</code></pre>
+
+        <h3>Why Nginx Over the ALB Ingress Controller</h3>
+
+        <p>At Rabobank, we chose Nginx over the ALB Ingress Controller for the application tier for three specific reasons:</p>
+
+        <p><strong>1. Cross-namespace routing</strong> — Nginx can route traffic from one Ingress resource to services in different namespaces. The ALB Ingress Controller creates one ALB per Ingress object, and each ALB can only target services in the same namespace. With 33 microservices across 5 namespaces, the ALB approach would have created 33 ALBs — one per service — at ~$22/month each = $726/month in ALB costs alone.</p>
+
+        <p><strong>2. Richer annotation set</strong> — Nginx supports canary deployments, rate limiting, custom headers, and CORS configuration all via annotations. These patterns are baked into Nginx; replicating them with ALB requires AWS WAF rules and significantly more complexity.</p>
+
+        <p><strong>3. WebSocket and gRPC</strong> — Nginx handles both without any special configuration. ALB requires <code>alb.ingress.kubernetes.io/backend-protocol-version: GRPC</code> annotation and HTTP/2 enabled on both the ALB and the target service.</p>
+
+        <h3>Full Nginx Ingress Setup — Terraform + Helm</h3>
+
+<pre><code><span style="color:#6a9955"># NLB for Nginx — Layer 4 passthrough, preserves client IP</span>
+<span style="color:#569cd6">resource</span> <span style="color:#ce9178">"helm_release"</span> <span style="color:#ce9178">"nginx_ingress"</span> {
+  <span style="color:#9cdcfe">name</span>             = <span style="color:#ce9178">"ingress-nginx"</span>
+  <span style="color:#9cdcfe">repository</span>       = <span style="color:#ce9178">"https://kubernetes.github.io/ingress-nginx"</span>
+  <span style="color:#9cdcfe">chart</span>            = <span style="color:#ce9178">"ingress-nginx"</span>
+  <span style="color:#9cdcfe">version</span>          = <span style="color:#ce9178">"4.10.1"</span>
+  <span style="color:#9cdcfe">namespace</span>        = <span style="color:#ce9178">"ingress-nginx"</span>
+  <span style="color:#9cdcfe">create_namespace</span> = true
+
+  <span style="color:#9cdcfe">values</span> = [yamlencode({
+    <span style="color:#9cdcfe">controller</span> = {
+      <span style="color:#6a9955"># Use NLB in front of Nginx — not ALB</span>
+      <span style="color:#6a9955"># NLB gives us static IPs and true TCP passthrough</span>
+      <span style="color:#9cdcfe">service</span> = {
+        <span style="color:#9cdcfe">type</span> = <span style="color:#ce9178">"LoadBalancer"</span>
+        <span style="color:#9cdcfe">annotations</span> = {
+          <span style="color:#ce9178">"service.beta.kubernetes.io/aws-load-balancer-type"</span>            = <span style="color:#ce9178">"external"</span>
+          <span style="color:#ce9178">"service.beta.kubernetes.io/aws-load-balancer-nlb-target-type"</span> = <span style="color:#ce9178">"ip"</span>
+          <span style="color:#ce9178">"service.beta.kubernetes.io/aws-load-balancer-scheme"</span>          = <span style="color:#ce9178">"internet-facing"</span>
+          <span style="color:#ce9178">"service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled"</span> = <span style="color:#ce9178">"true"</span>
+
+          <span style="color:#6a9955"># Static EIP — Nginx NLB gets a fixed IP (useful for allowlisting)</span>
+          <span style="color:#ce9178">"service.beta.kubernetes.io/aws-load-balancer-eip-allocations"</span> = join(<span style="color:#ce9178">","</span>, [
+            aws_eip.nlb_az_a.allocation_id,
+            aws_eip.nlb_az_b.allocation_id,
+          ])
+        }
+      }
+
+      <span style="color:#6a9955"># Resource requests — Nginx pods need headroom for burst traffic</span>
+      <span style="color:#9cdcfe">resources</span> = {
+        <span style="color:#9cdcfe">requests</span> = { <span style="color:#9cdcfe">cpu</span> = <span style="color:#ce9178">"200m"</span>, <span style="color:#9cdcfe">memory</span> = <span style="color:#ce9178">"256Mi"</span> }
+        <span style="color:#9cdcfe">limits</span>   = { <span style="color:#9cdcfe">cpu</span> = <span style="color:#ce9178">"1000m"</span>, <span style="color:#9cdcfe">memory</span> = <span style="color:#ce9178">"1Gi"</span> }
+      }
+
+      <span style="color:#6a9955"># HA — one Nginx pod per AZ</span>
+      <span style="color:#9cdcfe">replicaCount</span> = 2
+      <span style="color:#9cdcfe">topologySpreadConstraints</span> = [{
+        <span style="color:#9cdcfe">maxSkew</span>           = 1
+        <span style="color:#9cdcfe">topologyKey</span>       = <span style="color:#ce9178">"topology.kubernetes.io/zone"</span>
+        <span style="color:#9cdcfe">whenUnsatisfiable</span> = <span style="color:#ce9178">"DoNotSchedule"</span>
+        <span style="color:#9cdcfe">labelSelector</span> = {
+          <span style="color:#9cdcfe">matchLabels</span> = { <span style="color:#ce9178">"app.kubernetes.io/name"</span> = <span style="color:#ce9178">"ingress-nginx"</span> }
+        }
+      }]
+
+      <span style="color:#6a9955"># Metrics for Prometheus scraping</span>
+      <span style="color:#9cdcfe">metrics</span> = {
+        <span style="color:#9cdcfe">enabled</span> = true
+        <span style="color:#9cdcfe">serviceMonitor</span> = { <span style="color:#9cdcfe">enabled</span> = true }
+      }
+
+      <span style="color:#6a9955"># Config — tune for production</span>
+      <span style="color:#9cdcfe">config</span> = {
+        <span style="color:#ce9178">"use-forwarded-headers"</span>          = <span style="color:#ce9178">"true"</span>
+        <span style="color:#ce9178">"compute-full-forwarded-for"</span>      = <span style="color:#ce9178">"true"</span>
+        <span style="color:#ce9178">"use-proxy-protocol"</span>             = <span style="color:#ce9178">"false"</span>
+        <span style="color:#ce9178">"proxy-body-size"</span>                = <span style="color:#ce9178">"50m"</span>
+        <span style="color:#ce9178">"proxy-connect-timeout"</span>          = <span style="color:#ce9178">"10"</span>
+        <span style="color:#ce9178">"proxy-send-timeout"</span>             = <span style="color:#ce9178">"60"</span>
+        <span style="color:#ce9178">"proxy-read-timeout"</span>             = <span style="color:#ce9178">"60"</span>
+        <span style="color:#ce9178">"keep-alive"</span>                     = <span style="color:#ce9178">"75"</span>
+        <span style="color:#ce9178">"keep-alive-requests"</span>            = <span style="color:#ce9178">"1000"</span>
+        <span style="color:#ce9178">"upstream-keepalive-connections"</span> = <span style="color:#ce9178">"320"</span>
+      }
+    }
+  })]
+}
+
+<span style="color:#6a9955"># Elastic IPs — fixed IPs for the NLB</span>
+<span style="color:#569cd6">resource</span> <span style="color:#ce9178">"aws_eip"</span> <span style="color:#ce9178">"nlb_az_a"</span> {
+  <span style="color:#9cdcfe">domain</span> = <span style="color:#ce9178">"vpc"</span>
+  <span style="color:#9cdcfe">tags</span>   = { <span style="color:#9cdcfe">Name</span> = <span style="color:#ce9178">"nginx-nlb-eip-az-a"</span> }
+}
+
+<span style="color:#569cd6">resource</span> <span style="color:#ce9178">"aws_eip"</span> <span style="color:#ce9178">"nlb_az_b"</span> {
+  <span style="color:#9cdcfe">domain</span> = <span style="color:#ce9178">"vpc"</span>
+  <span style="color:#9cdcfe">tags</span>   = { <span style="color:#9cdcfe">Name</span> = <span style="color:#ce9178">"nginx-nlb-eip-az-b"</span> }
+}</code></pre>
+
+        <h3>Ingress Resources — Routing Rules</h3>
+
+<pre><code># fraud-detection ingress — path-based routing to multiple services
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: fraud-detection-ingress
+  namespace: fraud-detection
+  annotations:
+    kubernetes.io/ingress.class: nginx
+
+    # Rate limiting — 100 req/min per IP
+    nginx.ingress.kubernetes.io/limit-rps: "100"
+    nginx.ingress.kubernetes.io/limit-connections: "20"
+
+    # Timeouts
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "10"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+
+    # Custom response headers
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      add_header X-Frame-Options "DENY" always;
+      add_header X-Content-Type-Options "nosniff" always;
+      add_header Strict-Transport-Security "max-age=31536000" always;
+
+    # TLS — cert managed by cert-manager
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+
+spec:
+  tls:
+    - hosts:
+        - fraud-api.internal.company.com
+      secretName: fraud-api-tls
+
+  rules:
+    - host: fraud-api.internal.company.com
+      http:
+        paths:
+          # Scoring service — latency-sensitive
+          - path: /api/v1/score
+            pathType: Prefix
+            backend:
+              service:
+                name: scoring-service
+                port:
+                  number: 8080
+
+          # Enrichment service
+          - path: /api/v1/enrich
+            pathType: Prefix
+            backend:
+              service:
+                name: enrichment-service
+                port:
+                  number: 8080
+
+          # Health check — separate path
+          - path: /health
+            pathType: Exact
+            backend:
+              service:
+                name: scoring-service
+                port:
+                  number: 8080
+---
+# Canary deployment — send 10% of scoring traffic to v2
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: fraud-scoring-canary
+  namespace: fraud-detection
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/canary: "true"
+    nginx.ingress.kubernetes.io/canary-weight: "10"   # 10% to canary
+spec:
+  rules:
+    - host: fraud-api.internal.company.com
+      http:
+        paths:
+          - path: /api/v1/score
+            pathType: Prefix
+            backend:
+              service:
+                name: scoring-service-v2   # Canary service
+                port:
+                  number: 8080</code></pre>
+
+        <h3>Cross-Namespace Routing with Nginx</h3>
+
+        <p>This is the capability that saves the most money in a multi-namespace cluster:</p>
+
+<pre><code># Single Ingress in the ingress-nginx namespace routing to services
+# across multiple namespaces — not possible with ALB Ingress Controller
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: platform-ingress
+  namespace: ingress-nginx
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    # Route to fraud-detection namespace
+    nginx.ingress.kubernetes.io/upstream-vhost: "scoring-service.fraud-detection.svc.cluster.local"
+spec:
+  rules:
+    - host: platform.internal.company.com
+      http:
+        paths:
+          - path: /fraud
+            pathType: Prefix
+            backend:
+              service:
+                name: scoring-service    # ExternalName service pointing cross-namespace
+                port:
+                  number: 8080</code></pre>
+
+        <h2>3. AWS ALB Ingress Controller — AWS-Native L7 Routing</h2>
+
+        <h3>What It Is</h3>
+
+        <p>The <strong>AWS Load Balancer Controller</strong> is a Kubernetes controller that watches for Ingress objects with <code>ingressClassName: alb</code> and automatically creates and manages AWS Application Load Balancers. Each Ingress creates one ALB. The ALB routes directly to pod IPs (in <code>ip</code> target mode) — no Nginx pod in the middle.</p>
+
+<pre><code>Internet → ALB (managed by AWS LBC) → Pod IPs directly (via VPC ENI)</code></pre>
+
+        <h3>When ALB Is the Right Choice</h3>
+
+        <ul>
+          <li><strong>WAF integration</strong> — the ALB Ingress Controller supports attaching a WAF WebACL via a single annotation. This is the cleanest path to Layer 7 protection without additional infrastructure.</li>
+          <li><strong>Simple path routing for a single service</strong> — if you have one service per namespace and simple routing needs, one ALB per service is perfectly appropriate.</li>
+          <li><strong>AWS Certificate Manager integration</strong> — TLS certificates from ACM attach to ALBs automatically. Nginx requires cert-manager or manual certificate management.</li>
+          <li><strong>Target group reuse across namespaces</strong> — the <code>TargetGroupBinding</code> resource lets an ALB target group reference pods in any namespace, partially closing the cross-namespace gap.</li>
+        </ul>
+
+        <h3>Full ALB Ingress Controller Setup</h3>
+
+<pre><code><span style="color:#6a9955"># AWS Load Balancer Controller — IAM role via Pod Identity</span>
+<span style="color:#569cd6">resource</span> <span style="color:#ce9178">"aws_iam_role"</span> <span style="color:#ce9178">"aws_lb_controller"</span> {
+  <span style="color:#9cdcfe">name</span> = <span style="color:#ce9178">"aws-load-balancer-controller"</span>
+
+  <span style="color:#9cdcfe">assume_role_policy</span> = jsonencode({
+    <span style="color:#9cdcfe">Version</span> = <span style="color:#ce9178">"2012-10-17"</span>
+    <span style="color:#9cdcfe">Statement</span> = [{
+      <span style="color:#9cdcfe">Effect</span>    = <span style="color:#ce9178">"Allow"</span>
+      <span style="color:#9cdcfe">Principal</span> = { <span style="color:#9cdcfe">Service</span> = <span style="color:#ce9178">"pods.eks.amazonaws.com"</span> }
+      <span style="color:#9cdcfe">Action</span>    = [<span style="color:#ce9178">"sts:AssumeRole"</span>, <span style="color:#ce9178">"sts:TagSession"</span>]
+    }]
+  })
+}
+
+<span style="color:#569cd6">resource</span> <span style="color:#ce9178">"aws_iam_role_policy_attachment"</span> <span style="color:#ce9178">"aws_lb_controller"</span> {
+  <span style="color:#9cdcfe">role</span>       = aws_iam_role.aws_lb_controller.name
+  <span style="color:#9cdcfe">policy_arn</span> = aws_iam_policy.aws_lb_controller.arn
+}
+
+<span style="color:#569cd6">resource</span> <span style="color:#ce9178">"aws_eks_pod_identity_association"</span> <span style="color:#ce9178">"aws_lb_controller"</span> {
+  <span style="color:#9cdcfe">cluster_name</span>    = aws_eks_cluster.main.name
+  <span style="color:#9cdcfe">namespace</span>       = <span style="color:#ce9178">"kube-system"</span>
+  <span style="color:#9cdcfe">service_account</span> = <span style="color:#ce9178">"aws-load-balancer-controller"</span>
+  <span style="color:#9cdcfe">role_arn</span>        = aws_iam_role.aws_lb_controller.arn
+}
+
+<span style="color:#569cd6">resource</span> <span style="color:#ce9178">"helm_release"</span> <span style="color:#ce9178">"aws_lb_controller"</span> {
+  <span style="color:#9cdcfe">name</span>       = <span style="color:#ce9178">"aws-load-balancer-controller"</span>
+  <span style="color:#9cdcfe">repository</span> = <span style="color:#ce9178">"https://aws.github.io/eks-charts"</span>
+  <span style="color:#9cdcfe">chart</span>      = <span style="color:#ce9178">"aws-load-balancer-controller"</span>
+  <span style="color:#9cdcfe">version</span>    = <span style="color:#ce9178">"1.8.1"</span>
+  <span style="color:#9cdcfe">namespace</span>  = <span style="color:#ce9178">"kube-system"</span>
+
+  <span style="color:#9cdcfe">set</span> {
+    <span style="color:#9cdcfe">name</span>  = <span style="color:#ce9178">"clusterName"</span>
+    <span style="color:#9cdcfe">value</span> = aws_eks_cluster.main.name
+  }
+
+  <span style="color:#9cdcfe">set</span> {
+    <span style="color:#9cdcfe">name</span>  = <span style="color:#ce9178">"serviceAccount.name"</span>
+    <span style="color:#9cdcfe">value</span> = <span style="color:#ce9178">"aws-load-balancer-controller"</span>
+  }
+
+  <span style="color:#6a9955"># HA — 2 replicas across AZs</span>
+  <span style="color:#9cdcfe">set</span> {
+    <span style="color:#9cdcfe">name</span>  = <span style="color:#ce9178">"replicaCount"</span>
+    <span style="color:#9cdcfe">value</span> = <span style="color:#ce9178">"2"</span>
+  }
+
+  <span style="color:#9cdcfe">depends_on</span> = [aws_eks_pod_identity_association.aws_lb_controller]
+}</code></pre>
+
+        <h3>ALB Ingress — Production Configuration</h3>
+
+<pre><code># ALB Ingress — full production annotation set
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: argocd-ingress
+  namespace: argocd
+  annotations:
+    kubernetes.io/ingress.class: alb
+
+    # Scheme — internet-facing or internal
+    alb.ingress.kubernetes.io/scheme: internal   # ArgoCD is internal only
+
+    # Target type — ip routes to pod IPs directly (bypass kube-proxy)
+    alb.ingress.kubernetes.io/target-type: ip
+
+    # TLS — ACM certificate
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:eu-west-1:123456789012:certificate/xxx
+    alb.ingress.kubernetes.io/ssl-policy: ELBSecurityPolicy-TLS13-1-2-2021-06
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+    alb.ingress.kubernetes.io/ssl-redirect: "443"   # Force HTTPS
+
+    # WAF — attach WebACL directly to ALB
+    alb.ingress.kubernetes.io/wafv2-acl-arn: arn:aws:wafv2:eu-west-1:123456789012:regional/webacl/prod-waf/xxx
+
+    # Health check
+    alb.ingress.kubernetes.io/healthcheck-path: /healthz
+    alb.ingress.kubernetes.io/healthcheck-interval-seconds: "15"
+    alb.ingress.kubernetes.io/healthcheck-timeout-seconds: "5"
+    alb.ingress.kubernetes.io/success-codes: "200"
+
+    # Connection draining — wait for in-flight requests before pod termination
+    alb.ingress.kubernetes.io/target-group-attributes: |
+      deregistration_delay.timeout_seconds=30,
+      slow_start.duration_seconds=30
+
+    # Access logs — ship ALB logs to S3
+    alb.ingress.kubernetes.io/load-balancer-attributes: |
+      access_logs.s3.enabled=true,
+      access_logs.s3.bucket=my-alb-logs-bucket,
+      access_logs.s3.prefix=argocd-alb,
+      idle_timeout.timeout_seconds=60
+
+    # Security groups
+    alb.ingress.kubernetes.io/security-groups: sg-alb-prod
+
+    # Subnets — only deploy ALB into public subnets tagged for ALB discovery
+    alb.ingress.kubernetes.io/subnets: subnet-public-az-a,subnet-public-az-b
+
+spec:
+  rules:
+    - host: argocd.internal.company.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: argocd-server
+                port:
+                  number: 80</code></pre>
+
+        <h3>ALB IngressGroup — Share One ALB Across Multiple Ingresses</h3>
+
+        <p>This is the cost optimisation that changes the ALB cost equation. Without IngressGroup, each Ingress creates one ALB (~$22/month). With IngressGroup, multiple Ingress objects share one ALB:</p>
+
+<pre><code># Ingress 1 — fraud detection service
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: fraud-detection-ingress
+  namespace: fraud-detection
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/group.name: platform-alb    # Shared ALB group
+    alb.ingress.kubernetes.io/group.order: "10"           # Rule evaluation order
+    alb.ingress.kubernetes.io/scheme: internal
+    alb.ingress.kubernetes.io/target-type: ip
+spec:
+  rules:
+    - host: platform.internal.company.com
+      http:
+        paths:
+          - path: /api/fraud
+            pathType: Prefix
+            backend:
+              service:
+                name: fraud-scoring-service
+                port:
+                  number: 8080
+---
+# Ingress 2 — payments service (different namespace, same ALB)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: payments-ingress
+  namespace: payments
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/group.name: platform-alb    # Same group = same ALB
+    alb.ingress.kubernetes.io/group.order: "20"
+    alb.ingress.kubernetes.io/scheme: internal
+    alb.ingress.kubernetes.io/target-type: ip
+spec:
+  rules:
+    - host: platform.internal.company.com
+      http:
+        paths:
+          - path: /api/payments
+            pathType: Prefix
+            backend:
+              service:
+                name: payment-processing-service
+                port:
+                  number: 8080</code></pre>
+
+        <blockquote>
+          <strong>Cost impact:</strong> 10 services without IngressGroup = 10 ALBs = ~$220/month. 10 services with IngressGroup = 1 ALB = ~$22/month + LCU charges. The IngressGroup annotation is the single most impactful cost optimisation in EKS networking.
+        </blockquote>
+
+        <h2>4. NLB — Layer 4 for gRPC, TCP, and Static IPs</h2>
+
+        <h3>What It Is</h3>
+
+        <p>A Network Load Balancer operates at Layer 4 — it routes TCP and UDP packets without inspecting HTTP headers. In EKS, you create an NLB by creating a Kubernetes Service of type <code>LoadBalancer</code> with AWS-specific annotations. The AWS Load Balancer Controller provisions and manages the NLB automatically.</p>
+
+<pre><code>Internet → NLB (TCP passthrough) → Pod IPs directly</code></pre>
+
+        <h3>When NLB Is the Right Choice</h3>
+
+        <ul>
+          <li><strong>gRPC workloads</strong> — gRPC uses HTTP/2 with long-lived connections and bidirectional streaming. ALB can handle gRPC but requires HTTP/2 on the backend and specific annotations. NLB with TCP passthrough lets gRPC flow through without any protocol awareness — the simplest and most reliable approach.</li>
+          <li><strong>Static IP requirement</strong> — ALBs have DNS names that resolve to changing IPs. NLBs support Elastic IPs — fixed public IPs that clients can allowlist. Essential when your clients need to whitelist your ingress IP.</li>
+          <li><strong>Ultra-low latency</strong> — NLB has roughly 1ms less latency than ALB because it doesn't inspect packets. For latency-sensitive protocols, this matters.</li>
+          <li><strong>Non-HTTP protocols</strong> — WebSockets work on both, but pure TCP/UDP services (game servers, MQTT brokers, database proxies) require NLB.</li>
+        </ul>
+
+        <p><strong>At Rabobank:</strong> Amazon MQ (message broker) was exposed internally via NLB with <code>ip</code> target mode. gRPC services between internal components used NLB for the same reason — TCP passthrough, no protocol inspection overhead.</p>
+
+        <h3>NLB via Kubernetes Service</h3>
+
+<pre><code># NLB Service — internet-facing with static EIP
+apiVersion: v1
+kind: Service
+metadata:
+  name: fraud-grpc-service
+  namespace: fraud-detection
+  annotations:
+    # Use the AWS Load Balancer Controller (not the legacy in-tree controller)
+    service.beta.kubernetes.io/aws-load-balancer-type: "external"
+
+    # ip target mode — route to pod IPs directly, not node ports
+    service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: "ip"
+
+    # internet-facing or internal
+    service.beta.kubernetes.io/aws-load-balancer-scheme: "internal"
+
+    # Cross-zone load balancing — distribute across all AZs
+    service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
+
+    # Static EIPs — fixed IPs for client allowlisting
+    service.beta.kubernetes.io/aws-load-balancer-eip-allocations: "eipalloc-xxx,eipalloc-yyy"
+
+    # Health check — TCP check on the gRPC port
+    service.beta.kubernetes.io/aws-load-balancer-healthcheck-protocol: "TCP"
+    service.beta.kubernetes.io/aws-load-balancer-healthcheck-interval: "10"
+
+    # Access logs
+    service.beta.kubernetes.io/aws-load-balancer-access-log-enabled: "true"
+    service.beta.kubernetes.io/aws-load-balancer-access-log-s3-bucket-name: "nlb-logs-bucket"
+    service.beta.kubernetes.io/aws-load-balancer-access-log-s3-bucket-prefix: "fraud-grpc"
+
+    # Connection draining
+    service.beta.kubernetes.io/aws-load-balancer-target-group-attributes: |
+      deregistration_delay.timeout_seconds=30
+
+spec:
+  type: LoadBalancer
+  loadBalancerClass: service.k8s.aws/nlb   # Explicit — use AWS LBC, not in-tree
+
+  selector:
+    app: fraud-grpc-service
+
+  ports:
+    - name: grpc
+      port: 443
+      targetPort: 50051   # gRPC port on the pod
+      protocol: TCP</code></pre>
+
+        <h3>NLB with TLS Passthrough vs TLS Termination</h3>
+
+<pre><code># TLS passthrough — NLB doesn't decrypt, pod handles TLS
+# Use when your gRPC service does its own mTLS
+metadata:
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-ssl-cert: ""   # No cert = passthrough
+
+---
+# TLS termination at NLB — NLB decrypts, forwards plain TCP to pod
+# Use when you want ACM cert management without pod-level TLS handling
+metadata:
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-ssl-cert: arn:aws:acm:eu-west-1:123:certificate/xxx
+    service.beta.kubernetes.io/aws-load-balancer-ssl-ports: "443"
+    service.beta.kubernetes.io/aws-load-balancer-backend-protocol: "tcp"   # Plain TCP to pod after termination</code></pre>
+
+        <h2>5. The VPC CNI and IP Allocation — The Hidden Bottleneck</h2>
+
+        <p>This is the networking detail that causes the most mysterious failures in production EKS clusters. Every pod in EKS gets a real VPC IP address from your subnet CIDR. By default, VPC CNI pre-allocates IPs on each node — and you can run out.</p>
+
+        <h3>The Default Behaviour (And Why It Fails)</h3>
+
+<pre><code>Default VPC CNI behaviour:
+Node warm pool = max(WARM_ENI_TARGET, WARM_IP_TARGET)
+Default: WARM_ENI_TARGET = 1
+
+On an m5.xlarge (3 ENIs, 15 IPs per ENI = 45 IPs max):
+At startup: node pre-allocates 1 warm ENI = 15 IPs consumed
+First pod scheduled: another ENI attached = 15 more IPs consumed
+Result: 30 IPs consumed before you've scheduled any meaningful workloads</code></pre>
+
+        <h3>Fix — Enable Prefix Delegation</h3>
+
+        <p>Prefix Delegation allocates a /28 block (16 IPs) per ENI slot instead of individual IPs. Same ENI count, 16× more IPs:</p>
+
+<pre><code><span style="color:#6a9955"># Enable prefix delegation in VPC CNI addon config</span>
+<span style="color:#569cd6">resource</span> <span style="color:#ce9178">"aws_eks_addon"</span> <span style="color:#ce9178">"vpc_cni"</span> {
+  <span style="color:#9cdcfe">cluster_name</span>  = aws_eks_cluster.main.name
+  <span style="color:#9cdcfe">addon_name</span>    = <span style="color:#ce9178">"vpc-cni"</span>
+  <span style="color:#9cdcfe">addon_version</span> = <span style="color:#ce9178">"v1.18.1-eksbuild.1"</span>
+
+  <span style="color:#9cdcfe">configuration_values</span> = jsonencode({
+    <span style="color:#9cdcfe">env</span> = {
+      <span style="color:#9cdcfe">ENABLE_PREFIX_DELEGATION</span> = <span style="color:#ce9178">"true"</span>   <span style="color:#6a9955"># /28 prefixes instead of individual IPs</span>
+      <span style="color:#9cdcfe">WARM_PREFIX_TARGET</span>       = <span style="color:#ce9178">"1"</span>      <span style="color:#6a9955"># Keep 1 warm prefix per node</span>
+      <span style="color:#9cdcfe">MINIMUM_IP_TARGET</span>        = <span style="color:#ce9178">"3"</span>      <span style="color:#6a9955"># Minimum IPs always available</span>
+    }
+  })
+}</code></pre>
+
+        <blockquote>
+          <strong>Why this matters for Ingress:</strong> Nginx Ingress pods, ALB controller pods, and your application pods all consume VPC IPs. On a cluster with 33 microservices and 2 replicas each plus Nginx, you need ~70+ pod IPs per AZ. Without prefix delegation, a subnet with 256 IPs (/24) fills up fast. With prefix delegation, the same number of ENIs supports 16× more pods.
+        </blockquote>
+
+        <h2>6. Service Types — ClusterIP, NodePort, LoadBalancer Explained</h2>
+
+        <p>Before Ingress makes sense, you need to understand Kubernetes Service types because Ingress sits on top of them:</p>
+
+<pre><code># ClusterIP — internal only, no external access
+# Default type — use for service-to-service communication
+apiVersion: v1
+kind: Service
+metadata:
+  name: fraud-scoring-internal
+  namespace: fraud-detection
+spec:
+  type: ClusterIP
+  selector:
+    app: fraud-scoring
+  ports:
+    - port: 8080
+      targetPort: 8080
+# Accessible at: fraud-scoring-internal.fraud-detection.svc.cluster.local:8080
+# NOT accessible from outside the cluster
+
+---
+# NodePort — exposes on every node's IP at a static port (30000-32767)
+# Almost never the right choice in production EKS — use LoadBalancer or Ingress
+apiVersion: v1
+kind: Service
+metadata:
+  name: fraud-scoring-nodeport
+spec:
+  type: NodePort
+  selector:
+    app: fraud-scoring
+  ports:
+    - port: 8080
+      targetPort: 8080
+      nodePort: 30080   # Exposed on every node at this port
+# Accessible at: &lt;any-node-ip&gt;:30080
+
+---
+# LoadBalancer — creates a cloud load balancer (NLB or ALB)
+# One LB per service — gets expensive at scale
+apiVersion: v1
+kind: Service
+metadata:
+  name: fraud-scoring-lb
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: "external"
+    service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: "ip"
+spec:
+  type: LoadBalancer
+  selector:
+    app: fraud-scoring
+  ports:
+    - port: 443
+      targetPort: 8080</code></pre>
+
+        <p><strong>The cost implications:</strong></p>
+
+<pre><code>30 services × LoadBalancer type (NLB) = 30 NLBs × ~$16/month = $480/month
+30 services × ClusterIP + 1 Nginx Ingress (NLB) = 1 NLB × ~$16/month = $16/month
+Saving: $464/month — just from using Ingress instead of LoadBalancer per service</code></pre>
+
+        <h2>7. cert-manager — Automated TLS Certificate Management</h2>
+
+        <p>Regardless of whether you use Nginx or ALB Ingress, you need TLS. For Nginx, cert-manager automates certificate issuance from Let's Encrypt or your internal CA. For ALB, ACM handles certificates natively — but cert-manager is still useful for internal services.</p>
+
+<pre><code><span style="color:#6a9955"># cert-manager via Helm</span>
+<span style="color:#569cd6">resource</span> <span style="color:#ce9178">"helm_release"</span> <span style="color:#ce9178">"cert_manager"</span> {
+  <span style="color:#9cdcfe">name</span>             = <span style="color:#ce9178">"cert-manager"</span>
+  <span style="color:#9cdcfe">repository</span>       = <span style="color:#ce9178">"https://charts.jetstack.io"</span>
+  <span style="color:#9cdcfe">chart</span>            = <span style="color:#ce9178">"cert-manager"</span>
+  <span style="color:#9cdcfe">version</span>          = <span style="color:#ce9178">"v1.15.0"</span>
+  <span style="color:#9cdcfe">namespace</span>        = <span style="color:#ce9178">"cert-manager"</span>
+  <span style="color:#9cdcfe">create_namespace</span> = true
+
+  <span style="color:#9cdcfe">set</span> {
+    <span style="color:#9cdcfe">name</span>  = <span style="color:#ce9178">"installCRDs"</span>
+    <span style="color:#9cdcfe">value</span> = <span style="color:#ce9178">"true"</span>
+  }
+
+  <span style="color:#6a9955"># Pod Identity for Route 53 DNS validation</span>
+  <span style="color:#9cdcfe">set</span> {
+    <span style="color:#9cdcfe">name</span>  = <span style="color:#ce9178">"serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"</span>
+    <span style="color:#9cdcfe">value</span> = aws_iam_role.cert_manager.arn
+  }
+}</code></pre>
+
+<pre><code># ClusterIssuer — Let's Encrypt with DNS-01 validation via Route 53
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: platform@company.com
+    privateKeySecretRef:
+      name: letsencrypt-prod-key
+    solvers:
+      - dns01:
+          route53:
+            region: eu-west-1
+            hostedZoneID: Z1234EXAMPLE   # Your Route 53 zone ID
+---
+# Certificate — automatically issued and renewed by cert-manager
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: fraud-api-tls
+  namespace: fraud-detection
+spec:
+  secretName: fraud-api-tls    # Secret name referenced in Ingress
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+    - fraud-api.internal.company.com</code></pre>
+
+        <h2>8. The Rabobank Pattern — What We Actually Used</h2>
+
+        <p>At Rabobank, the fraud detection platform used a hybrid approach that I'd replicate on any similar platform:</p>
+
+<pre><code>External access (developer tools, ArgoCD UI):
+  → ALB (AWS LBC) with WAF WebACL + ACM certificate
+  → Single ALB shared via IngressGroup annotation
+  → WAF blocks known bad IPs, rate limits, OWASP rules
+
+Application tier (33 microservices):
+  → Nginx Ingress Controller with NLB in front
+  → NLB has Elastic IPs — security team can allowlist the platform egress
+  → Nginx handles path routing, canary weights, rate limiting via annotations
+  → cert-manager issues internal TLS certs from internal CA
+
+Message broker (Amazon MQ):
+  → NLB in ip target mode, internal scheme
+  → TLS passthrough — MQ handles its own TLS
+  → Static private IP — consumers configured with fixed broker address
+
+gRPC services (internal service-to-service):
+  → ClusterIP only — no external exposure
+  → CoreDNS for service discovery
+  → No load balancer at all — Kubernetes handles routing via kube-proxy</code></pre>
+
+        <blockquote>
+          <strong>The key insight:</strong> not every service needs a load balancer. Services that only communicate internally use ClusterIP — it's free, it's fast (no extra hop), and it scales automatically. Only services that need external access need an Ingress or LoadBalancer.
+        </blockquote>
+
+        <h2>9. Cost Comparison — Real Numbers</h2>
+
+<pre><code>Scenario: 30 microservices in EKS, eu-west-1
+
+Option A — LoadBalancer per service (30 NLBs):
+  30 NLBs × $16.43/month           = $492.90/month
+  LCU charges (moderate traffic)    = ~$50.00/month
+  Total:                            ~$542.90/month
+
+Option B — ALB Ingress Controller (1 ALB per namespace × 5 namespaces):
+  5 ALBs × $22.27/month             = $111.35/month
+  LCU charges                       = ~$30.00/month
+  Total:                            ~$141.35/month
+
+Option C — ALB IngressGroup (1 shared ALB):
+  1 ALB × $22.27/month              = $22.27/month
+  LCU charges (higher per ALB)      = ~$40.00/month
+  Total:                            ~$62.27/month
+
+Option D — Nginx Ingress + 1 NLB (Rabobank pattern):
+  1 NLB × $16.43/month              = $16.43/month
+  2 Nginx pods (m5.large fraction)  = ~$15.00/month
+  LCU on NLB (low — L4 only)        = ~$5.00/month
+  Total:                            ~$36.43/month
+
+Monthly saving: Option D vs Option A = $506.47/month
+Annual saving:                       = $6,077.64/year</code></pre>
+
+        <h2>10. The Decision Framework</h2>
+
+<pre><code>Do you need Layer 7 routing (path/host-based)?
+├── NO → NLB (Service LoadBalancer type)
+│   ├── Need static IP? → NLB + EIP
+│   ├── gRPC / WebSocket / TCP? → NLB (TCP passthrough)
+│   └── Ultra-low latency? → NLB
+└── YES → Ingress (Layer 7)
+    ├── How many services need external access?
+    │   ├── 1-3 services → ALB Ingress Controller (simple, AWS-native)
+    │   └── 4+ services → Nginx Ingress (cheaper, more control)
+    ├── Need WAF integration?
+    │   ├── YES → ALB Ingress Controller (native WAF annotation)
+    │   └── NO → Either — Nginx with rate limiting, ALB without WAF
+    ├── Need canary deployments?
+    │   ├── YES → Nginx (native canary annotation)
+    │   └── NO → Either
+    ├── Need cross-namespace routing without multiple ALBs?
+    │   ├── YES → Nginx
+    │   └── NO (IngressGroup solves it) → ALB
+    └── Need TLS managed by ACM?
+        ├── YES → ALB (native ACM integration)
+        └── NO (cert-manager is fine) → Nginx
+
+Service-to-service communication (internal only)?
+└── Always use ClusterIP — no load balancer needed</code></pre>
+
+        <h2>11. Common Mistakes &amp; Anti-Patterns</h2>
+
+        <div class="pitfall-card">
+          <h4>Mistake 1: One LoadBalancer Service Per Microservice</h4>
+          <p>Creating a Kubernetes Service of type <code>LoadBalancer</code> for each of your 30 microservices creates 30 NLBs. At ~$16/month each that's $480/month for what should be a $16/month NLB fronting Nginx. Use ClusterIP for internal services, Ingress for external.</p>
+        </div>
+
+        <div class="pitfall-card">
+          <h4>Mistake 2: ALB in <code>instance</code> Target Mode Instead of <code>ip</code></h4>
+          <p><code>instance</code> target mode routes to node ports, which adds an extra kube-proxy hop and breaks pod-level Security Groups. Always use <code>ip</code> target mode — it routes directly to pod ENIs, respects pod Security Groups, and has lower latency.</p>
+        </div>
+
+        <div class="pitfall-card">
+          <h4>Mistake 3: Forgetting the Subnet Tags for ALB/NLB Discovery</h4>
+          <p>The AWS Load Balancer Controller discovers subnets by tag. Without these tags, ALB/NLB creation silently fails with a confusing error:</p>
+
+<pre><code><span style="color:#6a9955"># Public subnets — required for internet-facing ALB/NLB</span>
+<span style="color:#569cd6">resource</span> <span style="color:#ce9178">"aws_subnet"</span> <span style="color:#ce9178">"public"</span> {
+  <span style="color:#9cdcfe">tags</span> = {
+    <span style="color:#ce9178">"kubernetes.io/cluster/${var.cluster_name}"</span> = <span style="color:#ce9178">"shared"</span>
+    <span style="color:#ce9178">"kubernetes.io/role/elb"</span>                    = <span style="color:#ce9178">"1"</span>   <span style="color:#6a9955"># ← Required for internet-facing LB</span>
+  }
+}
+
+<span style="color:#6a9955"># Private subnets — required for internal ALB/NLB</span>
+<span style="color:#569cd6">resource</span> <span style="color:#ce9178">"aws_subnet"</span> <span style="color:#ce9178">"private"</span> {
+  <span style="color:#9cdcfe">tags</span> = {
+    <span style="color:#ce9178">"kubernetes.io/cluster/${var.cluster_name}"</span> = <span style="color:#ce9178">"shared"</span>
+    <span style="color:#ce9178">"kubernetes.io/role/internal-elb"</span>           = <span style="color:#ce9178">"1"</span>   <span style="color:#6a9955"># ← Required for internal LB</span>
+    <span style="color:#ce9178">"karpenter.sh/discovery"</span>                    = var.cluster_name
+  }
+}</code></pre>
+        </div>
+
+        <div class="pitfall-card">
+          <h4>Mistake 4: No Connection Draining on Pod Termination</h4>
+          <p>Without connection draining, a pod being terminated drops in-flight requests. The fix is two-part: deregistration delay on the target group (30 seconds) AND a <code>preStop</code> hook on the pod:</p>
+
+<pre><code>lifecycle:
+  preStop:
+    exec:
+      command: ["/bin/sh", "-c", "sleep 15"]   # Wait for LB to stop sending traffic
+                                                # before the pod starts shutting down
+terminationGracePeriodSeconds: 45              # Must be &gt; deregistration delay + preStop sleep</code></pre>
+        </div>
+
+        <div class="pitfall-card">
+          <h4>Mistake 5: Using Nginx Without Resource Requests</h4>
+          <p>Nginx Ingress pods without CPU/memory requests will be scheduled on any available node and can be evicted by Karpenter during bin-packing. Set resource requests that reflect actual usage, and use topology spread constraints to keep one Nginx pod per AZ:</p>
+
+<pre><code>resources:
+  requests:
+    cpu: "200m"
+    memory: "256Mi"
+  limits:
+    cpu: "1000m"
+    memory: "1Gi"</code></pre>
+        </div>
+
+        <div class="pitfall-card">
+          <h4>Mistake 6: Not Enabling Access Logs</h4>
+          <p>ALB and NLB access logs are disabled by default. For any production workload, enable them — they're essential for debugging latency spikes, error rates, and security incidents. The S3 storage cost is negligible.</p>
+        </div>
+
+        <div class="pitfall-card">
+          <h4>Mistake 7: Mixing Ingress Classes Without Isolation</h4>
+          <p>Running both Nginx and ALB Ingress Controller on the same cluster without explicit <code>ingressClassName</code> on every Ingress resource causes both controllers to pick up every Ingress object and fight over it. Always set <code>ingressClassName</code> explicitly:</p>
+
+<pre><code>spec:
+  ingressClassName: nginx    # or "alb" — always explicit, never rely on default</code></pre>
+        </div>
+
+        <h2>Architecture Decision Matrix</h2>
+
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th>Requirement</th>
+              <th>Nginx + NLB</th>
+              <th>ALB Ingress</th>
+              <th>NLB (LoadBalancer)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Path/host routing</strong></td>
+              <td>✅ Native</td>
+              <td>✅ Native</td>
+              <td>❌ Layer 4 only</td>
+            </tr>
+            <tr>
+              <td><strong>WAF integration</strong></td>
+              <td>❌ Manual</td>
+              <td>✅ Native annotation</td>
+              <td>❌ Not supported</td>
+            </tr>
+            <tr>
+              <td><strong>Cross-namespace routing</strong></td>
+              <td>✅ Native</td>
+              <td>⚠️ IngressGroup partial</td>
+              <td>❌ N/A</td>
+            </tr>
+            <tr>
+              <td><strong>Canary deployments</strong></td>
+              <td>✅ Native annotation</td>
+              <td>⚠️ Complex</td>
+              <td>❌ Not supported</td>
+            </tr>
+            <tr>
+              <td><strong>gRPC</strong></td>
+              <td>✅ TCP passthrough</td>
+              <td>⚠️ HTTP/2 required</td>
+              <td>✅ TCP passthrough</td>
+            </tr>
+            <tr>
+              <td><strong>Static IP</strong></td>
+              <td>✅ Via NLB EIP</td>
+              <td>❌ DNS only</td>
+              <td>✅ EIP native</td>
+            </tr>
+            <tr>
+              <td><strong>TLS via ACM</strong></td>
+              <td>❌ cert-manager</td>
+              <td>✅ Native</td>
+              <td>✅ Native</td>
+            </tr>
+            <tr>
+              <td><strong>Cost at scale (30+ services)</strong></td>
+              <td>✅ Lowest</td>
+              <td>⚠️ IngressGroup helps</td>
+              <td>❌ Highest</td>
+            </tr>
+            <tr>
+              <td><strong>AWS-native management</strong></td>
+              <td>⚠️ Additional component</td>
+              <td>✅ Fully managed</td>
+              <td>✅ Fully managed</td>
+            </tr>
+            <tr>
+              <td><strong>Latency overhead</strong></td>
+              <td>⚠️ Extra Nginx hop</td>
+              <td>✅ Direct to pod</td>
+              <td>✅ Lowest latency</td>
+            </tr>
+            <tr>
+              <td><strong>Rate limiting</strong></td>
+              <td>✅ Native annotation</td>
+              <td>❌ Needs WAF</td>
+              <td>❌ Not supported</td>
+            </tr>
+            <tr>
+              <td><strong>Custom headers / CORS</strong></td>
+              <td>✅ Native</td>
+              <td>❌ Needs Lambda</td>
+              <td>❌ N/A</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Golden Rule Callout -->
+        <div
+          style="background: var(--aws-highlight); padding: 32px; border-radius: 8px; border: 1px solid var(--aws-border); margin: 40px 0; text-align: center; border-left: 4px solid var(--aws-orange);">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"
+            style="width: 70px; height: 70px; fill: var(--aws-orange); margin-bottom: 16px;">
+            <circle cx="320" cy="256" r="80" fill="none" stroke="currentColor" stroke-width="30" />
+            <circle cx="320" cy="80" r="36" />
+            <circle cx="320" cy="432" r="36" />
+            <circle cx="152" cy="168" r="36" />
+            <circle cx="488" cy="168" r="36" />
+            <circle cx="152" cy="344" r="36" />
+            <circle cx="488" cy="344" r="36" />
+            <line x1="320" y1="176" x2="320" y2="116" stroke="currentColor" stroke-width="20" />
+            <line x1="320" y1="336" x2="320" y2="396" stroke="currentColor" stroke-width="20" />
+            <line x1="252" y1="216" x2="204" y2="192" stroke="currentColor" stroke-width="20" />
+            <line x1="388" y1="216" x2="436" y2="192" stroke="currentColor" stroke-width="20" />
+            <line x1="252" y1="296" x2="204" y2="320" stroke="currentColor" stroke-width="20" />
+            <line x1="388" y1="296" x2="436" y2="320" stroke="currentColor" stroke-width="20" />
+          </svg>
+          <h3 style="font-size: 18px; color: var(--aws-text); margin-bottom: 12px;">The Golden Rule</h3>
+          <p style="font-size: 15px; color: var(--aws-text-light); font-style: italic; margin-bottom: 0;">
+            "Use ClusterIP for everything that doesn't need external access — it's free, fast, and scales automatically. Use Nginx Ingress when you have multiple services, need cross-namespace routing, canary deployments, or rate limiting. Use ALB Ingress when you need WAF integration, ACM certificate management, or a fully AWS-managed Layer 7 load balancer for a small number of services. Use NLB when you need gRPC, static IPs, TCP/UDP protocols, or ultra-low latency. And always use <code>ip</code> target mode — routing to pod IPs directly is faster, more secure, and enables pod-level Security Groups."
+          </p>
+        </div>
+
+        <div style="margin: 40px 0;">
+          <span style="font-weight: 700; color: var(--aws-text-light); margin-right: 12px; font-size: 13px;">Tags:</span>
+          <span class="tag">#AWS</span>
+          <span class="tag">#EKS</span>
+          <span class="tag">#Kubernetes</span>
+          <span class="tag">#Ingress</span>
+          <span class="tag">#ALB</span>
+          <span class="tag">#NLB</span>
+          <span class="tag">#Nginx</span>
+          <span class="tag">#Networking</span>
+          <span class="tag">#DevSecOps</span>
+          <span class="tag">#Terraform</span>
+          <span class="tag">#Helm</span>
+          <span class="tag">#ExpandingAWSSeries</span>
+        </div>
+      </div> <!-- End Blog Body -->
+
+      <div class="share-section">
+        <span style="font-weight: 700; color: var(--aws-text-light);">Share this article:</span>
+        <a href="https://www.linkedin.com/sharing/share-offsite/?url=https://www.ankushpanday.com/blog/compute/ingress-alb-nlb-eks-traffic-routing.html"
+          target="_blank" class="share-btn linkedin-btn">
+          <i class="fa-brands fa-linkedin"></i> Share on LinkedIn
+        </a>
+      </div>
+
+      <div class="author-card">
+        <div class="author-img"><i class="fa-solid fa-user-tie"></i></div>
+        <div>
+          <h4 style="margin: 0 0 8px 0; color: var(--aws-text);">Ankush Panday</h4>
+          <p style="margin: 0; font-size: 14px; color: var(--aws-text-light);">Specializing in highly scalable AWS
+            infrastructure and automated quality engineering.</p>
+          <a href="https://www.linkedin.com/in/ankush-panday-39b97824/" target="_blank"
+            style="display: inline-block; margin-top: 10px; color: var(--aws-blue); text-decoration: none; font-size: 13px; font-weight: 600;">Connect
+            on LinkedIn <i class="fa-solid fa-external-link" style="font-size: 10px;"></i></a>
+        </div>
+      </div>
+
+    </article>
+
+    <!-- NAVIGATION LINKS -->
+    <div class="nav-links">
+      <a href="../compute/eks-production-architecture-multi-env.html" class="nav-link">
+        <i class="fa-solid fa-arrow-left"></i> Previous: Production-Grade EKS Architecture
+      </a>
+      <a href="../index.html" class="nav-link">
+        Return to Blog Hub <i class="fa-solid fa-arrow-right"></i>
+      </a>
+    </div>
+
+  </main>
+
+  <footer class="aws-footer">
+    Built for Performance. Architected for the Cloud. &bull; &copy; 2026 <span>Ankush Panday</span>
+  </footer>
+
+  <script>
+    if (window.location.protocol === 'file:') {
+      document.querySelectorAll('a').forEach(link => {
+        let href = link.getAttribute('href');
+        if (href && !href.startsWith('http') && !href.startsWith('#')) {
+          let path = href.split('#')[0];
+          let anchor = href.split('#')[1] ? '#' + href.split('#')[1] : '';
+          if (path && !path.endsWith('.html') && !path.endsWith('/')) {
+            link.setAttribute('href', path + '/index.html' + anchor);
+          } else if (path && path.endsWith('/')) {
+            link.setAttribute('href', path + 'index.html' + anchor);
+          }
+        }
+      });
+    }
+  </script>
+</body>
+</html>

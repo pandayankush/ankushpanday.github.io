@@ -520,6 +520,7 @@ body {
   border-radius: 4px;
   font-size: 12px;
   font-weight: 500;
+  margin-bottom: 8px;
   transition: background var(--transition), transform var(--transition);
 }
 .tag:hover { background: #d0eaf7; transform: translateY(-1px); }

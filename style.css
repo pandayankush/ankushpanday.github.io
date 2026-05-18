@@ -625,6 +625,23 @@ body {
   padding: 12px 16px 16px 32px !important;
 }
 
+/* ===== PRODUCTION CALLOUT BLOCKQUOTE ===== */
+.production-callout {
+  border-left: 4px solid var(--aws-orange);
+  margin: 24px 0 32px 0;
+  padding: 14px 20px;
+  background: var(--aws-highlight);
+  border-radius: 0 6px 6px 0;
+  font-size: 14px;
+  color: var(--aws-text-light);
+  font-style: italic;
+  line-height: 1.7;
+}
+.production-callout strong {
+  color: var(--aws-text);
+  font-style: normal;
+}
+
 /* ===== SCROLLBAR ===== */
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: var(--aws-gray-bg); }

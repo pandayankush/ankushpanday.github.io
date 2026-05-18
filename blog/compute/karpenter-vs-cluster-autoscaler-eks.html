@@ -138,7 +138,6 @@
       background: #f9f9f9;
     }
 
-    /* Code block styling - synchronized across all blogs */
     pre {
       background: #232f3e;
       color: #f8f8f2;
@@ -454,71 +453,71 @@ Tier 3: Spot NodePools (Karpenter — two pools)
 
         <h3>Our On-Demand Node Group Configuration</h3>
 
-        <pre><code># System Node Group — always-on, fixed size, Karpenter and CA run here
-resource "aws_eks_node_group" "system" {
-  cluster_name    = aws_eks_cluster.main.name
-  node_group_name = "system"
-  node_role_arn   = aws_iam_role.node.arn
-  subnet_ids      = var.private_subnet_ids
+        <pre><code><span style="color: #6a9955;"># System Node Group — always-on, fixed size, Karpenter and CA run here</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_eks_node_group"</span> <span style="color: #ce9178;">"system"</span> {
+  <span style="color: #9cdcfe;">cluster_name</span>    = aws_eks_cluster.main.name
+  <span style="color: #9cdcfe;">node_group_name</span> = <span style="color: #ce9178;">"system"</span>
+  <span style="color: #9cdcfe;">node_role_arn</span>   = aws_iam_role.node.arn
+  <span style="color: #9cdcfe;">subnet_ids</span>      = var.private_subnet_ids
 
-  instance_types = ["m5.large"]   # 2 vCPU, 8 GB — sized for DaemonSets only
+  <span style="color: #9cdcfe;">instance_types</span> = [<span style="color: #ce9178;">"m5.large"</span>]   <span style="color: #6a9955;"># 2 vCPU, 8 GB — sized for DaemonSets only</span>
 
-  scaling_config {
-    desired_size = 2   # One per AZ — never changes
-    min_size     = 2
-    max_size     = 4   # Small burst for cluster events
+  <span style="color: #9cdcfe;">scaling_config</span> {
+    <span style="color: #9cdcfe;">desired_size</span> = 2   <span style="color: #6a9955;"># One per AZ — never changes</span>
+    <span style="color: #9cdcfe;">min_size</span>     = 2
+    <span style="color: #9cdcfe;">max_size</span>     = 4   <span style="color: #6a9955;"># Small burst for cluster events</span>
   }
 
-  taint {
-    key    = "node-role"
-    value  = "system"
-    effect = "NO_SCHEDULE"
+  <span style="color: #9cdcfe;">taint</span> {
+    <span style="color: #9cdcfe;">key</span>    = <span style="color: #ce9178;">"node-role"</span>
+    <span style="color: #9cdcfe;">value</span>  = <span style="color: #ce9178;">"system"</span>
+    <span style="color: #9cdcfe;">effect</span> = <span style="color: #ce9178;">"NO_SCHEDULE"</span>
   }
 
-  labels = { "node-role" = "system" }
+  <span style="color: #9cdcfe;">labels</span> = { <span style="color: #ce9178;">"node-role"</span> = <span style="color: #ce9178;">"system"</span> }
 
-  update_config { max_unavailable = 1 }
+  <span style="color: #9cdcfe;">update_config</span> { <span style="color: #9cdcfe;">max_unavailable</span> = 1 }
 
-  tags = {
-    Name = "system-node-group"
-    "k8s.io/cluster-autoscaler/enabled"             = "true"
-    "k8s.io/cluster-autoscaler/${var.cluster_name}" = "owned"
+  <span style="color: #9cdcfe;">tags</span> = {
+    Name                                              = <span style="color: #ce9178;">"system-node-group"</span>
+    <span style="color: #ce9178;">"k8s.io/cluster-autoscaler/enabled"</span>             = <span style="color: #ce9178;">"true"</span>
+    <span style="color: #ce9178;">"k8s.io/cluster-autoscaler/${var.cluster_name}"</span> = <span style="color: #ce9178;">"owned"</span>
   }
 }
 
-# On-Demand Application Node Group — managed by Cluster Autoscaler
-resource "aws_eks_node_group" "on_demand_app" {
-  cluster_name    = aws_eks_cluster.main.name
-  node_group_name = "on-demand-app"
-  node_role_arn   = aws_iam_role.node.arn
-  subnet_ids      = var.private_subnet_ids
+<span style="color: #6a9955;"># On-Demand Application Node Group — managed by Cluster Autoscaler</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_eks_node_group"</span> <span style="color: #ce9178;">"on_demand_app"</span> {
+  <span style="color: #9cdcfe;">cluster_name</span>    = aws_eks_cluster.main.name
+  <span style="color: #9cdcfe;">node_group_name</span> = <span style="color: #ce9178;">"on-demand-app"</span>
+  <span style="color: #9cdcfe;">node_role_arn</span>   = aws_iam_role.node.arn
+  <span style="color: #9cdcfe;">subnet_ids</span>      = var.private_subnet_ids
 
-  instance_types = ["m5.xlarge", "m5a.xlarge", "m5n.xlarge"]
+  <span style="color: #9cdcfe;">instance_types</span> = [<span style="color: #ce9178;">"m5.xlarge"</span>, <span style="color: #ce9178;">"m5a.xlarge"</span>, <span style="color: #ce9178;">"m5n.xlarge"</span>]
 
-  scaling_config {
-    desired_size = 2   # Two On-Demand nodes always warm for critical path
-    min_size     = 2   # Never scale below 2 — one per AZ for HA
-    max_size     = 10
+  <span style="color: #9cdcfe;">scaling_config</span> {
+    <span style="color: #9cdcfe;">desired_size</span> = 2   <span style="color: #6a9955;"># Two On-Demand nodes always warm for critical path</span>
+    <span style="color: #9cdcfe;">min_size</span>     = 2   <span style="color: #6a9955;"># Never scale below 2 — one per AZ for HA</span>
+    <span style="color: #9cdcfe;">max_size</span>     = 10
   }
 
-  taint {
-    key    = "workload-type"
-    value  = "on-demand-critical"
-    effect = "NO_SCHEDULE"
+  <span style="color: #9cdcfe;">taint</span> {
+    <span style="color: #9cdcfe;">key</span>    = <span style="color: #ce9178;">"workload-type"</span>
+    <span style="color: #9cdcfe;">value</span>  = <span style="color: #ce9178;">"on-demand-critical"</span>
+    <span style="color: #9cdcfe;">effect</span> = <span style="color: #ce9178;">"NO_SCHEDULE"</span>
   }
 
-  labels = {
-    "node-role"     = "on-demand-app"
-    "workload-type" = "on-demand-critical"
+  <span style="color: #9cdcfe;">labels</span> = {
+    <span style="color: #ce9178;">"node-role"</span>     = <span style="color: #ce9178;">"on-demand-app"</span>
+    <span style="color: #ce9178;">"workload-type"</span> = <span style="color: #ce9178;">"on-demand-critical"</span>
   }
 
-  update_config { max_unavailable = 1 }
+  <span style="color: #9cdcfe;">update_config</span> { <span style="color: #9cdcfe;">max_unavailable</span> = 1 }
 
-  tags = {
-    Name = "on-demand-app-node-group"
-    "k8s.io/cluster-autoscaler/enabled"             = "true"
-    "k8s.io/cluster-autoscaler/${var.cluster_name}" = "owned"
-    "karpenter.sh/managed"                          = "false"
+  <span style="color: #9cdcfe;">tags</span> = {
+    Name                                              = <span style="color: #ce9178;">"on-demand-app-node-group"</span>
+    <span style="color: #ce9178;">"k8s.io/cluster-autoscaler/enabled"</span>             = <span style="color: #ce9178;">"true"</span>
+    <span style="color: #ce9178;">"k8s.io/cluster-autoscaler/${var.cluster_name}"</span> = <span style="color: #ce9178;">"owned"</span>
+    <span style="color: #ce9178;">"karpenter.sh/managed"</span>                          = <span style="color: #ce9178;">"false"</span>
   }
 }</code></pre>
 
@@ -530,14 +529,14 @@ resource "aws_eks_node_group" "on_demand_app" {
 
         <h3>Cluster Autoscaler Deployment via Helm</h3>
 
-        <pre><code>resource "helm_release" "cluster_autoscaler" {
-  name       = "cluster-autoscaler"
-  repository = "https://kubernetes.github.io/autoscaler"
-  chart      = "cluster-autoscaler"
-  version    = "9.37.0"
-  namespace  = "kube-system"
+        <pre><code><span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"helm_release"</span> <span style="color: #ce9178;">"cluster_autoscaler"</span> {
+  <span style="color: #9cdcfe;">name</span>       = <span style="color: #ce9178;">"cluster-autoscaler"</span>
+  <span style="color: #9cdcfe;">repository</span> = <span style="color: #ce9178;">"https://kubernetes.github.io/autoscaler"</span>
+  <span style="color: #9cdcfe;">chart</span>      = <span style="color: #ce9178;">"cluster-autoscaler"</span>
+  <span style="color: #9cdcfe;">version</span>    = <span style="color: #ce9178;">"9.37.0"</span>
+  <span style="color: #9cdcfe;">namespace</span>  = <span style="color: #ce9178;">"kube-system"</span>
 
-  values = [yamlencode({
+  <span style="color: #9cdcfe;">values</span> = [yamlencode({
     autoDiscovery = {
       clusterName = aws_eks_cluster.main.name
     }
@@ -547,29 +546,29 @@ resource "aws_eks_node_group" "on_demand_app" {
     rbac = {
       serviceAccount = {
         annotations = {
-          "eks.amazonaws.com/role-arn" = aws_iam_role.cluster_autoscaler.arn
+          <span style="color: #ce9178;">"eks.amazonaws.com/role-arn"</span> = aws_iam_role.cluster_autoscaler.arn
         }
       }
     }
 
     extraArgs = {
-      "scale-down-delay-after-add"       = "10m"
-      "scale-down-unneeded-time"         = "15m"
-      "scale-down-utilization-threshold" = "0.5"
-      "skip-nodes-with-system-pods"      = "true"
-      "expander"                         = "least-waste"
-      "balance-similar-node-groups"      = "true"
-      "scan-interval"                    = "30s"
+      <span style="color: #ce9178;">"scale-down-delay-after-add"</span>       = <span style="color: #ce9178;">"10m"</span>
+      <span style="color: #ce9178;">"scale-down-unneeded-time"</span>         = <span style="color: #ce9178;">"15m"</span>
+      <span style="color: #ce9178;">"scale-down-utilization-threshold"</span> = <span style="color: #ce9178;">"0.5"</span>
+      <span style="color: #ce9178;">"skip-nodes-with-system-pods"</span>      = <span style="color: #ce9178;">"true"</span>
+      <span style="color: #ce9178;">"expander"</span>                         = <span style="color: #ce9178;">"least-waste"</span>
+      <span style="color: #ce9178;">"balance-similar-node-groups"</span>      = <span style="color: #ce9178;">"true"</span>
+      <span style="color: #ce9178;">"scan-interval"</span>                    = <span style="color: #ce9178;">"30s"</span>
 
-      # CRITICAL: Tell CA to ignore nodes managed by Karpenter
-      "node-group-auto-discovery" = "asg:tag=k8s.io/cluster-autoscaler/enabled=true,k8s.io/cluster-autoscaler/${var.cluster_name}=owned"
+      <span style="color: #6a9955;"># CRITICAL: Tell CA to ignore nodes managed by Karpenter</span>
+      <span style="color: #ce9178;">"node-group-auto-discovery"</span> = <span style="color: #ce9178;">"asg:tag=k8s.io/cluster-autoscaler/enabled=true,k8s.io/cluster-autoscaler/${var.cluster_name}=owned"</span>
     }
 
     tolerations = [{
-      key      = "node-role"
-      value    = "system"
-      operator = "Equal"
-      effect   = "NoSchedule"
+      key      = <span style="color: #ce9178;">"node-role"</span>
+      value    = <span style="color: #ce9178;">"system"</span>
+      operator = <span style="color: #ce9178;">"Equal"</span>
+      effect   = <span style="color: #ce9178;">"NoSchedule"</span>
     }]
 
     affinity = {
@@ -577,9 +576,9 @@ resource "aws_eks_node_group" "on_demand_app" {
         requiredDuringSchedulingIgnoredDuringExecution = {
           nodeSelectorTerms = [{
             matchExpressions = [{
-              key      = "node-role"
-              operator = "In"
-              values   = ["system"]
+              key      = <span style="color: #ce9178;">"node-role"</span>
+              operator = <span style="color: #ce9178;">"In"</span>
+              values   = [<span style="color: #ce9178;">"system"</span>]
             }]
           }]
         }
@@ -590,113 +589,113 @@ resource "aws_eks_node_group" "on_demand_app" {
 
         <h3>Cluster Autoscaler IAM Policy</h3>
 
-        <pre><code>resource "aws_iam_policy" "cluster_autoscaler" {
-  name = "cluster-autoscaler-policy"
+        <pre><code><span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_iam_policy"</span> <span style="color: #ce9178;">"cluster_autoscaler"</span> {
+  <span style="color: #9cdcfe;">name</span> = <span style="color: #ce9178;">"cluster-autoscaler-policy"</span>
 
-  policy = jsonencode({
-    Version = "2012-10-17"
+  <span style="color: #9cdcfe;">policy</span> = jsonencode({
+    Version = <span style="color: #ce9178;">"2012-10-17"</span>
     Statement = [
       {
-        Effect = "Allow"
+        Effect = <span style="color: #ce9178;">"Allow"</span>
         Action = [
-          "autoscaling:DescribeAutoScalingGroups",
-          "autoscaling:DescribeAutoScalingInstances",
-          "autoscaling:DescribeLaunchConfigurations",
-          "autoscaling:DescribeScalingActivities",
-          "autoscaling:DescribeTags",
-          "autoscaling:SetDesiredCapacity",
-          "autoscaling:TerminateInstanceInAutoScalingGroup",
-          "ec2:DescribeImages",
-          "ec2:DescribeInstanceTypes",
-          "ec2:DescribeLaunchTemplateVersions",
-          "ec2:GetInstanceTypesFromInstanceRequirements",
-          "eks:DescribeNodegroup"
+          <span style="color: #ce9178;">"autoscaling:DescribeAutoScalingGroups"</span>,
+          <span style="color: #ce9178;">"autoscaling:DescribeAutoScalingInstances"</span>,
+          <span style="color: #ce9178;">"autoscaling:DescribeLaunchConfigurations"</span>,
+          <span style="color: #ce9178;">"autoscaling:DescribeScalingActivities"</span>,
+          <span style="color: #ce9178;">"autoscaling:DescribeTags"</span>,
+          <span style="color: #ce9178;">"autoscaling:SetDesiredCapacity"</span>,
+          <span style="color: #ce9178;">"autoscaling:TerminateInstanceInAutoScalingGroup"</span>,
+          <span style="color: #ce9178;">"ec2:DescribeImages"</span>,
+          <span style="color: #ce9178;">"ec2:DescribeInstanceTypes"</span>,
+          <span style="color: #ce9178;">"ec2:DescribeLaunchTemplateVersions"</span>,
+          <span style="color: #ce9178;">"ec2:GetInstanceTypesFromInstanceRequirements"</span>,
+          <span style="color: #ce9178;">"eks:DescribeNodegroup"</span>
         ]
-        Resource = "*"
+        Resource = <span style="color: #ce9178;">"*"</span>
       }
     ]
   })
 }
 
-resource "aws_iam_role" "cluster_autoscaler" {
-  name = "cluster-autoscaler"
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_iam_role"</span> <span style="color: #ce9178;">"cluster_autoscaler"</span> {
+  <span style="color: #9cdcfe;">name</span> = <span style="color: #ce9178;">"cluster-autoscaler"</span>
 
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
+  <span style="color: #9cdcfe;">assume_role_policy</span> = jsonencode({
+    Version = <span style="color: #ce9178;">"2012-10-17"</span>
     Statement = [{
-      Effect = "Allow"
+      Effect = <span style="color: #ce9178;">"Allow"</span>
       Principal = {
         Federated = aws_iam_openid_connect_provider.eks.arn
       }
-      Action = "sts:AssumeRoleWithWebIdentity"
+      Action = <span style="color: #ce9178;">"sts:AssumeRoleWithWebIdentity"</span>
       Condition = {
         StringEquals = {
-          "${aws_iam_openid_connect_provider.eks.url}:sub" = "system:serviceaccount:kube-system:cluster-autoscaler"
-          "${aws_iam_openid_connect_provider.eks.url}:aud" = "sts.amazonaws.com"
+          <span style="color: #ce9178;">"${aws_iam_openid_connect_provider.eks.url}:sub"</span> = <span style="color: #ce9178;">"system:serviceaccount:kube-system:cluster-autoscaler"</span>
+          <span style="color: #ce9178;">"${aws_iam_openid_connect_provider.eks.url}:aud"</span> = <span style="color: #ce9178;">"sts.amazonaws.com"</span>
         }
       }
     }]
   })
 }
 
-resource "aws_iam_role_policy_attachment" "cluster_autoscaler" {
-  role       = aws_iam_role.cluster_autoscaler.name
-  policy_arn = aws_iam_policy.cluster_autoscaler.arn
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_iam_role_policy_attachment"</span> <span style="color: #ce9178;">"cluster_autoscaler"</span> {
+  <span style="color: #9cdcfe;">role</span>       = aws_iam_role.cluster_autoscaler.name
+  <span style="color: #9cdcfe;">policy_arn</span> = aws_iam_policy.cluster_autoscaler.arn
 }</code></pre>
 
         <h2>3. Karpenter — Spot NodePools with On-Demand Fallback</h2>
 
         <h3>Karpenter Installation via Helm</h3>
 
-        <pre><code># SQS queue for Spot interruption handling
-resource "aws_sqs_queue" "karpenter_interruption" {
-  name                      = "karpenter-interruption-${var.cluster_name}"
-  message_retention_seconds = 300
-  tags                      = { Name = "karpenter-interruption" }
+        <pre><code><span style="color: #6a9955;"># SQS queue for Spot interruption handling</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_sqs_queue"</span> <span style="color: #ce9178;">"karpenter_interruption"</span> {
+  <span style="color: #9cdcfe;">name</span>                      = <span style="color: #ce9178;">"karpenter-interruption-${var.cluster_name}"</span>
+  <span style="color: #9cdcfe;">message_retention_seconds</span> = 300
+  <span style="color: #9cdcfe;">tags</span>                      = { Name = <span style="color: #ce9178;">"karpenter-interruption"</span> }
 }
 
-# EventBridge rules — feed Spot interruption events to SQS
-resource "aws_cloudwatch_event_rule" "karpenter_spot_interruption" {
-  for_each = {
-    spot_interruption  = "EC2 Spot Instance Interruption Warning"
-    instance_rebalance = "EC2 Instance Rebalance Recommendation"
-    instance_state     = "EC2 Instance State-change Notification"
+<span style="color: #6a9955;"># EventBridge rules — feed Spot interruption events to SQS</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_cloudwatch_event_rule"</span> <span style="color: #ce9178;">"karpenter_spot_interruption"</span> {
+  <span style="color: #9cdcfe;">for_each</span> = {
+    spot_interruption  = <span style="color: #ce9178;">"EC2 Spot Instance Interruption Warning"</span>
+    instance_rebalance = <span style="color: #ce9178;">"EC2 Instance Rebalance Recommendation"</span>
+    instance_state     = <span style="color: #ce9178;">"EC2 Instance State-change Notification"</span>
   }
 
-  name          = "karpenter-${each.key}"
-  event_pattern = jsonencode({
-    source      = ["aws.ec2"]
+  <span style="color: #9cdcfe;">name</span>          = <span style="color: #ce9178;">"karpenter-${each.key}"</span>
+  <span style="color: #9cdcfe;">event_pattern</span> = jsonencode({
+    source      = [<span style="color: #ce9178;">"aws.ec2"</span>]
     detail-type = [each.value]
   })
 }
 
-resource "aws_cloudwatch_event_target" "karpenter_interruption" {
-  for_each = aws_cloudwatch_event_rule.karpenter_spot_interruption
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_cloudwatch_event_target"</span> <span style="color: #ce9178;">"karpenter_interruption"</span> {
+  <span style="color: #9cdcfe;">for_each</span> = aws_cloudwatch_event_rule.karpenter_spot_interruption
 
-  rule = each.value.name
-  arn  = aws_sqs_queue.karpenter_interruption.arn
+  <span style="color: #9cdcfe;">rule</span> = each.value.name
+  <span style="color: #9cdcfe;">arn</span>  = aws_sqs_queue.karpenter_interruption.arn
 }
 
-# Pod Identity association — Karpenter controller auth
-resource "aws_eks_pod_identity_association" "karpenter" {
-  cluster_name    = aws_eks_cluster.main.name
-  namespace       = "karpenter"
-  service_account = "karpenter"
-  role_arn        = aws_iam_role.karpenter_controller.arn
+<span style="color: #6a9955;"># Pod Identity association — Karpenter controller auth</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_eks_pod_identity_association"</span> <span style="color: #ce9178;">"karpenter"</span> {
+  <span style="color: #9cdcfe;">cluster_name</span>    = aws_eks_cluster.main.name
+  <span style="color: #9cdcfe;">namespace</span>       = <span style="color: #ce9178;">"karpenter"</span>
+  <span style="color: #9cdcfe;">service_account</span> = <span style="color: #ce9178;">"karpenter"</span>
+  <span style="color: #9cdcfe;">role_arn</span>        = aws_iam_role.karpenter_controller.arn
 }
 
-# Karpenter Helm release
-resource "helm_release" "karpenter" {
-  name                = "karpenter"
-  repository          = "oci://public.ecr.aws/karpenter"
-  repository_username = data.aws_ecrpublic_authorization_token.token.user_name
-  repository_password = data.aws_ecrpublic_authorization_token.token.password
-  chart               = "karpenter"
-  version             = "1.0.6"
-  namespace           = "karpenter"
-  create_namespace    = true
+<span style="color: #6a9955;"># Karpenter Helm release</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"helm_release"</span> <span style="color: #ce9178;">"karpenter"</span> {
+  <span style="color: #9cdcfe;">name</span>                = <span style="color: #ce9178;">"karpenter"</span>
+  <span style="color: #9cdcfe;">repository</span>          = <span style="color: #ce9178;">"oci://public.ecr.aws/karpenter"</span>
+  <span style="color: #9cdcfe;">repository_username</span> = data.aws_ecrpublic_authorization_token.token.user_name
+  <span style="color: #9cdcfe;">repository_password</span> = data.aws_ecrpublic_authorization_token.token.password
+  <span style="color: #9cdcfe;">chart</span>               = <span style="color: #ce9178;">"karpenter"</span>
+  <span style="color: #9cdcfe;">version</span>             = <span style="color: #ce9178;">"1.0.6"</span>
+  <span style="color: #9cdcfe;">namespace</span>           = <span style="color: #ce9178;">"karpenter"</span>
+  <span style="color: #9cdcfe;">create_namespace</span>    = true
 
-  values = [yamlencode({
+  <span style="color: #9cdcfe;">values</span> = [yamlencode({
     settings = {
       clusterName       = aws_eks_cluster.main.name
       clusterEndpoint   = aws_eks_cluster.main.endpoint
@@ -704,31 +703,31 @@ resource "helm_release" "karpenter" {
     }
 
     serviceAccount = {
-      name        = "karpenter"
-      annotations = {}   # Pod Identity handles auth — no IRSA annotation needed
+      name        = <span style="color: #ce9178;">"karpenter"</span>
+      annotations = {}   <span style="color: #6a9955;"># Pod Identity handles auth — no IRSA annotation needed</span>
     }
 
-    replicas = 2   # HA — two Karpenter controller pods
+    replicas = 2   <span style="color: #6a9955;"># HA — two Karpenter controller pods</span>
 
     podDisruptionBudget = { maxUnavailable = 1 }
 
     controller = {
       resources = {
-        requests = { cpu = "100m", memory = "256Mi" }
-        limits   = { cpu = "1000m", memory = "1Gi" }
+        requests = { cpu = <span style="color: #ce9178;">"100m"</span>, memory = <span style="color: #ce9178;">"256Mi"</span> }
+        limits   = { cpu = <span style="color: #ce9178;">"1000m"</span>, memory = <span style="color: #ce9178;">"1Gi"</span> }
       }
     }
 
-    # Karpenter MUST run on the system node group
-    # If it runs on a Karpenter-managed node, it can evict itself
+    <span style="color: #6a9955;"># Karpenter MUST run on the system node group</span>
+    <span style="color: #6a9955;"># If it runs on a Karpenter-managed node, it can evict itself</span>
     affinity = {
       nodeAffinity = {
         requiredDuringSchedulingIgnoredDuringExecution = {
           nodeSelectorTerms = [{
             matchExpressions = [{
-              key      = "node-role"
-              operator = "In"
-              values   = ["system"]
+              key      = <span style="color: #ce9178;">"node-role"</span>
+              operator = <span style="color: #ce9178;">"In"</span>
+              values   = [<span style="color: #ce9178;">"system"</span>]
             }]
           }]
         }
@@ -736,14 +735,14 @@ resource "helm_release" "karpenter" {
     }
 
     tolerations = [{
-      key      = "node-role"
-      value    = "system"
-      operator = "Equal"
-      effect   = "NoSchedule"
+      key      = <span style="color: #ce9178;">"node-role"</span>
+      value    = <span style="color: #ce9178;">"system"</span>
+      operator = <span style="color: #ce9178;">"Equal"</span>
+      effect   = <span style="color: #ce9178;">"NoSchedule"</span>
     }]
   })]
 
-  depends_on = [aws_eks_pod_identity_association.karpenter]
+  <span style="color: #9cdcfe;">depends_on</span> = [aws_eks_pod_identity_association.karpenter]
 }</code></pre>
 
         <blockquote class="production-callout"><strong>Why this matters in production:</strong> The SQS interruption
@@ -754,149 +753,149 @@ resource "helm_release" "karpenter" {
 
         <h3>EC2NodeClass — Shared Node Configuration</h3>
 
-        <pre><code>apiVersion: karpenter.k8s.aws/v1
-kind: EC2NodeClass
-metadata:
-  name: default
-spec:
-  amiFamily: AL2023   # Amazon Linux 2023 — IMDSv2 enforced by default
+        <pre><code><span style="color: #9cdcfe;">apiVersion</span>: <span style="color: #ce9178;">karpenter.k8s.aws/v1</span>
+<span style="color: #9cdcfe;">kind</span>: <span style="color: #ce9178;">EC2NodeClass</span>
+<span style="color: #9cdcfe;">metadata</span>:
+  <span style="color: #9cdcfe;">name</span>: <span style="color: #ce9178;">default</span>
+<span style="color: #9cdcfe;">spec</span>:
+  <span style="color: #9cdcfe;">amiFamily</span>: <span style="color: #ce9178;">AL2023</span>   <span style="color: #6a9955;"># Amazon Linux 2023 — IMDSv2 enforced by default</span>
 
-  role: karpenter-node-role
+  <span style="color: #9cdcfe;">role</span>: <span style="color: #ce9178;">karpenter-node-role</span>
 
-  subnetSelectorTerms:
-    - tags:
-        karpenter.sh/discovery: prod-eks-cluster
+  <span style="color: #9cdcfe;">subnetSelectorTerms</span>:
+    - <span style="color: #9cdcfe;">tags</span>:
+        <span style="color: #9cdcfe;">karpenter.sh/discovery</span>: <span style="color: #ce9178;">prod-eks-cluster</span>
 
-  securityGroupSelectorTerms:
-    - tags:
-        karpenter.sh/discovery: prod-eks-cluster
+  <span style="color: #9cdcfe;">securityGroupSelectorTerms</span>:
+    - <span style="color: #9cdcfe;">tags</span>:
+        <span style="color: #9cdcfe;">karpenter.sh/discovery</span>: <span style="color: #ce9178;">prod-eks-cluster</span>
 
-  blockDeviceMappings:
-    - deviceName: /dev/xvda
-      ebs:
-        volumeSize: 50Gi
-        volumeType: gp3
-        iops: 3000
-        throughput: 125
-        encrypted: true
+  <span style="color: #9cdcfe;">blockDeviceMappings</span>:
+    - <span style="color: #9cdcfe;">deviceName</span>: <span style="color: #ce9178;">/dev/xvda</span>
+      <span style="color: #9cdcfe;">ebs</span>:
+        <span style="color: #9cdcfe;">volumeSize</span>: <span style="color: #ce9178;">50Gi</span>
+        <span style="color: #9cdcfe;">volumeType</span>: <span style="color: #ce9178;">gp3</span>
+        <span style="color: #9cdcfe;">iops</span>: <span style="color: #ce9178;">3000</span>
+        <span style="color: #9cdcfe;">throughput</span>: <span style="color: #ce9178;">125</span>
+        <span style="color: #9cdcfe;">encrypted</span>: <span style="color: #ce9178;">true</span>
 
-  # IMDSv2 — containers cannot reach instance metadata
-  metadataOptions:
-    httpEndpoint:            enabled
-    httpPutResponseHopLimit: 1        # Blocks container access to IMDS
-    httpTokens:              required  # IMDSv2 required — no v1 fallback
+  <span style="color: #6a9955;"># IMDSv2 — containers cannot reach instance metadata</span>
+  <span style="color: #9cdcfe;">metadataOptions</span>:
+    <span style="color: #9cdcfe;">httpEndpoint</span>:            <span style="color: #ce9178;">enabled</span>
+    <span style="color: #9cdcfe;">httpPutResponseHopLimit</span>: <span style="color: #ce9178;">1</span>        <span style="color: #6a9955;"># Blocks container access to IMDS</span>
+    <span style="color: #9cdcfe;">httpTokens</span>:              <span style="color: #ce9178;">required</span>  <span style="color: #6a9955;"># IMDSv2 required — no v1 fallback</span>
 
-  tags:
-    Environment:       production
-    ManagedBy:         karpenter
-    kubernetes.io/cluster/prod-eks-cluster: owned</code></pre>
+  <span style="color: #9cdcfe;">tags</span>:
+    <span style="color: #9cdcfe;">Environment</span>:       <span style="color: #ce9178;">production</span>
+    <span style="color: #9cdcfe;">ManagedBy</span>:         <span style="color: #ce9178;">karpenter</span>
+    <span style="color: #9cdcfe;">kubernetes.io/cluster/prod-eks-cluster</span>: <span style="color: #ce9178;">owned</span></code></pre>
 
         <h3>NodePool 1 — Spot General Purpose (80% of workloads)</h3>
 
-        <pre><code>apiVersion: karpenter.sh/v1
-kind: NodePool
-metadata:
-  name: spot-general
-spec:
-  template:
-    metadata:
-      labels:
-        node-pool: spot-general
-    spec:
-      nodeClassRef:
-        apiVersion: karpenter.k8s.aws/v1
-        kind: EC2NodeClass
-        name: default
+        <pre><code><span style="color: #9cdcfe;">apiVersion</span>: <span style="color: #ce9178;">karpenter.sh/v1</span>
+<span style="color: #9cdcfe;">kind</span>: <span style="color: #ce9178;">NodePool</span>
+<span style="color: #9cdcfe;">metadata</span>:
+  <span style="color: #9cdcfe;">name</span>: <span style="color: #ce9178;">spot-general</span>
+<span style="color: #9cdcfe;">spec</span>:
+  <span style="color: #9cdcfe;">template</span>:
+    <span style="color: #9cdcfe;">metadata</span>:
+      <span style="color: #9cdcfe;">labels</span>:
+        <span style="color: #9cdcfe;">node-pool</span>: <span style="color: #ce9178;">spot-general</span>
+    <span style="color: #9cdcfe;">spec</span>:
+      <span style="color: #9cdcfe;">nodeClassRef</span>:
+        <span style="color: #9cdcfe;">apiVersion</span>: <span style="color: #ce9178;">karpenter.k8s.aws/v1</span>
+        <span style="color: #9cdcfe;">kind</span>: <span style="color: #ce9178;">EC2NodeClass</span>
+        <span style="color: #9cdcfe;">name</span>: <span style="color: #ce9178;">default</span>
 
-      requirements:
-        # Spot first — fall back to On-Demand if no Spot available
-        - key: karpenter.sh/capacity-type
-          operator: In
-          values: ["spot", "on-demand"]   # Ordered: Spot preferred, OD fallback
+      <span style="color: #9cdcfe;">requirements</span>:
+        <span style="color: #6a9955;"># Spot first — fall back to On-Demand if no Spot available</span>
+        - <span style="color: #9cdcfe;">key</span>: <span style="color: #ce9178;">karpenter.sh/capacity-type</span>
+          <span style="color: #9cdcfe;">operator</span>: <span style="color: #ce9178;">In</span>
+          <span style="color: #9cdcfe;">values</span>: [<span style="color: #ce9178;">"spot"</span>, <span style="color: #ce9178;">"on-demand"</span>]   <span style="color: #6a9955;"># Ordered: Spot preferred, OD fallback</span>
 
-        - key: karpenter.k8s.aws/instance-category
-          operator: In
-          values: ["c", "m", "r"]   # Compute, General, Memory
+        - <span style="color: #9cdcfe;">key</span>: <span style="color: #ce9178;">karpenter.k8s.aws/instance-category</span>
+          <span style="color: #9cdcfe;">operator</span>: <span style="color: #ce9178;">In</span>
+          <span style="color: #9cdcfe;">values</span>: [<span style="color: #ce9178;">"c"</span>, <span style="color: #ce9178;">"m"</span>, <span style="color: #ce9178;">"r"</span>]   <span style="color: #6a9955;"># Compute, General, Memory</span>
 
-        - key: karpenter.k8s.aws/instance-cpu
-          operator: In
-          values: ["2", "4", "8", "16"]
+        - <span style="color: #9cdcfe;">key</span>: <span style="color: #ce9178;">karpenter.k8s.aws/instance-cpu</span>
+          <span style="color: #9cdcfe;">operator</span>: <span style="color: #ce9178;">In</span>
+          <span style="color: #9cdcfe;">values</span>: [<span style="color: #ce9178;">"2"</span>, <span style="color: #ce9178;">"4"</span>, <span style="color: #ce9178;">"8"</span>, <span style="color: #ce9178;">"16"</span>]
 
-        # Include Graviton (arm64) for better Spot availability + price
-        - key: kubernetes.io/arch
-          operator: In
-          values: ["amd64", "arm64"]
+        <span style="color: #6a9955;"># Include Graviton (arm64) for better Spot availability + price</span>
+        - <span style="color: #9cdcfe;">key</span>: <span style="color: #ce9178;">kubernetes.io/arch</span>
+          <span style="color: #9cdcfe;">operator</span>: <span style="color: #ce9178;">In</span>
+          <span style="color: #9cdcfe;">values</span>: [<span style="color: #ce9178;">"amd64"</span>, <span style="color: #ce9178;">"arm64"</span>]
 
-        - key: karpenter.k8s.aws/instance-generation
-          operator: Gt
-          values: ["2"]
+        - <span style="color: #9cdcfe;">key</span>: <span style="color: #ce9178;">karpenter.k8s.aws/instance-generation</span>
+          <span style="color: #9cdcfe;">operator</span>: <span style="color: #ce9178;">Gt</span>
+          <span style="color: #9cdcfe;">values</span>: [<span style="color: #ce9178;">"2"</span>]
 
-      startupTaints:
-        - key: node.cloudprovider.kubernetes.io/uninitialized
-          effect: NoSchedule
+      <span style="color: #9cdcfe;">startupTaints</span>:
+        - <span style="color: #9cdcfe;">key</span>: <span style="color: #ce9178;">node.cloudprovider.kubernetes.io/uninitialized</span>
+          <span style="color: #9cdcfe;">effect</span>: <span style="color: #ce9178;">NoSchedule</span>
 
-  disruption:
-    consolidationPolicy: WhenEmptyOrUnderutilized
-    consolidateAfter: 30s
-    budgets:
-      - nodes: "20%"
+  <span style="color: #9cdcfe;">disruption</span>:
+    <span style="color: #9cdcfe;">consolidationPolicy</span>: <span style="color: #ce9178;">WhenEmptyOrUnderutilized</span>
+    <span style="color: #9cdcfe;">consolidateAfter</span>: <span style="color: #ce9178;">30s</span>
+    <span style="color: #9cdcfe;">budgets</span>:
+      - <span style="color: #9cdcfe;">nodes</span>: <span style="color: #ce9178;">"20%"</span>
 
-  limits:
-    cpu:    "500"
-    memory: "2000Gi"
+  <span style="color: #9cdcfe;">limits</span>:
+    <span style="color: #9cdcfe;">cpu</span>:    <span style="color: #ce9178;">"500"</span>
+    <span style="color: #9cdcfe;">memory</span>: <span style="color: #ce9178;">"2000Gi"</span>
 
-  weight: 10</code></pre>
+  <span style="color: #9cdcfe;">weight</span>: <span style="color: #ce9178;">10</span></code></pre>
 
         <h3>NodePool 2 — On-Demand Latency-Sensitive (via Karpenter)</h3>
 
-        <pre><code>apiVersion: karpenter.sh/v1
-kind: NodePool
-metadata:
-  name: on-demand-latency
-spec:
-  template:
-    metadata:
-      labels:
-        node-pool: on-demand-latency
-    spec:
-      nodeClassRef:
-        apiVersion: karpenter.k8s.aws/v1
-        kind: EC2NodeClass
-        name: default
+        <pre><code><span style="color: #9cdcfe;">apiVersion</span>: <span style="color: #ce9178;">karpenter.sh/v1</span>
+<span style="color: #9cdcfe;">kind</span>: <span style="color: #ce9178;">NodePool</span>
+<span style="color: #9cdcfe;">metadata</span>:
+  <span style="color: #9cdcfe;">name</span>: <span style="color: #ce9178;">on-demand-latency</span>
+<span style="color: #9cdcfe;">spec</span>:
+  <span style="color: #9cdcfe;">template</span>:
+    <span style="color: #9cdcfe;">metadata</span>:
+      <span style="color: #9cdcfe;">labels</span>:
+        <span style="color: #9cdcfe;">node-pool</span>: <span style="color: #ce9178;">on-demand-latency</span>
+    <span style="color: #9cdcfe;">spec</span>:
+      <span style="color: #9cdcfe;">nodeClassRef</span>:
+        <span style="color: #9cdcfe;">apiVersion</span>: <span style="color: #ce9178;">karpenter.k8s.aws/v1</span>
+        <span style="color: #9cdcfe;">kind</span>: <span style="color: #ce9178;">EC2NodeClass</span>
+        <span style="color: #9cdcfe;">name</span>: <span style="color: #ce9178;">default</span>
 
-      requirements:
-        - key: karpenter.sh/capacity-type
-          operator: In
-          values: ["on-demand"]
+      <span style="color: #9cdcfe;">requirements</span>:
+        - <span style="color: #9cdcfe;">key</span>: <span style="color: #ce9178;">karpenter.sh/capacity-type</span>
+          <span style="color: #9cdcfe;">operator</span>: <span style="color: #ce9178;">In</span>
+          <span style="color: #9cdcfe;">values</span>: [<span style="color: #ce9178;">"on-demand"</span>]
 
-        - key: karpenter.k8s.aws/instance-category
-          operator: In
-          values: ["c", "m"]
+        - <span style="color: #9cdcfe;">key</span>: <span style="color: #ce9178;">karpenter.k8s.aws/instance-category</span>
+          <span style="color: #9cdcfe;">operator</span>: <span style="color: #ce9178;">In</span>
+          <span style="color: #9cdcfe;">values</span>: [<span style="color: #ce9178;">"c"</span>, <span style="color: #ce9178;">"m"</span>]
 
-        - key: karpenter.k8s.aws/instance-cpu
-          operator: In
-          values: ["4", "8", "16"]
+        - <span style="color: #9cdcfe;">key</span>: <span style="color: #ce9178;">karpenter.k8s.aws/instance-cpu</span>
+          <span style="color: #9cdcfe;">operator</span>: <span style="color: #ce9178;">In</span>
+          <span style="color: #9cdcfe;">values</span>: [<span style="color: #ce9178;">"4"</span>, <span style="color: #ce9178;">"8"</span>, <span style="color: #ce9178;">"16"</span>]
 
-        - key: kubernetes.io/arch
-          operator: In
-          values: ["amd64", "arm64"]
+        - <span style="color: #9cdcfe;">key</span>: <span style="color: #ce9178;">kubernetes.io/arch</span>
+          <span style="color: #9cdcfe;">operator</span>: <span style="color: #ce9178;">In</span>
+          <span style="color: #9cdcfe;">values</span>: [<span style="color: #ce9178;">"amd64"</span>, <span style="color: #ce9178;">"arm64"</span>]
 
-      taints:
-        - key: workload-type
-          value: latency-sensitive-karpenter
-          effect: NoSchedule
+      <span style="color: #9cdcfe;">taints</span>:
+        - <span style="color: #9cdcfe;">key</span>: <span style="color: #ce9178;">workload-type</span>
+          <span style="color: #9cdcfe;">value</span>: <span style="color: #ce9178;">latency-sensitive-karpenter</span>
+          <span style="color: #9cdcfe;">effect</span>: <span style="color: #ce9178;">NoSchedule</span>
 
-  disruption:
-    consolidationPolicy: WhenEmpty
-    consolidateAfter: 5m
-    budgets:
-      - nodes: "10%"
+  <span style="color: #9cdcfe;">disruption</span>:
+    <span style="color: #9cdcfe;">consolidationPolicy</span>: <span style="color: #ce9178;">WhenEmpty</span>
+    <span style="color: #9cdcfe;">consolidateAfter</span>: <span style="color: #ce9178;">5m</span>
+    <span style="color: #9cdcfe;">budgets</span>:
+      - <span style="color: #9cdcfe;">nodes</span>: <span style="color: #ce9178;">"10%"</span>
 
-  limits:
-    cpu:    "200"
-    memory: "800Gi"
+  <span style="color: #9cdcfe;">limits</span>:
+    <span style="color: #9cdcfe;">cpu</span>:    <span style="color: #ce9178;">"200"</span>
+    <span style="color: #9cdcfe;">memory</span>: <span style="color: #ce9178;">"800Gi"</span>
 
-  weight: 20</code></pre>
+  <span style="color: #9cdcfe;">weight</span>: <span style="color: #ce9178;">20</span></code></pre>
 
         <h2>4. Preventing Conflicts — The Critical Configuration</h2>
         <p>Running Cluster Autoscaler and Karpenter in parallel requires careful configuration to prevent them from
@@ -906,20 +905,20 @@ spec:
         <p>Cluster Autoscaler uses ASG tags for node group discovery. Karpenter-managed nodes are NOT in any ASG — they
           are standalone EC2 instances. CA will not see them. But you must ensure CA only manages the tagged node groups:</p>
 
-        <pre><code># In the CA Helm values — explicit node group auto-discovery filter
+        <pre><code><span style="color: #6a9955;"># In the CA Helm values — explicit node group auto-discovery filter</span>
 extraArgs = {
-  "node-group-auto-discovery" = "asg:tag=k8s.io/cluster-autoscaler/enabled=true,k8s.io/cluster-autoscaler/${cluster_name}=owned"
+  <span style="color: #ce9178;">"node-group-auto-discovery"</span> = <span style="color: #ce9178;">"asg:tag=k8s.io/cluster-autoscaler/enabled=true,k8s.io/cluster-autoscaler/${cluster_name}=owned"</span>
 }
-# Only ASGs with BOTH tags are managed by CA
-# Karpenter nodes have neither tag — CA ignores them completely</code></pre>
+<span style="color: #6a9955;"># Only ASGs with BOTH tags are managed by CA</span>
+<span style="color: #6a9955;"># Karpenter nodes have neither tag — CA ignores them completely</span></code></pre>
 
         <h3>Rule 2 — Karpenter Must Not Consolidate MNG Nodes</h3>
         <p>Tag your Managed Node Group instances to signal Karpenter should not consolidate them:</p>
 
-        <pre><code>resource "aws_eks_node_group" "on_demand_app" {
-  labels = {
-    "node-role"            = "on-demand-app"
-    "karpenter.sh/managed" = "false"   # Karpenter reads this and skips consolidation
+        <pre><code><span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_eks_node_group"</span> <span style="color: #ce9178;">"on_demand_app"</span> {
+  <span style="color: #9cdcfe;">labels</span> = {
+    <span style="color: #ce9178;">"node-role"</span>            = <span style="color: #ce9178;">"on-demand-app"</span>
+    <span style="color: #ce9178;">"karpenter.sh/managed"</span> = <span style="color: #ce9178;">"false"</span>   <span style="color: #6a9955;"># Karpenter reads this and skips consolidation</span>
   }
 }</code></pre>
 
@@ -929,19 +928,19 @@ extraArgs = {
 
         <h3>Rule 3 — Karpenter Must Run on System MNG, Not Its Own Nodes</h3>
 
-        <pre><code>affinity:
-  nodeAffinity:
-    requiredDuringSchedulingIgnoredDuringExecution:
-      nodeSelectorTerms:
-        - matchExpressions:
-            - key: node-role
-              operator: In
-              values: ["system"]
-tolerations:
-  - key: node-role
-    value: system
-    operator: Equal
-    effect: NoSchedule</code></pre>
+        <pre><code><span style="color: #9cdcfe;">affinity</span>:
+  <span style="color: #9cdcfe;">nodeAffinity</span>:
+    <span style="color: #9cdcfe;">requiredDuringSchedulingIgnoredDuringExecution</span>:
+      <span style="color: #9cdcfe;">nodeSelectorTerms</span>:
+        - <span style="color: #9cdcfe;">matchExpressions</span>:
+            - <span style="color: #9cdcfe;">key</span>: <span style="color: #ce9178;">node-role</span>
+              <span style="color: #9cdcfe;">operator</span>: <span style="color: #ce9178;">In</span>
+              <span style="color: #9cdcfe;">values</span>: [<span style="color: #ce9178;">"system"</span>]
+<span style="color: #9cdcfe;">tolerations</span>:
+  - <span style="color: #9cdcfe;">key</span>: <span style="color: #ce9178;">node-role</span>
+    <span style="color: #9cdcfe;">value</span>: <span style="color: #ce9178;">system</span>
+    <span style="color: #9cdcfe;">operator</span>: <span style="color: #ce9178;">Equal</span>
+    <span style="color: #9cdcfe;">effect</span>: <span style="color: #ce9178;">NoSchedule</span></code></pre>
 
         <p>If Karpenter runs on a node it manages, it can evict itself during consolidation — taking down the autoscaler
           and leaving the cluster unable to scale. This is a catastrophic failure mode that is easy to prevent and hard
@@ -949,22 +948,22 @@ tolerations:
 
         <h3>Rule 4 — Set Pod Priorities to Guide Scheduling</h3>
 
-        <pre><code># High priority — latency-sensitive scoring pods
-apiVersion: scheduling.k8s.io/v1
-kind: PriorityClass
-metadata:
-  name: high-priority
-value: 1000000
-description: "Fraud scoring and payment-critical services"
+        <pre><code><span style="color: #6a9955;"># High priority — latency-sensitive scoring pods</span>
+<span style="color: #9cdcfe;">apiVersion</span>: <span style="color: #ce9178;">scheduling.k8s.io/v1</span>
+<span style="color: #9cdcfe;">kind</span>: <span style="color: #ce9178;">PriorityClass</span>
+<span style="color: #9cdcfe;">metadata</span>:
+  <span style="color: #9cdcfe;">name</span>: <span style="color: #ce9178;">high-priority</span>
+<span style="color: #9cdcfe;">value</span>: <span style="color: #ce9178;">1000000</span>
+<span style="color: #9cdcfe;">description</span>: <span style="color: #ce9178;">"Fraud scoring and payment-critical services"</span>
 ---
-# Default — general workloads on Spot
-apiVersion: scheduling.k8s.io/v1
-kind: PriorityClass
-metadata:
-  name: default-priority
-value: 0
-globalDefault: true
-description: "Default priority — Spot NodePool workloads"</code></pre>
+<span style="color: #6a9955;"># Default — general workloads on Spot</span>
+<span style="color: #9cdcfe;">apiVersion</span>: <span style="color: #ce9178;">scheduling.k8s.io/v1</span>
+<span style="color: #9cdcfe;">kind</span>: <span style="color: #ce9178;">PriorityClass</span>
+<span style="color: #9cdcfe;">metadata</span>:
+  <span style="color: #9cdcfe;">name</span>: <span style="color: #ce9178;">default-priority</span>
+<span style="color: #9cdcfe;">value</span>: <span style="color: #ce9178;">0</span>
+<span style="color: #9cdcfe;">globalDefault</span>: <span style="color: #ce9178;">true</span>
+<span style="color: #9cdcfe;">description</span>: <span style="color: #ce9178;">"Default priority — Spot NodePool workloads"</span></code></pre>
 
         <blockquote class="production-callout"><strong>Why this matters in production:</strong> Pod priority is the
           mechanism that ensures fraud-scoring pods survive Spot interruption events. When Karpenter drains a Spot node,
@@ -976,46 +975,46 @@ description: "Default priority — Spot NodePool workloads"</code></pre>
 
         <h3>Critical Path Pods → On-Demand MNG (Cluster Autoscaler)</h3>
 
-        <pre><code># values-prod.yaml for fraud scoring service
-# This pod ONLY lands on the Cluster Autoscaler On-Demand MNG
-tolerations:
-  - key: "workload-type"
-    value: "on-demand-critical"
-    operator: Equal
-    effect: NoSchedule
+        <pre><code><span style="color: #6a9955;"># values-prod.yaml for fraud scoring service</span>
+<span style="color: #6a9955;"># This pod ONLY lands on the Cluster Autoscaler On-Demand MNG</span>
+<span style="color: #9cdcfe;">tolerations</span>:
+  - <span style="color: #9cdcfe;">key</span>: <span style="color: #ce9178;">"workload-type"</span>
+    <span style="color: #9cdcfe;">value</span>: <span style="color: #ce9178;">"on-demand-critical"</span>
+    <span style="color: #9cdcfe;">operator</span>: <span style="color: #ce9178;">Equal</span>
+    <span style="color: #9cdcfe;">effect</span>: <span style="color: #ce9178;">NoSchedule</span>
 
-nodeSelector:
-  node-role: on-demand-app
+<span style="color: #9cdcfe;">nodeSelector</span>:
+  <span style="color: #9cdcfe;">node-role</span>: <span style="color: #ce9178;">on-demand-app</span>
 
-priorityClassName: high-priority</code></pre>
+<span style="color: #9cdcfe;">priorityClassName</span>: <span style="color: #ce9178;">high-priority</span></code></pre>
 
         <h3>Batch and General Pods → Spot NodePool (Karpenter)</h3>
 
-        <pre><code># values-prod.yaml for enrichment service
-# No special toleration — lands on Karpenter Spot NodePool by default
-priorityClassName: default-priority
+        <pre><code><span style="color: #6a9955;"># values-prod.yaml for enrichment service</span>
+<span style="color: #6a9955;"># No special toleration — lands on Karpenter Spot NodePool by default</span>
+<span style="color: #9cdcfe;">priorityClassName</span>: <span style="color: #ce9178;">default-priority</span>
 
-resources:
-  requests:
-    cpu: "500m"
-    memory: "512Mi"
-  limits:
-    cpu: "2000m"
-    memory: "2Gi"</code></pre>
+<span style="color: #9cdcfe;">resources</span>:
+  <span style="color: #9cdcfe;">requests</span>:
+    <span style="color: #9cdcfe;">cpu</span>: <span style="color: #ce9178;">"500m"</span>
+    <span style="color: #9cdcfe;">memory</span>: <span style="color: #ce9178;">"512Mi"</span>
+  <span style="color: #9cdcfe;">limits</span>:
+    <span style="color: #9cdcfe;">cpu</span>: <span style="color: #ce9178;">"2000m"</span>
+    <span style="color: #9cdcfe;">memory</span>: <span style="color: #ce9178;">"2Gi"</span></code></pre>
 
         <h3>Latency-Sensitive but Not MNG Critical → Karpenter On-Demand NodePool</h3>
 
-        <pre><code># values-prod.yaml for real-time feature service
-tolerations:
-  - key: "workload-type"
-    value: "latency-sensitive-karpenter"
-    operator: Equal
-    effect: NoSchedule
+        <pre><code><span style="color: #6a9955;"># values-prod.yaml for real-time feature service</span>
+<span style="color: #9cdcfe;">tolerations</span>:
+  - <span style="color: #9cdcfe;">key</span>: <span style="color: #ce9178;">"workload-type"</span>
+    <span style="color: #9cdcfe;">value</span>: <span style="color: #ce9178;">"latency-sensitive-karpenter"</span>
+    <span style="color: #9cdcfe;">operator</span>: <span style="color: #ce9178;">Equal</span>
+    <span style="color: #9cdcfe;">effect</span>: <span style="color: #ce9178;">NoSchedule</span>
 
-nodeSelector:
-  node-pool: on-demand-latency
+<span style="color: #9cdcfe;">nodeSelector</span>:
+  <span style="color: #9cdcfe;">node-pool</span>: <span style="color: #ce9178;">on-demand-latency</span>
 
-priorityClassName: high-priority</code></pre>
+<span style="color: #9cdcfe;">priorityClassName</span>: <span style="color: #ce9178;">high-priority</span></code></pre>
 
         <h2>6. The Cost Story — Where the Savings Come From</h2>
         <p>I will not put specific percentage savings in this section — every cluster is different, and a number I cannot
@@ -1056,15 +1055,15 @@ For 10 Spot nodes:                                   = $978/month</code></pre>
         <h3>How to Measure Your Own Saving</h3>
         <p>Before enabling Karpenter, run this for two weeks with Cluster Autoscaler:</p>
 
-        <pre><code># Average node CPU utilisation across the cluster
-kubectl top nodes | awk 'NR>1 {sum+=$3; count++} END {print sum/count "%"}'
+        <pre><code><span style="color: #6a9955;"># Average node CPU utilisation across the cluster</span>
+kubectl top nodes | awk <span style="color: #ce9178;">'NR&gt;1 {sum+=$3; count++} END {print sum/count "%"}'</span>
 
-# Count nodes by type
+<span style="color: #6a9955;"># Count nodes by type</span>
 kubectl get nodes -L karpenter.sh/capacity-type,node.kubernetes.io/instance-type \
-  --no-headers | awk '{print $6, $7}' | sort | uniq -c
+  --no-headers | awk <span style="color: #ce9178;">'{print $6, $7}'</span> | sort | uniq -c
 
-# Total EC2 spend — use AWS Cost Explorer filtered by:
-# Service: EC2, Tag: kubernetes.io/cluster/your-cluster-name</code></pre>
+<span style="color: #6a9955;"># Total EC2 spend — use AWS Cost Explorer filtered by:</span>
+<span style="color: #6a9955;"># Service: EC2, Tag: kubernetes.io/cluster/your-cluster-name</span></code></pre>
 
         <blockquote>
           <strong>The honest framing:</strong> The cost saving from this architecture is real and significant — Spot
@@ -1084,29 +1083,29 @@ kubectl get nodes -L karpenter.sh/capacity-type,node.kubernetes.io/instance-type
           <li>Terminates the interrupted node</li>
         </ol>
 
-        <pre><code># PodDisruptionBudget — apply to every Deployment running on Spot
-apiVersion: policy/v1
-kind: PodDisruptionBudget
-metadata:
-  name: enrichment-service-pdb
-  namespace: fraud-detection
-spec:
-  minAvailable: 1
-  selector:
-    matchLabels:
-      app: enrichment-service</code></pre>
+        <pre><code><span style="color: #6a9955;"># PodDisruptionBudget — apply to every Deployment running on Spot</span>
+<span style="color: #9cdcfe;">apiVersion</span>: <span style="color: #ce9178;">policy/v1</span>
+<span style="color: #9cdcfe;">kind</span>: <span style="color: #ce9178;">PodDisruptionBudget</span>
+<span style="color: #9cdcfe;">metadata</span>:
+  <span style="color: #9cdcfe;">name</span>: <span style="color: #ce9178;">enrichment-service-pdb</span>
+  <span style="color: #9cdcfe;">namespace</span>: <span style="color: #ce9178;">fraud-detection</span>
+<span style="color: #9cdcfe;">spec</span>:
+  <span style="color: #9cdcfe;">minAvailable</span>: <span style="color: #ce9178;">1</span>
+  <span style="color: #9cdcfe;">selector</span>:
+    <span style="color: #9cdcfe;">matchLabels</span>:
+      <span style="color: #9cdcfe;">app</span>: <span style="color: #ce9178;">enrichment-service</span></code></pre>
 
-        <pre><code># Graceful shutdown — application handles SIGTERM before node reclaim
-spec:
-  template:
-    spec:
-      terminationGracePeriodSeconds: 60
-      containers:
-        - name: enrichment-service
-          lifecycle:
-            preStop:
-              exec:
-                command: ["/bin/sh", "-c", "sleep 15"]   # Wait for LB deregistration</code></pre>
+        <pre><code><span style="color: #6a9955;"># Graceful shutdown — application handles SIGTERM before node reclaim</span>
+<span style="color: #9cdcfe;">spec</span>:
+  <span style="color: #9cdcfe;">template</span>:
+    <span style="color: #9cdcfe;">spec</span>:
+      <span style="color: #9cdcfe;">terminationGracePeriodSeconds</span>: <span style="color: #ce9178;">60</span>
+      <span style="color: #9cdcfe;">containers</span>:
+        - <span style="color: #9cdcfe;">name</span>: <span style="color: #ce9178;">enrichment-service</span>
+          <span style="color: #9cdcfe;">lifecycle</span>:
+            <span style="color: #9cdcfe;">preStop</span>:
+              <span style="color: #9cdcfe;">exec</span>:
+                <span style="color: #9cdcfe;">command</span>: [<span style="color: #ce9178;">"/bin/sh"</span>, <span style="color: #ce9178;">"-c"</span>, <span style="color: #ce9178;">"sleep 15"</span>]   <span style="color: #6a9955;"># Wait for LB deregistration</span></code></pre>
 
         <blockquote>
           <strong>Why the preStop sleep matters:</strong> Karpenter drains pods by sending SIGTERM and waiting
@@ -1119,41 +1118,41 @@ spec:
         <h2>8. Observability — Knowing What Each Autoscaler Is Doing</h2>
         <p>With two autoscalers running, you need visibility into which one is acting and why.</p>
 
-        <pre><code>resource "aws_cloudwatch_dashboard" "autoscaling" {
-  dashboard_name = "eks-autoscaling"
+        <pre><code><span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_cloudwatch_dashboard"</span> <span style="color: #ce9178;">"autoscaling"</span> {
+  <span style="color: #9cdcfe;">dashboard_name</span> = <span style="color: #ce9178;">"eks-autoscaling"</span>
 
-  dashboard_body = jsonencode({
+  <span style="color: #9cdcfe;">dashboard_body</span> = jsonencode({
     widgets = [
       {
-        type = "metric"
+        type = <span style="color: #ce9178;">"metric"</span>
         properties = {
-          title  = "Karpenter — Nodes Launched vs Terminated"
+          title  = <span style="color: #ce9178;">"Karpenter — Nodes Launched vs Terminated"</span>
           metrics = [
-            ["Karpenter", "nodes_created_total", "NodePool", "spot-general"],
-            ["Karpenter", "nodes_terminated_total", "NodePool", "spot-general"]
+            [<span style="color: #ce9178;">"Karpenter"</span>, <span style="color: #ce9178;">"nodes_created_total"</span>, <span style="color: #ce9178;">"NodePool"</span>, <span style="color: #ce9178;">"spot-general"</span>],
+            [<span style="color: #ce9178;">"Karpenter"</span>, <span style="color: #ce9178;">"nodes_terminated_total"</span>, <span style="color: #ce9178;">"NodePool"</span>, <span style="color: #ce9178;">"spot-general"</span>]
           ]
           period = 60
-          stat   = "Sum"
+          stat   = <span style="color: #ce9178;">"Sum"</span>
         }
       },
       {
-        type = "metric"
+        type = <span style="color: #ce9178;">"metric"</span>
         properties = {
-          title  = "Karpenter — Pod Scheduling Latency (p99)"
+          title  = <span style="color: #ce9178;">"Karpenter — Pod Scheduling Latency (p99)"</span>
           metrics = [
-            ["Karpenter", "scheduler_scheduling_duration_seconds", { stat = "p99" }]
+            [<span style="color: #ce9178;">"Karpenter"</span>, <span style="color: #ce9178;">"scheduler_scheduling_duration_seconds"</span>, { stat = <span style="color: #ce9178;">"p99"</span> }]
           ]
         }
       },
       {
-        type = "metric"
+        type = <span style="color: #ce9178;">"metric"</span>
         properties = {
-          title  = "Cluster Autoscaler — Scale Events"
+          title  = <span style="color: #ce9178;">"Cluster Autoscaler — Scale Events"</span>
           metrics = [
-            ["ContainerInsights", "cluster_autoscaler_scaled_up_nodes_count",
-              "ClusterName", var.cluster_name],
-            ["ContainerInsights", "cluster_autoscaler_scaled_down_nodes_count",
-              "ClusterName", var.cluster_name]
+            [<span style="color: #ce9178;">"ContainerInsights"</span>, <span style="color: #ce9178;">"cluster_autoscaler_scaled_up_nodes_count"</span>,
+              <span style="color: #ce9178;">"ClusterName"</span>, var.cluster_name],
+            [<span style="color: #ce9178;">"ContainerInsights"</span>, <span style="color: #ce9178;">"cluster_autoscaler_scaled_down_nodes_count"</span>,
+              <span style="color: #ce9178;">"ClusterName"</span>, var.cluster_name]
           ]
         }
       }
@@ -1161,32 +1160,32 @@ spec:
   })
 }</code></pre>
 
-        <pre><code># Alert if Karpenter cannot provision nodes
-resource "aws_cloudwatch_metric_alarm" "karpenter_provisioning_failure" {
-  alarm_name          = "karpenter-provisioning-failure"
-  comparison_operator = "GreaterThanThreshold"
-  evaluation_periods  = 3
-  metric_name         = "provisioner_scheduling_errors_total"
-  namespace           = "Karpenter"
-  period              = 60
-  statistic           = "Sum"
-  threshold           = 5
-  alarm_description   = "Karpenter failing to provision nodes — check Spot availability"
-  alarm_actions       = [aws_sns_topic.platform_alerts.arn]
+        <pre><code><span style="color: #6a9955;"># Alert if Karpenter cannot provision nodes</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_cloudwatch_metric_alarm"</span> <span style="color: #ce9178;">"karpenter_provisioning_failure"</span> {
+  <span style="color: #9cdcfe;">alarm_name</span>          = <span style="color: #ce9178;">"karpenter-provisioning-failure"</span>
+  <span style="color: #9cdcfe;">comparison_operator</span> = <span style="color: #ce9178;">"GreaterThanThreshold"</span>
+  <span style="color: #9cdcfe;">evaluation_periods</span>  = 3
+  <span style="color: #9cdcfe;">metric_name</span>         = <span style="color: #ce9178;">"provisioner_scheduling_errors_total"</span>
+  <span style="color: #9cdcfe;">namespace</span>           = <span style="color: #ce9178;">"Karpenter"</span>
+  <span style="color: #9cdcfe;">period</span>              = 60
+  <span style="color: #9cdcfe;">statistic</span>           = <span style="color: #ce9178;">"Sum"</span>
+  <span style="color: #9cdcfe;">threshold</span>           = 5
+  <span style="color: #9cdcfe;">alarm_description</span>   = <span style="color: #ce9178;">"Karpenter failing to provision nodes — check Spot availability"</span>
+  <span style="color: #9cdcfe;">alarm_actions</span>       = [aws_sns_topic.platform_alerts.arn]
 }
 
-# Alert if pending pods persist
-resource "aws_cloudwatch_metric_alarm" "persistent_pending_pods" {
-  alarm_name          = "persistent-pending-pods"
-  comparison_operator = "GreaterThanThreshold"
-  evaluation_periods  = 5
-  metric_name         = "cluster_failed_node_count"
-  namespace           = "ContainerInsights"
-  period              = 60
-  statistic           = "Average"
-  threshold           = 0
-  alarm_description   = "Pods pending for >5 minutes — autoscaler may be failing"
-  alarm_actions       = [aws_sns_topic.platform_alerts.arn]
+<span style="color: #6a9955;"># Alert if pending pods persist</span>
+<span style="color: #569cd6;">resource</span> <span style="color: #ce9178;">"aws_cloudwatch_metric_alarm"</span> <span style="color: #ce9178;">"persistent_pending_pods"</span> {
+  <span style="color: #9cdcfe;">alarm_name</span>          = <span style="color: #ce9178;">"persistent-pending-pods"</span>
+  <span style="color: #9cdcfe;">comparison_operator</span> = <span style="color: #ce9178;">"GreaterThanThreshold"</span>
+  <span style="color: #9cdcfe;">evaluation_periods</span>  = 5
+  <span style="color: #9cdcfe;">metric_name</span>         = <span style="color: #ce9178;">"cluster_failed_node_count"</span>
+  <span style="color: #9cdcfe;">namespace</span>           = <span style="color: #ce9178;">"ContainerInsights"</span>
+  <span style="color: #9cdcfe;">period</span>              = 60
+  <span style="color: #9cdcfe;">statistic</span>           = <span style="color: #ce9178;">"Average"</span>
+  <span style="color: #9cdcfe;">threshold</span>           = 0
+  <span style="color: #9cdcfe;">alarm_description</span>   = <span style="color: #ce9178;">"Pods pending for &gt;5 minutes — autoscaler may be failing"</span>
+  <span style="color: #9cdcfe;">alarm_actions</span>       = [aws_sns_topic.platform_alerts.arn]
 }</code></pre>
 
         <blockquote class="production-callout"><strong>Why this matters in production:</strong> Without separate

@@ -788,6 +788,8 @@ spec:
           failure, not a DNS failure. This is the most common Network Policy mistake.
         </blockquote>
 
+        <blockquote class="production-callout"><strong>Why this matters in production:</strong> A namespace without ResourceQuota means a single misconfigured Deployment with <code>replicas: 1000</code> can consume all cluster CPU before Karpenter has time to respond with new nodes. This starves every other namespace simultaneously. ResourceQuota is not bureaucracy — it is the bulkhead that contains a runaway deployment to one namespace and protects the rest of the cluster. Apply quotas before any team deploys their first workload.</blockquote>
+        <blockquote class="production-callout"><strong>Why this matters in production:</strong> A default-deny NetworkPolicy without an explicit DNS allow rule breaks all service-to-service communication in that namespace — silently. Pods appear Running and Healthy, but every outbound call times out because the pod cannot resolve the target service's DNS name. The symptom looks like a service failure, not a DNS failure, and takes hours to diagnose without knowing this dependency. Always add the UDP/TCP port 53 to kube-system allow rule as part of your default-deny template.</blockquote>
         <hr style="border-top: 1px solid var(--aws-border); margin: 40px 0;">
 
         <!-- ═══════════════════════════════════════════════════════════ -->
@@ -1062,6 +1064,7 @@ spec:
           want deliberate control.
         </blockquote>
 
+        <blockquote class="production-callout"><strong>Why this matters in production:</strong> An accidental merge to main with a bad <code>values-prod.yaml</code> — wrong replica count, wrong resource limits, wrong image tag — will roll out to every production service within minutes if <code>autoSync: true</code> is enabled. The blast radius is the entire platform. <code>autoSync: false</code> in production means a human sees the ArgoCD diff before anything changes. It adds 30 seconds of friction and prevents the class of incident that requires a post-mortem.</blockquote>
         <hr style="border-top: 1px solid var(--aws-border); margin: 40px 0;">
 
         <!-- ═══════════════════════════════════════════════════════════ -->

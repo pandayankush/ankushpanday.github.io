@@ -145,9 +145,11 @@
           <li><strong>Non-Routable Ranges:</strong> Consider using the <code>100.64.0.0/10</code> range (CGNAT) for internal VPC resources that don't need to be routable from your corporate network.</li>
         </ul>
 
+        <blockquote class="production-callout"><strong>Why this matters in production:</strong> A /24 VPC that runs out of IPs does not give you a warning — it silently fails to launch new EC2 instances, ECS tasks, and Lambda functions in VPC mode. The first symptom is usually a failed Auto Scaling event during peak traffic. You cannot resize the primary CIDR block after creation — only add secondary CIDRs, which introduce routing complexity. Plan for 3× your expected pod and instance count from Day 1.</blockquote>
         <h4>The Silent Killer: VPC DNS Attributes</h4>
         <p>Two often-overlooked attributes are critical for connectivity: <strong>enableDnsSupport</strong> and <strong>enableDnsHostnames</strong>. If these are disabled, your resources won't resolve AWS service endpoints privately. This is a common "day 1" troubleshooting issue when PrivateLink or Interface Endpoints fail to work as expected.</p>
 
+        <blockquote class="production-callout"><strong>Why this matters in production:</strong> Disabling <code>enableDnsSupport</code> breaks SSM Session Manager, CodeDeploy agents, and Interface Endpoint resolution — silently. Services appear running but cannot reach AWS APIs. The failure mode is a timeout with no DNS error in the logs, because the resolver itself is gone. Always verify both attributes are <code>true</code> before deploying any workload into a new VPC.</blockquote>
         <h4>The Foundational Components</h4>
         <ul>
           <li><strong>Subnets:</strong> Segments of your VPC's IP range. You use them to group resources (like Web, App, and DB tiers) based on security needs.</li>
@@ -227,6 +229,7 @@ LIMIT <span style="color: #b5cea8;">10</span>;</code></pre>
           <li><strong>The REJECT Action:</strong> This is your primary debugging tool. If an application is failing, check if NACLs are rejecting packets before blaming the code.</li>
         </ul>
 
+        <blockquote class="production-callout"><strong>Why this matters in production:</strong> Flow Logs disabled during a security incident means you have no evidence of what traffic reached your instances before and after a compromise. Retroactively enabling them gives you data from that point forward — not the hours before. Enable Flow Logs on Day 1, send to S3 with a 90-day retention policy, and verify the Athena table is queryable before you need it.</blockquote>
         <h4>VPC Sharing (Resource Access Manager)</h4>
         <p>In large enterprises, we often use **VPC Sharing** via AWS RAM. Instead of every team creating their own VPC (leading to a networking mess), a central Cloud Platform team manages a single VPC and "shares" specific subnets with different accounts. This centralizes control over IP space and connectivity while letting teams remain autonomous.</p>
 

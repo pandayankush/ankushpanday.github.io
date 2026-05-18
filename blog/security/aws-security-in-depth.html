@@ -567,6 +567,7 @@ Detection & Response (spans all layers):
           </li>
         </ol>
 
+        <blockquote class="production-callout"><strong>Why this matters in production:</strong> Deploying WAF rules directly to block mode without a count-mode validation period is the most common cause of production WAF incidents. The AWS Managed Core Rule Set will block some legitimate traffic in almost every application — large file uploads, specific API patterns, base64-encoded payloads — that look like attacks but are not. Four weeks in count mode with sampled request review costs nothing and prevents the 2am call explaining why checkout is broken after a WAF rule update.</blockquote>
         <h2>3. AWS Shield — DDoS Protection</h2>
         <h3>Shield Standard vs Advanced</h3>
         <p><code>Shield Standard</code> is automatically enabled for every <code>AWS</code> account at no cost. It
@@ -622,6 +623,7 @@ Detection & Response (spans all layers):
     )
     print(<span style="color: #ce9178;">f"Quarantined instance {instance_id}"</span>)</code></pre>
 
+        <blockquote class="production-callout"><strong>Why this matters in production:</strong> GuardDuty findings without automated response are just logs nobody reads until after an incident. The average dwell time for a compromised credential in a cloud environment is measured in hours — an attacker with a compromised IAM role can exfiltrate data, launch crypto mining instances, and establish persistence in under 30 minutes. Automated isolation via Security Group replacement and STS token revocation is the difference between a contained incident and a breach notification.</blockquote>
         <h2>5. AWS Security Hub — Centralised Security Posture</h2>
         <p><code>Security Hub</code> is the <strong>single pane of glass</strong> that aggregates findings from
           <code>GuardDuty</code>, <code>Inspector</code>, <code>Macie</code>, <code>Config</code>, and
@@ -665,6 +667,7 @@ Detection & Response (spans all layers):
         <p><code>CloudTrail</code> is the foundation of everything. Without it, you have no visibility into who did
           what. Always use <code>is_multi_region_trail = true</code> and <code>is_organization_trail = true</code>.</p>
 
+        <blockquote class="production-callout"><strong>Why this matters in production:</strong> CloudTrail without log file validation means you cannot prove your audit logs are unmodified during a compliance audit or incident investigation. An attacker with sufficient permissions can delete CloudTrail events — without validation, you cannot detect this. Enable <code>enable_log_file_validation = true</code> and ship logs to a separate security account with a bucket policy that denies delete from all principals including root. This is the foundation of a defensible audit trail.</blockquote>
         <h2>10. Architecture Decision Matrix</h2>
         <div style="overflow-x: auto;">
           <table class="compare-table">

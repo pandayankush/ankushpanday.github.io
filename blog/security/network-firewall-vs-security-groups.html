@@ -325,6 +325,7 @@ EC2 Instance → [return traffic automatically allowed] → Internet</pre>
   <span style="color: #9cdcfe;">description</span> = <span style="color: #ce9178;">"SSH from internal network — prefer SSM Session Manager"</span>
 }</code></pre>
 
+        <blockquote class="production-callout"><strong>Why this matters in production:</strong> A Security Group rule with <code>cidr_blocks = ["0.0.0.0/0"]</code> on port 22 or 3389 will appear in every AWS Security Hub finding, every penetration test report, and every compliance audit. Even if that port is behind a Network ACL that blocks it, the Security Group rule itself is flagged. Use SSM Session Manager and remove all inbound SSH/RDP rules entirely — zero open inbound ports is a stronger security posture than any IP restriction.</blockquote>
         <h2>2. Network ACLs — Subnet-Level Guardrails</h2>
         <h3>How They Work</h3>
         <p>Network ACLs (NACLs) are <strong>stateless, subnet-level firewalls</strong>. Unlike Security Groups which protect individual resources, NACLs protect entire subnets — every resource in a subnet is subject to the same NACL rules.</p>
@@ -432,6 +433,7 @@ Rule 120 → ALLOW tcp/1024-65535 0.0.0.0/0 (ephemeral)
 Rule *   → DENY  all (implicit — always last)</pre>
         </div>
 
+        <blockquote class="production-callout"><strong>Why this matters in production:</strong> A NACL that allows HTTPS inbound but forgets the ephemeral port range outbound produces connections that appear to establish but then hang. TCP SYN goes through, SYN-ACK is blocked on the way out, and the client waits for a response that never arrives. The symptom looks identical to a routing problem, a Security Group issue, or an application timeout. Always check ephemeral ports first when debugging NACL-related connectivity issues.</blockquote>
         <h2>3. AWS Network Firewall — Deep Packet Inspection at Scale</h2>
         <h3>What It Is and Where It Sits</h3>
         <p>AWS Network Firewall is a <strong>managed, stateful network firewall</strong> and intrusion detection/prevention system. It operates at the VPC level — typically in a dedicated Inspection VPC — and uses Gateway Load Balancer to transparently redirect traffic through a firewall fleet without changing your application architecture.</p>
@@ -703,6 +705,7 @@ Layer 7 — HTTP headers, TLS SNI, DNS queries, application payloads</pre>
           <strong>Important:</strong> TLS inspection requires your internal clients to trust the inspection CA certificate. For managed fleets (EC2, ECS), push the CA via Systems Manager. For BYOD or contractor devices, this requires MDM (Mobile Device Management) distribution. Never enable TLS inspection without planning the CA distribution first.
         </blockquote>
 
+        <blockquote class="production-callout"><strong>Why this matters in production:</strong> A Network Firewall deployed in <code>alert_strict</code> mode logs everything that would be blocked without actually blocking it. Start here for two to four weeks in production before switching to <code>drop_strict</code>. The first time you deploy <code>drop_strict</code> without this validation step, you will block legitimate traffic and spend hours correlating firewall logs to identify what broke. The staging period costs nothing and prevents the incident.</blockquote>
         <h2>4. The Layered Defence-in-Depth Architecture</h2>
         <p>This is the production pattern that satisfies PCI-DSS, HIPAA, SOC 2 Type II, and ISO 27001 requirements. Each layer has a distinct responsibility:</p>
         <div class="code-block">

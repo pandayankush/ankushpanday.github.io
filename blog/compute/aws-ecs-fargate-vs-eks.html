@@ -737,6 +737,7 @@
 
         <hr style="border-top: 1px solid var(--aws-border); margin: 40px 0;">
 
+        <blockquote class="production-callout"><strong>Why this matters in production:</strong> A Fargate Spot task gets a two-minute warning before interruption. If your application does not handle SIGTERM gracefully — flushing buffers, completing in-flight requests, deregistering from the load balancer — that two minutes becomes data loss or dropped requests. Test Spot interruption handling explicitly before enabling Spot in production. An ALB with connection draining set to 30 seconds and a graceful shutdown handler in your application is the complete solution.</blockquote>
         <h2>2. Amazon EKS — Kubernetes at Enterprise Scale</h2>
 
         <h3>Why Kubernetes for Complex Platforms</h3>
@@ -967,6 +968,7 @@ resource "aws_iam_role_policy_attachment" "karpenter" {
   })
 }</code></pre>
 
+        <blockquote class="production-callout"><strong>Why this matters in production:</strong> IRSA (IAM Roles for Service Accounts) requires an OIDC thumbprint that changes when AWS rotates the intermediate certificate — and AWS has done this without much warning. Pod Identity removes the thumbprint dependency entirely. Any IRSA setup that has not been tested after an AWS certificate rotation is a latent authentication failure waiting to happen. Migrate to Pod Identity for all new EKS workloads.</blockquote>
         <hr style="border-top: 1px solid var(--aws-border); margin: 40px 0;">
 
         <h2>3. GitOps with ArgoCD on EKS — The Rabobank Pattern</h2>
@@ -1058,6 +1060,7 @@ spec:
           source of truth, enforced automatically.
         </blockquote>
 
+        <blockquote class="production-callout"><strong>Why this matters in production:</strong> A <code>kubectl apply</code> run directly against a production cluster by an engineer debugging an incident looks identical to a legitimate deployment — until ArgoCD syncs and reverts it, potentially mid-incident. With <code>selfHeal: true</code>, ArgoCD reverts any drift within seconds. This is not just a compliance control — it prevents the situation where a manual fix made during an incident is silently reverted by ArgoCD, making the incident worse. Document the "break-glass" procedure for intentional drift before you need it.</blockquote>
         <hr style="border-top: 1px solid var(--aws-border); margin: 40px 0;">
 
         <h2>4. Cost Deep-Dive — The Honest Numbers</h2>

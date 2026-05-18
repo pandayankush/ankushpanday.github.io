@@ -512,6 +512,7 @@ spec:
                 port:
                   number: 8080</code></pre>
 
+        <blockquote class="production-callout"><strong>Why this matters in production:</strong> The ALB Ingress Controller creates one ALB per Ingress object by default. At 30 services, that is 30 ALBs at ~$22/month each — $660/month for routing that a single Nginx controller fronted by one NLB delivers for ~$36/month. The IngressGroup annotation partially closes this gap for ALB, but Nginx remains the cost-optimal choice for platforms with many services and complex routing requirements. Model the load balancer cost explicitly before choosing your Ingress strategy.</blockquote>
         <h2>3. AWS ALB Ingress Controller — AWS-Native L7 Routing</h2>
 
         <h3>What It Is</h3>
@@ -1076,6 +1077,7 @@ Service-to-service communication (internal only)?
 terminationGracePeriodSeconds: 45              # Must be &gt; deregistration delay + preStop sleep</code></pre>
         </div>
 
+        <blockquote class="production-callout"><strong>Why this matters in production:</strong> A rolling deployment without connection draining drops in-flight requests every time a pod is replaced. In a fraud scoring service handling 200ms real-time transactions, each dropped connection is a failed score — which may mean a transaction is either incorrectly approved or blocked. The <code>preStop</code> sleep hook and deregistration delay must both be configured, and <code>terminationGracePeriodSeconds</code> must exceed their sum. Test this with a load test during a rolling deployment before go-live.</blockquote>
         <div class="pitfall-card">
           <h4>Mistake 5: Using Nginx Without Resource Requests</h4>
           <p>Nginx Ingress pods without CPU/memory requests will be scheduled on any available node and can be evicted by Karpenter during bin-packing. Set resource requests that reflect actual usage, and use topology spread constraints to keep one Nginx pod per AZ:</p>
@@ -1102,6 +1104,7 @@ terminationGracePeriodSeconds: 45              # Must be &gt; deregistration del
   ingressClassName: nginx    # or "alb" — always explicit, never rely on default</code></pre>
         </div>
 
+        <blockquote class="production-callout"><strong>Why this matters in production:</strong> Missing subnet tags (<code>kubernetes.io/role/elb</code> for public, <code>kubernetes.io/role/internal-elb</code> for private) cause ALB and NLB creation to fail silently. The AWS Load Balancer Controller logs an error but the Kubernetes Service or Ingress object shows no clear failure message — it just never gets an external IP. This is the most common reason for "my LoadBalancer service has been pending for 20 minutes" questions. Tag your subnets in Terraform before any EKS workload needs external access.</blockquote>
         <h2>Architecture Decision Matrix</h2>
 
         <table class="compare-table">

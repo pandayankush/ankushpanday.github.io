@@ -135,6 +135,7 @@
 
         <p>This order is critical. If you have a Private Hosted Zone for <code>internal.company.com</code> and a Resolver Rule forwarding <code>company.com</code> to your on-premises DNS, a query for <code>service.internal.company.com</code> will hit the Private Hosted Zone first — not the forwarding rule. Understanding this prevents hours of DNS debugging.</p>
 
+        <blockquote class="production-callout"><strong>Why this matters in production:</strong> A Private Hosted Zone for <code>internal.company.com</code> and a Resolver Rule forwarding <code>company.com</code> to on-premises DNS will not conflict — the PHZ wins because it is evaluated first. But if you expect the Resolver Rule to catch <code>service.internal.company.com</code> queries and it doesn't, this is why. Misunderstanding the resolution order is the root cause of most hybrid DNS debugging sessions. Map it out explicitly before go-live.</blockquote>
         <h2>2. Public Hosted Zones — The Internet-Facing Foundation</h2>
         <h3>How It Works</h3>
         <p>A Public Hosted Zone is a container for DNS records that answer queries from the public internet. When you register a domain or delegate a subdomain to Route 53, AWS assigns four name servers to your zone. All public DNS resolvers worldwide learn to query those name servers for your domain.</p>
@@ -472,6 +473,7 @@ AWS <span style="color: #569cd6;">resource</span> → Route <span style="color: 
   -MasterServers <span style="color: #b5cea8;">10</span>.<span style="color: #b5cea8;">0</span>.<span style="color: #b5cea8;">1</span>.<span style="color: #b5cea8;">15</span>, <span style="color: #b5cea8;">10</span>.<span style="color: #b5cea8;">0</span>.<span style="color: #b5cea8;">2</span>.<span style="color: #b5cea8;">15</span> `
   -PassThru</code></pre>
 
+        <blockquote class="production-callout"><strong>Why this matters in production:</strong> A Resolver Endpoint deployed in a single AZ means an AZ failure takes down all hybrid DNS resolution — your on-premises systems can no longer resolve AWS internal names and your AWS workloads cannot resolve corporate hostnames. This does not look like a DNS failure initially; it looks like every service simultaneously becoming unreachable. Always deploy at least two endpoint IPs in two different AZs.</blockquote>
         <h2>5. Route 53 Health Checks & Failover Routing</h2>
         <h3>How Health Checks Work</h3>
         <p>Route 53 health checkers are distributed globally across 15+ AWS edge locations. They independently probe your endpoints every 10 or 30 seconds. A health check fails when a configurable threshold of these checkers report failure — by default, 3 out of 5 checkers must fail before the health check is considered unhealthy.</p>
@@ -647,6 +649,7 @@ AWS <span style="color: #569cd6;">resource</span> → Route <span style="color: 
           <p style="margin-bottom: 0;">Latency routing does NOT mean "route to the geographically closest region." AWS measures actual network latency from the user's resolver to each region and routes accordingly. A user in South Africa may be routed to eu-west-1 instead of af-south-1 if latency measurements favour it.</p>
         </div>
 
+        <blockquote class="production-callout"><strong>Why this matters in production:</strong> <code>evaluate_target_health = false</code> on an ALB Alias record means Route 53 returns the ALB DNS name even when all targets behind it are returning 502. Traffic continues flowing to a load balancer that is responding with errors, and Route 53 never fails over. This is the most common health check misconfiguration and the hardest to catch in testing because the ALB itself is healthy — its targets are not. Always set <code>evaluate_target_health = true</code> on Alias records pointing to ALBs and NLBs.</blockquote>
         <h2>6. Advanced Pattern: Centralised DNS in a Multi-Account Organisation</h2>
         <p>The enterprise-standard pattern: one central DNS account owns all PHZs and Resolver Endpoints. Spoke accounts associate their VPCs via RAM-shared rules and zones. No spoke account manages DNS directly.</p>
 

@@ -332,6 +332,7 @@
           <p>Deploy one NAT Gateway <strong>per AZ</strong>. While this triples the hourly charge, it avoids the $0.01/GB cross-AZ penalty and removes a single point of failure for your entire region.</p>
         </div>
 
+        <blockquote class="production-callout"><strong>Why this matters in production:</strong> A single NAT Gateway covering all three AZs does not fail loudly — it fails by introducing cross-AZ latency charges that accumulate silently on your bill, and by becoming a single point of failure that takes down internet egress for the entire region if that AZ has issues. The cross-AZ charge of $0.01/GB each way compounds fast at scale. Deploy one NAT Gateway per AZ and verify route tables point to the local AZ's NAT Gateway — not a shared one.</blockquote>
         <h2>2. AWS PrivateLink (Interface Endpoints)</h2>
         <p>AWS PrivateLink provides private connectivity between your VPC and AWS services or SaaS partners — <strong>without exposing traffic to the public internet</strong>. Traffic flows entirely over the AWS private network backbone.</p>
 
@@ -353,6 +354,7 @@
   <span style="color: #9cdcfe;">private_dns_enabled</span> = <span style="color: #569cd6;">true</span> <span style="color: #6a9955;"># Makes existing DNS names resolve privately</span>
 }</code></pre>
 
+        <blockquote class="production-callout"><strong>Why this matters in production:</strong> An ECS cluster in a fully private VPC with Interface Endpoints for ECR but no S3 Gateway Endpoint will fail to pull container images — silently. ECR stores image layers in S3. Tasks get stuck in PENDING with no useful error. The fix takes two minutes to deploy but is impossible to diagnose quickly at 2am without knowing this dependency. Always add the S3 Gateway Endpoint alongside ECR Interface Endpoints.</blockquote>
         <h2>3. VPC Gateway Endpoints — S3 & DynamoDB</h2>
         <p>VPC Gateway Endpoints are a specific, older type of VPC endpoint that provide private access to <strong>Amazon S3</strong> and <strong>Amazon DynamoDB</strong> only. Unlike Interface Endpoints, they work via <strong>route table entries</strong> and are **completely free**.</p>
 
@@ -419,6 +421,7 @@
           <p style="margin-bottom: 0; font-size: 13px;"><strong>Pro Tip:</strong> Even a valid IAM user with <code>s3:GetObject</code> cannot access this bucket from outside your VPC—the explicit Deny overrides all Allow statements. This is standard control for PCI-DSS and HIPAA environments.</p>
         </div>
 
+        <blockquote class="production-callout"><strong>Why this matters in production:</strong> S3 Gateway Endpoints are free and eliminate data processing charges on all S3 traffic that previously routed through your NAT Gateway. For a cluster running 10 TB/month of S3 reads via NAT Gateway, that is $450/month disappearing from your bill with zero downside. If you are not using a Gateway Endpoint for S3 today, you are paying for traffic that could be free.</blockquote>
         <h3>The Decision Framework</h3>
         <p>How do you choose? Follow this simple logic:</p>
         <ul>

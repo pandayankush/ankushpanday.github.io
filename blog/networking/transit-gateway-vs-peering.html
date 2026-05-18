@@ -243,6 +243,7 @@
           <li>You need <strong>maximum throughput</strong> — peering has no bandwidth cap, TGW bursts to 50 Gbps per AZ</li>
         </ul>
 
+        <blockquote class="production-callout"><strong>Why this matters in production:</strong> Engineers who build full-mesh peering for 10 VPCs and then add an 11th VPC discover the problem immediately — 10 new peering connections, 20 new route table entries, and a change request for each one. The first time this happens under pressure, usually because a new environment was needed yesterday, is when teams decide to migrate to TGW. Build the TGW-first if you expect more than 5 VPCs.</blockquote>
         <h2>2. Transit Gateway — The Enterprise Hub</h2>
         <h3>Architecture Overview</h3>
         <p>Transit Gateway is a <strong>regional network hub</strong> that your VPCs and on-premises networks attach to. Instead of point-to-point connections, every VPC connects once to the TGW — the TGW handles all routing decisions from there.</p>
@@ -419,6 +420,7 @@
   <span style="color: #9cdcfe;">transit_gateway_id</span>     = aws_ec2_transit_gateway.main.id
 }</code></pre>
 
+        <blockquote class="production-callout"><strong>Why this matters in production:</strong> Without centralised egress, every new spoke VPC needs its own NAT Gateway — and every team that provisions a VPC without one raises a security finding. Centralised egress through a dedicated Egress VPC gives your security team a single choke point for DNS filtering, traffic logging, and anomaly detection. The cost saving from consolidating NAT Gateways is secondary to having one place where all outbound traffic can be inspected.</blockquote>
         <h2>4. Advanced Pattern: Centralised Inspection via GWLB</h2>
         <p>For high-security workloads, all traffic may need to be inspected by a third-party firewall fleet. <strong>Gateway Load Balancer (GWLB)</strong> enables this transparently.</p>
 
@@ -552,6 +554,7 @@
           <li><strong>Using TGW for Latency-Sensitive HPC:</strong> TGW adds a small hop. For ultra-low-latency financial trading or HPC, direct Peering is faster.</li>
         </ul>
 
+        <blockquote class="production-callout"><strong>Why this matters in production:</strong> Asymmetric routing through a TGW without <code>appliance_mode_support</code> on stateful attachments produces connection drops that look completely random — some requests succeed, others fail, with no pattern in the application logs. The root cause is stateful NAT or firewall state existing in AZ-a while return traffic arrives through AZ-b. This is one of the hardest TGW issues to reproduce in a lab and diagnose in production. Enable it at attachment creation — you cannot add it later without destroying and recreating the attachment.</blockquote>
         <table class="compare-table">
           <thead>
             <tr><th>Requirement</th><th>VPC Peering</th><th>Transit Gateway</th></tr>

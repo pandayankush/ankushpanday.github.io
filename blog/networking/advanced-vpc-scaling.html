@@ -124,6 +124,7 @@
           <li><strong>Security Group Referencing:</strong> You can reference Security Groups from a peered VPC (in the same region) to allow specific traffic, which is a powerful security feature.</li>
         </ul>
 
+        <blockquote class="production-callout"><strong>Why this matters in production:</strong> A missing route table entry on either side of a VPC peering connection causes asymmetric routing — traffic goes out but cannot return. The symptom is a TCP connection that hangs rather than failing immediately, which makes it look like a firewall issue, not a routing issue. Always add routes on both sides and test bidirectionally with <code>traceroute</code> before marking the peering setup complete.</blockquote>
         <h4>2. Transit Gateway (TGW): The Central Hub</h4>
         <p>AWS Transit Gateway acts as a regional network hub. For enterprise-scale management, we combine TGW with AWS RAM for multi-account sharing and dedicated route tables for isolation.</p>
         <pre style="background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; font-size: 13px; border-left: 4px solid var(--aws-orange);"><code><span style="color: #6a9955;"># Create the Gateway</span>
@@ -182,6 +183,7 @@
           <li><strong>Resource Access Manager (RAM):</strong> As shown above, you use RAM to share a single TGW across your entire AWS Organization, allowing different accounts to attach their VPCs to your hub.</li>
         </ul>
 
+        <blockquote class="production-callout"><strong>Why this matters in production:</strong> A TGW with <code>default_route_table_association = "enable"</code> and a missing explicit route table assignment means new VPC attachments automatically inherit the default route table — potentially routing dev traffic into prod subnets. Disable the default association from the start and enforce explicit route table assignments for every attachment. Route leaks between environments are the hardest class of TGW incident to diagnose.</blockquote>
         <h4>3. Hybrid Connectivity: VPN vs. Direct Connect</h4>
         <p>Connecting your data center to AWS requires balancing speed, reliability, and cost. Modern architectures often use <strong>Direct Connect (DX) Gateway</strong> to reach multiple VPCs across different regions from a single connection.</p>
         
@@ -240,6 +242,7 @@
           <li><strong>Egress-Only Internet Gateway:</strong> The IPv6 version of a NAT Gateway. It allows your IPv6-enabled resources to reach the internet while remaining protected from unsolicited inbound connections.</li>
         </ul>
 
+        <blockquote class="production-callout"><strong>Why this matters in production:</strong> Traffic Mirroring is the difference between guessing what payload caused an incident and knowing. Without it, you are reconstructing attacks from application logs that may themselves be incomplete. Enable mirroring to a dedicated inspection instance in your security VPC before you have an incident — setting it up under pressure is slow and error-prone.</blockquote>
         <h4>Advanced Connectivity Decision Matrix</h4>
         <table style="width: 100%; border-collapse: collapse; margin: 30px 0; font-size: 14px;">
           <thead>

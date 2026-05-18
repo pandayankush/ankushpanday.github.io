@@ -250,6 +250,7 @@
   ]
 }</code></pre>
 
+        <blockquote class="production-callout"><strong>Why this matters in production:</strong> An explicit Deny in an SCP overrides every Allow in every identity policy in every account — including the account root. If an SCP denies <code>ec2:TerminateInstances</code> in prod, no IAM policy, no matter how permissive, can override it. Engineers who discover this during an emergency termination of a compromised instance learn it the hard way. Map your SCPs before assuming you can do something with admin credentials.</blockquote>
         <h2>2. IAM Roles — Always Prefer Over Users</h2>
         <h3>Why Roles Are Safer Than Users</h3>
         <p><code>IAM Users</code> have <strong>long-term credentials</strong> — access keys that never expire unless you manually rotate them. These keys get committed to git repositories, hardcoded in application configs, and leaked in <code>CloudTrail</code> logs. The Verizon 2024 Data Breach Report found that 77% of cloud breaches involved compromised credentials.</p>
@@ -490,6 +491,7 @@ IAM Role:  AssumeRole → STS Token (expires in 1h) → Refresh automatically</c
   })
 }</code></pre>
 
+        <blockquote class="production-callout"><strong>Why this matters in production:</strong> Without permissions boundaries, a developer who can create IAM roles can create a role with <code>AdministratorAccess</code> and use it to escape all controls. The boundary is the safety net. At scale, the boundary is also what lets you safely delegate IAM role creation to development teams — without it you must centralise all IAM changes, which creates a bottleneck. Put boundaries in place before you delegate, not after a privilege escalation incident.</blockquote>
         <h2>5. Service Control Policies — Account-Level Guardrails</h2>
         <p><code>SCPs</code> are attached to <code>AWS</code> accounts or <code>OUs</code> in <code>AWS Organizations</code>. They define the <strong>maximum permissions for every IAM principal in that account</strong> — including the root user.</p>
         <p><strong>Critical:</strong> <code>SCPs</code> do not grant permissions. They only restrict them. Even if an <code>SCP</code> allows <code>s3:*</code>, an <code>IAM</code> role still needs an identity policy that allows <code>s3:GetObject</code>.</p>
@@ -655,6 +657,7 @@ IAM Role:  AssumeRole → STS Token (expires in 1h) → Refresh automatically</c
   })
 }</code></pre>
 
+        <blockquote class="production-callout"><strong>Why this matters in production:</strong> Long-term AWS access keys stored in GitHub Secrets are a breach waiting to happen. Keys get rotated inconsistently, reused across repositories, and occasionally committed to code. OIDC tokens expire after one hour and are cryptographically bound to a specific repository and branch — a leaked OIDC token from a workflow run is useless to an attacker 61 minutes later. Migrate all CI/CD pipelines to OIDC before a key rotation reminder becomes a security incident report.</blockquote>
         <h2>9. Cost Consideration</h2>
         <p><code>IAM</code> itself is free. However, poor <code>IAM</code> hygiene creates indirect costs:</p>
         <div style="overflow-x: auto;">

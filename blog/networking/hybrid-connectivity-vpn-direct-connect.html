@@ -359,6 +359,7 @@ Data Center → Site-to-Site VPN (backup, activates on DX failure via BGP)</code
   <span style="color: #9cdcfe;">tags</span> = { Name = <span style="color: #ce9178;">"dx-backup-vpn"</span> }
 }</code></pre>
 
+        <blockquote class="production-callout"><strong>Why this matters in production:</strong> A single Direct Connect connection without a VPN backup is a planned outage waiting to happen. DX maintenance windows, physical fibre cuts, and DX router firmware updates all cause BGP session drops. Without a VPN backup, production traffic stops until the DX session recovers. The VPN backup costs ~$36/month and sits idle 99.9% of the time — it is the cheapest insurance policy in your AWS bill.</blockquote>
         <h2 style="margin: 40px 0; font-size: 26px; color: var(--aws-text); border-bottom: 2px solid var(--aws-orange); display: inline-block; padding-bottom: 4px; margin-bottom: 24px;">2. Site-to-Site VPN — Encrypted Network-to-Network Connectivity</h2>
         <h3 style="margin-top: 32px; font-size: 22px; color: var(--aws-blue); margin-bottom: 16px;">How It Works</h3>
         <p style="margin-bottom: 20px;">Site-to-Site VPN creates an <strong>IPSec encrypted tunnel</strong> between your on-premises network and AWS. Unlike Direct Connect, traffic flows over the public internet — but is cryptographically protected with AES-256 encryption.</p>
@@ -464,6 +465,7 @@ Data Center → Site-to-Site VPN (backup, activates on DX failure via BGP)</code
   <span style="color: #9cdcfe;">transit_gateway_route_table_id</span> = aws_ec2_transit_gateway_route_table.hybrid.id
 }</code></pre>
 
+        <blockquote class="production-callout"><strong>Why this matters in production:</strong> A VPN configured with <code>static_routes_only = true</code> requires a manual route table update every time a new subnet is added on either side. Miss one and traffic to that subnet is silently blackholed. BGP propagates routes automatically and withdraws them on failure — meaning failover from DX to VPN is automatic rather than requiring a manual route change at 3am. Use BGP unless your router genuinely does not support it.</blockquote>
         <h2 style="margin: 40px 0; font-size: 26px; color: var(--aws-text); border-bottom: 2px solid var(--aws-orange); display: inline-block; padding-bottom: 4px; margin-bottom: 24px;">3. Client VPN — Remote User Access</h2>
         <h3 style="margin-top: 32px; font-size: 22px; color: var(--aws-blue); margin-bottom: 16px;">How It Works</h3>
         <p style="margin-bottom: 20px;">Client VPN is a managed OpenVPN service that allows <strong>individual users and devices</strong> to connect to your AWS VPC from anywhere. Unlike Site-to-Site VPN which connects networks, Client VPN connects people.</p>
@@ -586,6 +588,7 @@ User → VPN tunnel → ALL traffic (VPC + internet)
 
         <p style="margin-bottom: 20px;"><strong>Always use split tunnel in production.</strong> Full tunnel routes all user internet traffic through your VPC NAT Gateway — this generates massive NAT Gateway data processing charges ($0.045/GB) and creates a bandwidth bottleneck. For a 100-user team each browsing 5 GB/day of internet traffic: <code>100 &times; 5 GB &times; $0.045 &times; 30 days = $675/month</code> in unnecessary NAT charges.</p>
 
+        <blockquote class="production-callout"><strong>Why this matters in production:</strong> Full tunnel Client VPN routes all user internet traffic through your VPC NAT Gateway. For 100 remote users each browsing 5 GB/day, that is $675/month in NAT data processing charges — for traffic that has no business going through your infrastructure. It also creates a bandwidth bottleneck that makes your corporate network the slow path for internet access. Split tunnel should be the default for every Client VPN deployment.</blockquote>
         <h2 style="margin: 40px 0; font-size: 26px; color: var(--aws-text); border-bottom: 2px solid var(--aws-orange); display: inline-block; padding-bottom: 4px; margin-bottom: 24px;">4. Advanced Pattern: Full Hybrid Architecture</h2>
         <p style="margin-bottom: 20px;">This is the enterprise-standard pattern combining all three — DX as primary, VPN as backup, Client VPN for remote users — all terminating at a central TGW:</p>
 

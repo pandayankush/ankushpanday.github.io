@@ -1,0 +1,1407 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- SEO PRIMARY -->
+  <title>Karpenter vs Cluster Autoscaler — How We Run Both in Production to Maximise EKS Cost Efficiency | Ankush Panday</title>
+  <meta name="description"
+    content="Running Karpenter and Cluster Autoscaler together in production — the three-tier compute model, exact Helm and YAML config, conflict prevention, and the honest cost story.">
+  <meta name="keywords"
+    content="AWS, EKS, Karpenter, Cluster Autoscaler, Spot, FinOps, Kubernetes, DevSecOps, IaC, Terraform, Helm">
+  <link rel="canonical" href="https://www.ankushpanday.com/blog/compute/karpenter-vs-cluster-autoscaler-eks.html">
+
+  <!-- OPEN GRAPH -->
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://www.ankushpanday.com/blog/compute/karpenter-vs-cluster-autoscaler-eks.html">
+  <meta property="og:title" content="Karpenter vs Cluster Autoscaler — How We Run Both in Production to Maximise EKS Cost Efficiency">
+  <meta property="og:description"
+    content="Running Karpenter and Cluster Autoscaler together in production — the three-tier compute model, exact Helm and YAML config, conflict prevention, and the honest cost story.">
+  <meta property="og:image" content="https://www.ankushpanday.com/images/karpenter-vs-cluster-autoscaler-eks.png">
+
+  <link rel="stylesheet" href="../../style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    .blog-page-container {
+      max-width: 900px;
+      margin: 100px auto 40px auto;
+      padding: 0 20px;
+      min-height: calc(100vh - 200px);
+    }
+
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--aws-blue);
+      text-decoration: none;
+      font-weight: 500;
+      margin-bottom: 24px;
+    }
+
+    .blog-content-card {
+      background: var(--aws-white);
+      border: 1px solid var(--aws-border);
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    }
+
+    .blog-header {
+      background: #f8f9fa;
+      padding: 40px;
+      border-bottom: 1px solid var(--aws-border);
+    }
+
+    .blog-body {
+      padding: 40px;
+      line-height: 1.8;
+      font-size: 16px;
+      color: var(--aws-text);
+    }
+
+    .blog-body h2 {
+      margin-top: 48px;
+      font-size: 26px;
+      color: var(--aws-text);
+      border-bottom: 2px solid var(--aws-orange);
+      display: inline-block;
+      padding-bottom: 4px;
+      margin-bottom: 24px;
+    }
+
+    .blog-body h3 {
+      margin-top: 32px;
+      font-size: 22px;
+      color: var(--aws-blue);
+      margin-bottom: 16px;
+    }
+
+    .blog-body h4 {
+      margin-top: 24px;
+      font-size: 18px;
+      color: var(--aws-text);
+      font-weight: 700;
+    }
+
+    .blog-body p {
+      margin-bottom: 20px;
+    }
+
+    .blog-body ul,
+    .blog-body ol {
+      margin-bottom: 24px;
+      padding-left: 24px;
+    }
+
+    .blog-body li {
+      margin-bottom: 12px;
+    }
+
+    .blog-body strong {
+      color: var(--aws-text);
+    }
+
+    .blog-body blockquote {
+      font-style: italic;
+      color: var(--aws-text-light);
+      margin: 30px 0;
+      border-left: 4px solid var(--aws-orange);
+      padding-left: 15px;
+      background: #fcfcfc;
+      padding: 20px;
+    }
+
+    .compare-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+
+    .compare-table th {
+      background: var(--aws-blue);
+      color: white;
+      padding: 12px;
+      border: 1px solid var(--aws-border);
+    }
+
+    .compare-table td {
+      padding: 12px;
+      border: 1px solid var(--aws-border);
+    }
+
+    .compare-table tr:nth-child(even) {
+      background: #f9f9f9;
+    }
+
+    /* Code block styling - synchronized across all blogs */
+    pre {
+      background: #232f3e;
+      color: #f8f8f2;
+      padding: 20px;
+      border-radius: 6px;
+      overflow-x: auto;
+      margin: 24px 0;
+      font-size: 13px;
+      line-height: 1.5;
+      border-left: 4px solid var(--aws-orange);
+    }
+
+    code {
+      font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+      background: #f1f3f5;
+      color: #232f3e;
+      padding: 2px 4px;
+      border-radius: 4px;
+      border: 1px solid #dee2e6;
+      font-size: 0.9em;
+    }
+
+    pre code {
+      background: none;
+      color: inherit;
+      padding: 0;
+      border: none;
+      font-size: inherit;
+    }
+
+    .pitfall-card {
+      background: #fff5f5;
+      border: 1px solid #fed7d7;
+      border-left: 4px solid #d13212;
+      padding: 20px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+    }
+
+    .author-card {
+      display: flex;
+      gap: 20px;
+      align-items: center;
+      padding: 30px;
+      background: #fcfcfc;
+      border-top: 1px solid var(--aws-border);
+    }
+
+    .author-img {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background: var(--aws-highlight);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 30px;
+      color: var(--aws-orange);
+      border: 2px solid var(--aws-border);
+    }
+
+    .nav-links {
+      display: flex;
+      justify-content: space-between;
+      margin: 40px 0;
+      padding: 20px 0;
+      border-top: 1px solid var(--aws-border);
+    }
+
+    .nav-link {
+      text-decoration: none;
+      color: var(--aws-blue);
+      font-weight: 600;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .tag {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-right: 8px;
+      margin-bottom: 8px;
+    }
+
+    .tag.blue {
+      background: #e7f2fa;
+      color: #0073bb;
+    }
+
+    .tag.purple {
+      background: #f2e7fa;
+      color: #6b3fa0;
+    }
+
+    .share-section {
+      padding: 20px 40px;
+      border-top: 1px solid var(--aws-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #fff;
+    }
+
+    .share-btn {
+      padding: 8px 16px;
+      border: 1px solid var(--aws-border);
+      border-radius: 4px;
+      background: #fff;
+      color: var(--aws-text);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .share-btn:hover {
+      background: #f8f9fa;
+    }
+
+    .linkedin-btn {
+      background: #0077b5;
+      color: white;
+      border: none;
+    }
+    .linkedin-btn:hover { background: #005f8d; color: white; }
+  </style>
+</head>
+
+<body>
+
+  <!-- TOP NAV -->
+  <nav class="aws-topnav">
+    <a href="../../index.html" class="logo">
+      <i class="fa-solid fa-cloud" style="color: var(--aws-orange); font-size: 20px;"></i>
+      <span>Ankush Panday</span>
+    </a>
+    <div class="nav-spacer"></div>
+    <div class="nav-icons">
+      <a href="../../index.html" class="nav-icon-btn" style="text-decoration: none;">Portfolio Home</a>
+      <a href="../index.html" class="nav-icon-btn orange" style="text-decoration: none; font-weight: 600;">Blog Hub</a>
+      <button class="nav-icon-btn"><i class="fa-solid fa-earth-europe"
+          style="margin-right: 6px; font-size: 12px; color: var(--aws-orange);"></i> Europe (nl-ams-1)</button>
+      <button class="nav-icon-btn">ankushpandey@hotmail.com <i class="fa-solid fa-caret-down"
+          style="margin-left: 4px;"></i></button>
+    </div>
+  </nav>
+
+  <main class="blog-page-container">
+    <a href="../index.html" class="back-btn"><i class="fa-solid fa-arrow-left"></i> Back to Blog Hub</a>
+
+    <article class="blog-content-card">
+      <header class="blog-header">
+        <h1 style="font-size: 32px; color: var(--aws-text); margin-bottom: 16px; line-height: 1.2;">Karpenter vs Cluster
+          Autoscaler — How We Run Both in Production to Maximise EKS Cost Efficiency</h1>
+        <div
+          style="display: flex; gap: 12px; align-items: center; color: var(--aws-text-light); font-size: 14px; flex-wrap: wrap;">
+          <span>May 18, 2026</span>
+          <span>•</span>
+          <span>28 min read</span>
+          <span class="tag blue">Compute</span>
+          <span class="tag purple">FinOps</span>
+        </div>
+      </header>
+
+      <div class="blog-body">
+        <p
+          style="font-style: italic; color: var(--aws-text-light); margin-bottom: 30px; border-left: 4px solid var(--aws-orange); padding-left: 15px;">
+          <strong>AWS Series | Part 13</strong> — Building secure, cost-optimised, cloud-native infrastructure on AWS.
+        </p>
+
+        <!-- Main Image -->
+        <img src="../../images/karpenter-vs-cluster-autoscaler-eks.png"
+          alt="Karpenter vs Cluster Autoscaler EKS Architecture"
+          style="display: block; width: 100%; border-radius: 8px; border: 1px solid var(--aws-border); margin-bottom: 40px;">
+
+        <h2>TL;DR Comparison</h2>
+
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th>Feature</th>
+              <th>Cluster Autoscaler</th>
+              <th>Karpenter</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>What it scales</strong></td>
+              <td>Node Groups (pre-defined)</td>
+              <td>Individual nodes (directly via EC2 API)</td>
+            </tr>
+            <tr>
+              <td><strong>Instance selection</strong></td>
+              <td>Fixed — whatever the node group uses</td>
+              <td>Dynamic — picks best available instance</td>
+            </tr>
+            <tr>
+              <td><strong>Spot support</strong></td>
+              <td>Via separate Spot node groups</td>
+              <td>Native — diversifies across families</td>
+            </tr>
+            <tr>
+              <td><strong>Scale-to-zero</strong></td>
+              <td>❌ Min 1 node per group</td>
+              <td>✅ Full scale-to-zero</td>
+            </tr>
+            <tr>
+              <td><strong>Provisioning speed</strong></td>
+              <td>3–5 minutes</td>
+              <td>30–60 seconds</td>
+            </tr>
+            <tr>
+              <td><strong>Bin packing</strong></td>
+              <td>❌ Node group level only</td>
+              <td>✅ Per-pod, right-sized nodes</td>
+            </tr>
+            <tr>
+              <td><strong>Graviton support</strong></td>
+              <td>Manual node group per arch</td>
+              <td>✅ Automatic amd64 + arm64</td>
+            </tr>
+            <tr>
+              <td><strong>Consolidation</strong></td>
+              <td>❌ Threshold-based only</td>
+              <td>✅ Active bin-packing</td>
+            </tr>
+            <tr>
+              <td><strong>Configuration</strong></td>
+              <td>Annotations + ASG config</td>
+              <td>NodePool + EC2NodeClass CRDs</td>
+            </tr>
+            <tr>
+              <td><strong>Fallback to On-Demand</strong></td>
+              <td>✅ Via dedicated node group</td>
+              <td>✅ Via NodePool capacity-type</td>
+            </tr>
+            <tr>
+              <td><strong>Best for</strong></td>
+              <td>Stable On-Demand baseline</td>
+              <td>Dynamic Spot + cost optimisation</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h2>Introduction — The Honest Architecture</h2>
+        <p>Most blog posts about Karpenter frame it as a Cluster Autoscaler replacement. That is not always true — and it
+          was not true for us.</p>
+
+        <p>At Rabobank, the fraud detection platform runs both. Cluster Autoscaler manages a stable On-Demand Managed
+          Node Group that acts as the guaranteed baseline. Karpenter manages two Spot NodePools that handle the majority
+          of the workload. When Spot capacity is unavailable in our AZs — which happens — Karpenter falls back to
+          On-Demand provisioning within its own NodePool. The Cluster Autoscaler On-Demand group is the last resort for
+          system-critical workloads that must never land on Spot.</p>
+
+        <p>The result: a meaningful reduction in EC2 spend — driven by Spot discounts, scale-to-zero overnight on
+          Karpenter NodePools, and continuous bin-packing consolidation — with full resilience when Spot is unavailable.
+        </p>
+
+        <p>This post documents the complete architecture — how both tools work, why they complement rather than replace
+          each other, the exact Helm and YAML configuration, and the lessons from running this in a regulated production
+          environment.</p>
+
+        <blockquote class="production-callout"><strong>Why this matters in production:</strong> In a regulated financial
+          environment, cost and compliance are not opposites. The three-tier model gives you Spot economics on 80% of
+          workloads while keeping the compliance-critical path on guaranteed On-Demand capacity — documented, auditable,
+          and isolated from Karpenter's disruption policies.</blockquote>
+
+        <hr style="border-top: 1px solid var(--aws-border); margin: 40px 0;">
+
+        <h2>1. The Architecture — Three Compute Tiers</h2>
+        <p>Before diving into either tool, understand the three-tier model this architecture implements:</p>
+
+        <pre><code>Tier 1: System MNG (Managed Node Group — On-Demand, fixed)
+  Managed by: Nothing — fixed size, always-on
+  Hosts: DaemonSets, CloudWatch agent, Karpenter itself, Cluster Autoscaler itself
+  Why: System components cannot tolerate Spot interruption or Karpenter eviction
+
+Tier 2: On-Demand MNG (Managed Node Group — Cluster Autoscaler)
+  Managed by: Cluster Autoscaler
+  Hosts: Latency-sensitive fraud scoring pods + workloads tainted for On-Demand
+  Why: Guaranteed capacity, no interruption risk, predictable baseline
+
+Tier 3: Spot NodePools (Karpenter — two pools)
+  Managed by: Karpenter
+  Hosts: 80% of workloads — batch processors, enrichment services, general APIs
+  Why: 60–70% cost saving vs On-Demand, Karpenter handles diversification + fallback</code></pre>
+
+        <pre><code>Traffic → EKS Cluster
+           ├── [System MNG]     kube-system, karpenter, cluster-autoscaler
+           ├── [On-Demand MNG]  fraud-scoring, payments-critical (Cluster Autoscaler)
+           └── [Spot NodePools] everything else (Karpenter)
+                   ↓
+           Spot unavailable?
+                   ↓
+           Karpenter falls back to On-Demand within NodePool constraints</code></pre>
+
+        <blockquote>
+          <strong>Why keep Cluster Autoscaler at all?</strong> Karpenter's On-Demand fallback is fast and reliable. But
+          in a regulated environment, having a dedicated Cluster Autoscaler-managed On-Demand group for the most critical
+          workloads provides an additional isolation layer — those pods are explicitly tainted to only land on On-Demand
+          MNG nodes, and no Karpenter disruption policy can touch them.
+        </blockquote>
+
+        <h2>2. Cluster Autoscaler — The On-Demand Baseline</h2>
+
+        <h3>Our On-Demand Node Group Configuration</h3>
+
+        <pre><code># System Node Group — always-on, fixed size, Karpenter and CA run here
+resource "aws_eks_node_group" "system" {
+  cluster_name    = aws_eks_cluster.main.name
+  node_group_name = "system"
+  node_role_arn   = aws_iam_role.node.arn
+  subnet_ids      = var.private_subnet_ids
+
+  instance_types = ["m5.large"]   # 2 vCPU, 8 GB — sized for DaemonSets only
+
+  scaling_config {
+    desired_size = 2   # One per AZ — never changes
+    min_size     = 2
+    max_size     = 4   # Small burst for cluster events
+  }
+
+  taint {
+    key    = "node-role"
+    value  = "system"
+    effect = "NO_SCHEDULE"
+  }
+
+  labels = { "node-role" = "system" }
+
+  update_config { max_unavailable = 1 }
+
+  tags = {
+    Name = "system-node-group"
+    "k8s.io/cluster-autoscaler/enabled"             = "true"
+    "k8s.io/cluster-autoscaler/${var.cluster_name}" = "owned"
+  }
+}
+
+# On-Demand Application Node Group — managed by Cluster Autoscaler
+resource "aws_eks_node_group" "on_demand_app" {
+  cluster_name    = aws_eks_cluster.main.name
+  node_group_name = "on-demand-app"
+  node_role_arn   = aws_iam_role.node.arn
+  subnet_ids      = var.private_subnet_ids
+
+  instance_types = ["m5.xlarge", "m5a.xlarge", "m5n.xlarge"]
+
+  scaling_config {
+    desired_size = 2   # Two On-Demand nodes always warm for critical path
+    min_size     = 2   # Never scale below 2 — one per AZ for HA
+    max_size     = 10
+  }
+
+  taint {
+    key    = "workload-type"
+    value  = "on-demand-critical"
+    effect = "NO_SCHEDULE"
+  }
+
+  labels = {
+    "node-role"     = "on-demand-app"
+    "workload-type" = "on-demand-critical"
+  }
+
+  update_config { max_unavailable = 1 }
+
+  tags = {
+    Name = "on-demand-app-node-group"
+    "k8s.io/cluster-autoscaler/enabled"             = "true"
+    "k8s.io/cluster-autoscaler/${var.cluster_name}" = "owned"
+    "karpenter.sh/managed"                          = "false"
+  }
+}</code></pre>
+
+        <blockquote class="production-callout"><strong>Why this matters in production:</strong> Setting
+          <code>min_size = 2</code> on the On-Demand MNG is non-negotiable in a regulated environment. It ensures one
+          node per AZ survives any single-AZ failure — Cluster Autoscaler will never scale below this floor, giving you
+          a guaranteed HA baseline for the critical path regardless of what Karpenter is doing on the Spot pools.
+        </blockquote>
+
+        <h3>Cluster Autoscaler Deployment via Helm</h3>
+
+        <pre><code>resource "helm_release" "cluster_autoscaler" {
+  name       = "cluster-autoscaler"
+  repository = "https://kubernetes.github.io/autoscaler"
+  chart      = "cluster-autoscaler"
+  version    = "9.37.0"
+  namespace  = "kube-system"
+
+  values = [yamlencode({
+    autoDiscovery = {
+      clusterName = aws_eks_cluster.main.name
+    }
+
+    awsRegion = var.region
+
+    rbac = {
+      serviceAccount = {
+        annotations = {
+          "eks.amazonaws.com/role-arn" = aws_iam_role.cluster_autoscaler.arn
+        }
+      }
+    }
+
+    extraArgs = {
+      "scale-down-delay-after-add"       = "10m"
+      "scale-down-unneeded-time"         = "15m"
+      "scale-down-utilization-threshold" = "0.5"
+      "skip-nodes-with-system-pods"      = "true"
+      "expander"                         = "least-waste"
+      "balance-similar-node-groups"      = "true"
+      "scan-interval"                    = "30s"
+
+      # CRITICAL: Tell CA to ignore nodes managed by Karpenter
+      "node-group-auto-discovery" = "asg:tag=k8s.io/cluster-autoscaler/enabled=true,k8s.io/cluster-autoscaler/${var.cluster_name}=owned"
+    }
+
+    tolerations = [{
+      key      = "node-role"
+      value    = "system"
+      operator = "Equal"
+      effect   = "NoSchedule"
+    }]
+
+    affinity = {
+      nodeAffinity = {
+        requiredDuringSchedulingIgnoredDuringExecution = {
+          nodeSelectorTerms = [{
+            matchExpressions = [{
+              key      = "node-role"
+              operator = "In"
+              values   = ["system"]
+            }]
+          }]
+        }
+      }
+    }
+  })]
+}</code></pre>
+
+        <h3>Cluster Autoscaler IAM Policy</h3>
+
+        <pre><code>resource "aws_iam_policy" "cluster_autoscaler" {
+  name = "cluster-autoscaler-policy"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "autoscaling:DescribeAutoScalingGroups",
+          "autoscaling:DescribeAutoScalingInstances",
+          "autoscaling:DescribeLaunchConfigurations",
+          "autoscaling:DescribeScalingActivities",
+          "autoscaling:DescribeTags",
+          "autoscaling:SetDesiredCapacity",
+          "autoscaling:TerminateInstanceInAutoScalingGroup",
+          "ec2:DescribeImages",
+          "ec2:DescribeInstanceTypes",
+          "ec2:DescribeLaunchTemplateVersions",
+          "ec2:GetInstanceTypesFromInstanceRequirements",
+          "eks:DescribeNodegroup"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role" "cluster_autoscaler" {
+  name = "cluster-autoscaler"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Principal = {
+        Federated = aws_iam_openid_connect_provider.eks.arn
+      }
+      Action = "sts:AssumeRoleWithWebIdentity"
+      Condition = {
+        StringEquals = {
+          "${aws_iam_openid_connect_provider.eks.url}:sub" = "system:serviceaccount:kube-system:cluster-autoscaler"
+          "${aws_iam_openid_connect_provider.eks.url}:aud" = "sts.amazonaws.com"
+        }
+      }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "cluster_autoscaler" {
+  role       = aws_iam_role.cluster_autoscaler.name
+  policy_arn = aws_iam_policy.cluster_autoscaler.arn
+}</code></pre>
+
+        <h2>3. Karpenter — Spot NodePools with On-Demand Fallback</h2>
+
+        <h3>Karpenter Installation via Helm</h3>
+
+        <pre><code># SQS queue for Spot interruption handling
+resource "aws_sqs_queue" "karpenter_interruption" {
+  name                      = "karpenter-interruption-${var.cluster_name}"
+  message_retention_seconds = 300
+  tags                      = { Name = "karpenter-interruption" }
+}
+
+# EventBridge rules — feed Spot interruption events to SQS
+resource "aws_cloudwatch_event_rule" "karpenter_spot_interruption" {
+  for_each = {
+    spot_interruption  = "EC2 Spot Instance Interruption Warning"
+    instance_rebalance = "EC2 Instance Rebalance Recommendation"
+    instance_state     = "EC2 Instance State-change Notification"
+  }
+
+  name          = "karpenter-${each.key}"
+  event_pattern = jsonencode({
+    source      = ["aws.ec2"]
+    detail-type = [each.value]
+  })
+}
+
+resource "aws_cloudwatch_event_target" "karpenter_interruption" {
+  for_each = aws_cloudwatch_event_rule.karpenter_spot_interruption
+
+  rule = each.value.name
+  arn  = aws_sqs_queue.karpenter_interruption.arn
+}
+
+# Pod Identity association — Karpenter controller auth
+resource "aws_eks_pod_identity_association" "karpenter" {
+  cluster_name    = aws_eks_cluster.main.name
+  namespace       = "karpenter"
+  service_account = "karpenter"
+  role_arn        = aws_iam_role.karpenter_controller.arn
+}
+
+# Karpenter Helm release
+resource "helm_release" "karpenter" {
+  name                = "karpenter"
+  repository          = "oci://public.ecr.aws/karpenter"
+  repository_username = data.aws_ecrpublic_authorization_token.token.user_name
+  repository_password = data.aws_ecrpublic_authorization_token.token.password
+  chart               = "karpenter"
+  version             = "1.0.6"
+  namespace           = "karpenter"
+  create_namespace    = true
+
+  values = [yamlencode({
+    settings = {
+      clusterName       = aws_eks_cluster.main.name
+      clusterEndpoint   = aws_eks_cluster.main.endpoint
+      interruptionQueue = aws_sqs_queue.karpenter_interruption.name
+    }
+
+    serviceAccount = {
+      name        = "karpenter"
+      annotations = {}   # Pod Identity handles auth — no IRSA annotation needed
+    }
+
+    replicas = 2   # HA — two Karpenter controller pods
+
+    podDisruptionBudget = { maxUnavailable = 1 }
+
+    controller = {
+      resources = {
+        requests = { cpu = "100m", memory = "256Mi" }
+        limits   = { cpu = "1000m", memory = "1Gi" }
+      }
+    }
+
+    # Karpenter MUST run on the system node group
+    # If it runs on a Karpenter-managed node, it can evict itself
+    affinity = {
+      nodeAffinity = {
+        requiredDuringSchedulingIgnoredDuringExecution = {
+          nodeSelectorTerms = [{
+            matchExpressions = [{
+              key      = "node-role"
+              operator = "In"
+              values   = ["system"]
+            }]
+          }]
+        }
+      }
+    }
+
+    tolerations = [{
+      key      = "node-role"
+      value    = "system"
+      operator = "Equal"
+      effect   = "NoSchedule"
+    }]
+  })]
+
+  depends_on = [aws_eks_pod_identity_association.karpenter]
+}</code></pre>
+
+        <blockquote class="production-callout"><strong>Why this matters in production:</strong> The SQS interruption
+          queue is the single most impactful Karpenter config decision. Without it, Karpenter only detects Spot
+          termination when the node disappears — after the 2-minute warning has already elapsed. With the queue,
+          Karpenter receives the warning immediately and begins graceful drain before the instance is reclaimed, giving
+          your pods the full 2-minute window to shut down cleanly.</blockquote>
+
+        <h3>EC2NodeClass — Shared Node Configuration</h3>
+
+        <pre><code>apiVersion: karpenter.k8s.aws/v1
+kind: EC2NodeClass
+metadata:
+  name: default
+spec:
+  amiFamily: AL2023   # Amazon Linux 2023 — IMDSv2 enforced by default
+
+  role: karpenter-node-role
+
+  subnetSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: prod-eks-cluster
+
+  securityGroupSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: prod-eks-cluster
+
+  blockDeviceMappings:
+    - deviceName: /dev/xvda
+      ebs:
+        volumeSize: 50Gi
+        volumeType: gp3
+        iops: 3000
+        throughput: 125
+        encrypted: true
+
+  # IMDSv2 — containers cannot reach instance metadata
+  metadataOptions:
+    httpEndpoint:            enabled
+    httpPutResponseHopLimit: 1        # Blocks container access to IMDS
+    httpTokens:              required  # IMDSv2 required — no v1 fallback
+
+  tags:
+    Environment:       production
+    ManagedBy:         karpenter
+    kubernetes.io/cluster/prod-eks-cluster: owned</code></pre>
+
+        <h3>NodePool 1 — Spot General Purpose (80% of workloads)</h3>
+
+        <pre><code>apiVersion: karpenter.sh/v1
+kind: NodePool
+metadata:
+  name: spot-general
+spec:
+  template:
+    metadata:
+      labels:
+        node-pool: spot-general
+    spec:
+      nodeClassRef:
+        apiVersion: karpenter.k8s.aws/v1
+        kind: EC2NodeClass
+        name: default
+
+      requirements:
+        # Spot first — fall back to On-Demand if no Spot available
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values: ["spot", "on-demand"]   # Ordered: Spot preferred, OD fallback
+
+        - key: karpenter.k8s.aws/instance-category
+          operator: In
+          values: ["c", "m", "r"]   # Compute, General, Memory
+
+        - key: karpenter.k8s.aws/instance-cpu
+          operator: In
+          values: ["2", "4", "8", "16"]
+
+        # Include Graviton (arm64) for better Spot availability + price
+        - key: kubernetes.io/arch
+          operator: In
+          values: ["amd64", "arm64"]
+
+        - key: karpenter.k8s.aws/instance-generation
+          operator: Gt
+          values: ["2"]
+
+      startupTaints:
+        - key: node.cloudprovider.kubernetes.io/uninitialized
+          effect: NoSchedule
+
+  disruption:
+    consolidationPolicy: WhenEmptyOrUnderutilized
+    consolidateAfter: 30s
+    budgets:
+      - nodes: "20%"
+
+  limits:
+    cpu:    "500"
+    memory: "2000Gi"
+
+  weight: 10</code></pre>
+
+        <h3>NodePool 2 — On-Demand Latency-Sensitive (via Karpenter)</h3>
+
+        <pre><code>apiVersion: karpenter.sh/v1
+kind: NodePool
+metadata:
+  name: on-demand-latency
+spec:
+  template:
+    metadata:
+      labels:
+        node-pool: on-demand-latency
+    spec:
+      nodeClassRef:
+        apiVersion: karpenter.k8s.aws/v1
+        kind: EC2NodeClass
+        name: default
+
+      requirements:
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values: ["on-demand"]
+
+        - key: karpenter.k8s.aws/instance-category
+          operator: In
+          values: ["c", "m"]
+
+        - key: karpenter.k8s.aws/instance-cpu
+          operator: In
+          values: ["4", "8", "16"]
+
+        - key: kubernetes.io/arch
+          operator: In
+          values: ["amd64", "arm64"]
+
+      taints:
+        - key: workload-type
+          value: latency-sensitive-karpenter
+          effect: NoSchedule
+
+  disruption:
+    consolidationPolicy: WhenEmpty
+    consolidateAfter: 5m
+    budgets:
+      - nodes: "10%"
+
+  limits:
+    cpu:    "200"
+    memory: "800Gi"
+
+  weight: 20</code></pre>
+
+        <h2>4. Preventing Conflicts — The Critical Configuration</h2>
+        <p>Running Cluster Autoscaler and Karpenter in parallel requires careful configuration to prevent them from
+          interfering with each other. This is where most dual-autoscaler setups go wrong.</p>
+
+        <h3>Rule 1 — Cluster Autoscaler Must Not Touch Karpenter Nodes</h3>
+        <p>Cluster Autoscaler uses ASG tags for node group discovery. Karpenter-managed nodes are NOT in any ASG — they
+          are standalone EC2 instances. CA will not see them. But you must ensure CA only manages the tagged node groups:</p>
+
+        <pre><code># In the CA Helm values — explicit node group auto-discovery filter
+extraArgs = {
+  "node-group-auto-discovery" = "asg:tag=k8s.io/cluster-autoscaler/enabled=true,k8s.io/cluster-autoscaler/${cluster_name}=owned"
+}
+# Only ASGs with BOTH tags are managed by CA
+# Karpenter nodes have neither tag — CA ignores them completely</code></pre>
+
+        <h3>Rule 2 — Karpenter Must Not Consolidate MNG Nodes</h3>
+        <p>Tag your Managed Node Group instances to signal Karpenter should not consolidate them:</p>
+
+        <pre><code>resource "aws_eks_node_group" "on_demand_app" {
+  labels = {
+    "node-role"            = "on-demand-app"
+    "karpenter.sh/managed" = "false"   # Karpenter reads this and skips consolidation
+  }
+}</code></pre>
+
+        <p>Additionally, the pods on the On-Demand MNG have a taint (<code>workload-type: on-demand-critical</code>)
+          that Karpenter's NodePools do not tolerate. Even if Karpenter tried to consolidate, it could not reschedule
+          those pods.</p>
+
+        <h3>Rule 3 — Karpenter Must Run on System MNG, Not Its Own Nodes</h3>
+
+        <pre><code>affinity:
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: node-role
+              operator: In
+              values: ["system"]
+tolerations:
+  - key: node-role
+    value: system
+    operator: Equal
+    effect: NoSchedule</code></pre>
+
+        <p>If Karpenter runs on a node it manages, it can evict itself during consolidation — taking down the autoscaler
+          and leaving the cluster unable to scale. This is a catastrophic failure mode that is easy to prevent and hard
+          to recover from.</p>
+
+        <h3>Rule 4 — Set Pod Priorities to Guide Scheduling</h3>
+
+        <pre><code># High priority — latency-sensitive scoring pods
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: high-priority
+value: 1000000
+description: "Fraud scoring and payment-critical services"
+---
+# Default — general workloads on Spot
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: default-priority
+value: 0
+globalDefault: true
+description: "Default priority — Spot NodePool workloads"</code></pre>
+
+        <blockquote class="production-callout"><strong>Why this matters in production:</strong> Pod priority is the
+          mechanism that ensures fraud-scoring pods survive Spot interruption events. When Karpenter drains a Spot node,
+          high-priority pods are rescheduled first — they get new nodes before lower-priority batch workloads. Without
+          explicit PriorityClasses, all pods compete equally during mass eviction and the scoring path can go down.
+        </blockquote>
+
+        <h2>5. Pod Assignment — Who Goes Where</h2>
+
+        <h3>Critical Path Pods → On-Demand MNG (Cluster Autoscaler)</h3>
+
+        <pre><code># values-prod.yaml for fraud scoring service
+# This pod ONLY lands on the Cluster Autoscaler On-Demand MNG
+tolerations:
+  - key: "workload-type"
+    value: "on-demand-critical"
+    operator: Equal
+    effect: NoSchedule
+
+nodeSelector:
+  node-role: on-demand-app
+
+priorityClassName: high-priority</code></pre>
+
+        <h3>Batch and General Pods → Spot NodePool (Karpenter)</h3>
+
+        <pre><code># values-prod.yaml for enrichment service
+# No special toleration — lands on Karpenter Spot NodePool by default
+priorityClassName: default-priority
+
+resources:
+  requests:
+    cpu: "500m"
+    memory: "512Mi"
+  limits:
+    cpu: "2000m"
+    memory: "2Gi"</code></pre>
+
+        <h3>Latency-Sensitive but Not MNG Critical → Karpenter On-Demand NodePool</h3>
+
+        <pre><code># values-prod.yaml for real-time feature service
+tolerations:
+  - key: "workload-type"
+    value: "latency-sensitive-karpenter"
+    operator: Equal
+    effect: NoSchedule
+
+nodeSelector:
+  node-pool: on-demand-latency
+
+priorityClassName: high-priority</code></pre>
+
+        <h2>6. The Cost Story — Where the Savings Come From</h2>
+        <p>I will not put specific percentage savings in this section — every cluster is different, and a number I cannot
+          stand behind is worse than no number at all. What I can tell you is where the savings mechanism is and how to
+          calculate it for your own workload.</p>
+
+        <h3>The Three Saving Levers</h3>
+
+        <p><strong>Lever 1 — Spot discount vs On-Demand</strong><br>
+          Spot instances typically run at 60–70% discount vs On-Demand for the same instance type. Karpenter's
+          diversification across instance families and sizes increases Spot availability — reducing interruptions and
+          allowing more workloads to run on Spot consistently.</p>
+
+        <pre><code>Example calculation for your cluster:
+On-Demand price (m5.xlarge, eu-west-1): $0.192/hr
+Spot price (same, approximate):          $0.058/hr
+Discount:                                ~70%
+
+If 70% of your node-hours move from On-Demand to Spot:
+Monthly saving per node = ($0.192 - $0.058) × 730h = $97.82/month
+For 10 Spot nodes:                                   = $978/month</code></pre>
+
+        <p><strong>Lever 2 — Scale to zero overnight</strong><br>
+          Cluster Autoscaler cannot scale below <code>min_size</code>. If your <code>min_size</code> is 3 across two
+          On-Demand node groups, you pay for 3 nodes 24/7 regardless of demand. Karpenter NodePools have no floor —
+          they scale to zero when no pods need them.</p>
+
+        <pre><code>Example: 3 × m5.xlarge On-Demand idling overnight (8pm–8am, weekends):
+  Hours idle per month ≈ 12h/day × 22 weekdays + 48h weekend = 312h/month
+  Cost of idle baseline: 3 × $0.192 × 312h = $179.71/month saved</code></pre>
+
+        <p><strong>Lever 3 — Bin-packing via consolidation</strong><br>
+          Cluster Autoscaler removes underutilised nodes but does not actively consolidate. Two nodes at 30%
+          utilisation stay as two nodes. Karpenter runs continuous consolidation — it detects that all pods from Node A
+          can fit on Node B, evicts Node A, and terminates it. This is the lever that is hardest to quantify upfront but
+          often produces the largest saving in practice.</p>
+
+        <h3>How to Measure Your Own Saving</h3>
+        <p>Before enabling Karpenter, run this for two weeks with Cluster Autoscaler:</p>
+
+        <pre><code># Average node CPU utilisation across the cluster
+kubectl top nodes | awk 'NR>1 {sum+=$3; count++} END {print sum/count "%"}'
+
+# Count nodes by type
+kubectl get nodes -L karpenter.sh/capacity-type,node.kubernetes.io/instance-type \
+  --no-headers | awk '{print $6, $7}' | sort | uniq -c
+
+# Total EC2 spend — use AWS Cost Explorer filtered by:
+# Service: EC2, Tag: kubernetes.io/cluster/your-cluster-name</code></pre>
+
+        <blockquote>
+          <strong>The honest framing:</strong> The cost saving from this architecture is real and significant — Spot
+          discounts alone justify the operational investment for most clusters above 5 nodes. But the exact number
+          depends on your workload shape, your AZ Spot availability, and how aggressively you tune the consolidation
+          policy. Measure before and after. The tooling is free.
+        </blockquote>
+
+        <h2>7. Spot Interruption Handling — How Karpenter Protects Workloads</h2>
+        <p>When AWS sends a Spot interruption warning (2-minute notice), Karpenter:</p>
+        <ol>
+          <li>Receives the event via SQS (from EventBridge)</li>
+          <li>Immediately cordons the node — no new pods scheduled</li>
+          <li>Begins draining pods gracefully — respects <code>PodDisruptionBudget</code></li>
+          <li>Finds or provisions replacement capacity (next cheapest Spot or On-Demand fallback)</li>
+          <li>Reschedules pods on new node</li>
+          <li>Terminates the interrupted node</li>
+        </ol>
+
+        <pre><code># PodDisruptionBudget — apply to every Deployment running on Spot
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: enrichment-service-pdb
+  namespace: fraud-detection
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: enrichment-service</code></pre>
+
+        <pre><code># Graceful shutdown — application handles SIGTERM before node reclaim
+spec:
+  template:
+    spec:
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: enrichment-service
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 15"]   # Wait for LB deregistration</code></pre>
+
+        <blockquote>
+          <strong>Why the preStop sleep matters:</strong> Karpenter drains pods by sending SIGTERM and waiting
+          <code>terminationGracePeriodSeconds</code>. But the ALB or NLB may still be routing traffic to the pod for a
+          few seconds after SIGTERM is received. The preStop sleep creates a gap that allows the load balancer to
+          complete deregistration before the application starts shutting down. Without it, you drop in-flight requests
+          during Spot interruption handling.
+        </blockquote>
+
+        <h2>8. Observability — Knowing What Each Autoscaler Is Doing</h2>
+        <p>With two autoscalers running, you need visibility into which one is acting and why.</p>
+
+        <pre><code>resource "aws_cloudwatch_dashboard" "autoscaling" {
+  dashboard_name = "eks-autoscaling"
+
+  dashboard_body = jsonencode({
+    widgets = [
+      {
+        type = "metric"
+        properties = {
+          title  = "Karpenter — Nodes Launched vs Terminated"
+          metrics = [
+            ["Karpenter", "nodes_created_total", "NodePool", "spot-general"],
+            ["Karpenter", "nodes_terminated_total", "NodePool", "spot-general"]
+          ]
+          period = 60
+          stat   = "Sum"
+        }
+      },
+      {
+        type = "metric"
+        properties = {
+          title  = "Karpenter — Pod Scheduling Latency (p99)"
+          metrics = [
+            ["Karpenter", "scheduler_scheduling_duration_seconds", { stat = "p99" }]
+          ]
+        }
+      },
+      {
+        type = "metric"
+        properties = {
+          title  = "Cluster Autoscaler — Scale Events"
+          metrics = [
+            ["ContainerInsights", "cluster_autoscaler_scaled_up_nodes_count",
+              "ClusterName", var.cluster_name],
+            ["ContainerInsights", "cluster_autoscaler_scaled_down_nodes_count",
+              "ClusterName", var.cluster_name]
+          ]
+        }
+      }
+    ]
+  })
+}</code></pre>
+
+        <pre><code># Alert if Karpenter cannot provision nodes
+resource "aws_cloudwatch_metric_alarm" "karpenter_provisioning_failure" {
+  alarm_name          = "karpenter-provisioning-failure"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 3
+  metric_name         = "provisioner_scheduling_errors_total"
+  namespace           = "Karpenter"
+  period              = 60
+  statistic           = "Sum"
+  threshold           = 5
+  alarm_description   = "Karpenter failing to provision nodes — check Spot availability"
+  alarm_actions       = [aws_sns_topic.platform_alerts.arn]
+}
+
+# Alert if pending pods persist
+resource "aws_cloudwatch_metric_alarm" "persistent_pending_pods" {
+  alarm_name          = "persistent-pending-pods"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 5
+  metric_name         = "cluster_failed_node_count"
+  namespace           = "ContainerInsights"
+  period              = 60
+  statistic           = "Average"
+  threshold           = 0
+  alarm_description   = "Pods pending for >5 minutes — autoscaler may be failing"
+  alarm_actions       = [aws_sns_topic.platform_alerts.arn]
+}</code></pre>
+
+        <blockquote class="production-callout"><strong>Why this matters in production:</strong> Without separate
+          dashboards for each autoscaler, a scale-up event from CA and a consolidation event from Karpenter happening
+          simultaneously look like random node churn. The CloudWatch dashboard with both autoscaler metrics side-by-side
+          is what lets you tell the difference between expected behaviour and a conflict between the two systems.
+        </blockquote>
+
+        <h2>9. Common Mistakes &amp; Anti-Patterns</h2>
+
+        <div class="pitfall-card">
+          <h4 style="margin-top: 0; color: #d13212;">Mistake 1: Running Karpenter on a Node It Manages</h4>
+          <p style="margin-bottom: 0;">Karpenter can consolidate the node it runs on, evicting itself. The cluster
+            loses its autoscaler silently — pods stop scheduling, nodes pile up, no one knows why. Always use the System
+            MNG taint and affinity to pin Karpenter to nodes it does not manage.</p>
+        </div>
+
+        <div class="pitfall-card">
+          <h4 style="margin-top: 0; color: #d13212;">Mistake 2: Same Discovery Tags on MNG and Karpenter Nodes</h4>
+          <p style="margin-bottom: 0;">If your Cluster Autoscaler discovery tags also match Karpenter-launched nodes,
+            CA will try to manage them — calling ASG APIs that do not apply to standalone EC2 instances. This causes CA
+            errors and log spam that masks real issues. Use explicit tag filters in CA's
+            <code>node-group-auto-discovery</code> setting.</p>
+        </div>
+
+        <div class="pitfall-card">
+          <h4 style="margin-top: 0; color: #d13212;">Mistake 3: No PodDisruptionBudget on Spot Workloads</h4>
+          <p style="margin-bottom: 0;">Karpenter respects PDBs during consolidation and interruption handling. Without
+            a PDB, Karpenter may evict all replicas of a service simultaneously during a consolidation event — causing
+            an outage. Apply <code>minAvailable: 1</code> PDBs to every Deployment that runs on Spot.</p>
+        </div>
+
+        <div class="pitfall-card">
+          <h4 style="margin-top: 0; color: #d13212;">Mistake 4: Karpenter Spot-Only NodePool With No On-Demand Fallback</h4>
+          <p style="margin-bottom: 0;">A <code>spot-only</code> NodePool (capacity-type: spot, no on-demand) means
+            when Spot capacity is unavailable in all instance types in your AZs, pods remain pending indefinitely.
+            Always include <code>["spot", "on-demand"]</code> in the capacity-type requirement.</p>
+        </div>
+
+        <div class="pitfall-card">
+          <h4 style="margin-top: 0; color: #d13212;">Mistake 5: No Startup Taint</h4>
+          <p style="margin-bottom: 0;">Without the <code>node.cloudprovider.kubernetes.io/uninitialized</code> startup
+            taint, pods can be scheduled on a Karpenter node before the VPC CNI has fully initialised networking —
+            causing the pod to fail to get an IP and restart. Add the startup taint to all NodePools.</p>
+        </div>
+
+        <div class="pitfall-card">
+          <h4 style="margin-top: 0; color: #d13212;">Mistake 6: Forgetting the SQS Interruption Queue</h4>
+          <p style="margin-bottom: 0;">Karpenter without the interruption queue only detects Spot interruptions when
+            the node disappears — 2 minutes after the warning. With the SQS queue, Karpenter gets the warning
+            immediately and begins draining gracefully. The difference is whether pods are gracefully rescheduled or
+            abruptly killed.</p>
+        </div>
+
+        <div class="pitfall-card">
+          <h4 style="margin-top: 0; color: #d13212;">Mistake 7: Setting min_size = 0 on the On-Demand MNG</h4>
+          <p style="margin-bottom: 0;">A <code>min_size = 0</code> On-Demand MNG means CA can scale it to zero. If
+            Karpenter is simultaneously provisioning On-Demand fallback nodes, you briefly have zero guaranteed
+            On-Demand capacity. For regulated environments, keep <code>min_size = 2</code> on the On-Demand MNG to
+            maintain an HA baseline.</p>
+        </div>
+
+        <h2>Architecture Decision Matrix</h2>
+
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th>Requirement</th>
+              <th>Cluster Autoscaler Only</th>
+              <th>Karpenter Only</th>
+              <th>Both (Our Pattern)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Guaranteed On-Demand baseline</strong></td>
+              <td>✅ Via min_size</td>
+              <td>⚠️ Via NodePool OD fallback</td>
+              <td>✅ MNG min_size</td>
+            </tr>
+            <tr>
+              <td><strong>Spot cost optimisation</strong></td>
+              <td>⚠️ Manual Spot MNG</td>
+              <td>✅ Automatic diversification</td>
+              <td>✅ Karpenter NodePools</td>
+            </tr>
+            <tr>
+              <td><strong>Scale to zero overnight</strong></td>
+              <td>❌ min_size floor</td>
+              <td>✅ Full scale-to-zero</td>
+              <td>✅ Spot pools scale to zero</td>
+            </tr>
+            <tr>
+              <td><strong>Provisioning speed</strong></td>
+              <td>❌ 3-5 min</td>
+              <td>✅ 30-60 sec</td>
+              <td>✅ Karpenter for Spot</td>
+            </tr>
+            <tr>
+              <td><strong>Bin-packing / consolidation</strong></td>
+              <td>❌ No</td>
+              <td>✅ Continuous</td>
+              <td>✅ Karpenter handles Spot</td>
+            </tr>
+            <tr>
+              <td><strong>Spot interruption handling</strong></td>
+              <td>❌ Manual</td>
+              <td>✅ Automatic via SQS</td>
+              <td>✅ Karpenter handles Spot</td>
+            </tr>
+            <tr>
+              <td><strong>Isolated critical path</strong></td>
+              <td>✅ Dedicated MNG</td>
+              <td>⚠️ Taint-based only</td>
+              <td>✅ Dedicated MNG + CA</td>
+            </tr>
+            <tr>
+              <td><strong>Compliance (no Spot on critical)</strong></td>
+              <td>✅ Via node group</td>
+              <td>⚠️ Via tolerations</td>
+              <td>✅ MNG enforces it</td>
+            </tr>
+            <tr>
+              <td><strong>Operational complexity</strong></td>
+              <td>✅ Low</td>
+              <td>⚠️ Medium</td>
+              <td>⚠️ Medium (worth it)</td>
+            </tr>
+            <tr>
+              <td><strong>Cost at scale</strong></td>
+              <td>❌ High (idle On-Demand)</td>
+              <td>✅ Lowest</td>
+              <td>✅ Near-lowest</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div
+          style="background: var(--aws-highlight); padding: 32px; border-radius: 8px; border: 1px solid var(--aws-border); margin: 40px 0; text-align: center; border-left: 4px solid var(--aws-orange);">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 200" style="height: 70px; width: auto; fill: var(--aws-orange); display: block; margin: 0 auto 16px;">
+            <!-- Left: single tall On-Demand block (Cluster Autoscaler) -->
+            <rect x="20" y="20" width="80" height="160" rx="10" />
+            <!-- Mid: two stacked MNG tiers -->
+            <rect x="115" y="20" width="80" height="70" rx="8" />
+            <rect x="115" y="110" width="80" height="70" rx="8" />
+            <!-- Divider -->
+            <rect x="228" y="10" width="4" height="180" rx="2" />
+            <!-- Right: 3x2 grid of Spot pods (Karpenter) -->
+            <rect x="260" y="20" width="60" height="60" rx="8" />
+            <rect x="330" y="20" width="60" height="60" rx="8" />
+            <rect x="400" y="20" width="60" height="60" rx="8" />
+            <rect x="260" y="100" width="60" height="60" rx="8" />
+            <rect x="330" y="100" width="60" height="60" rx="8" />
+            <rect x="400" y="100" width="60" height="60" rx="8" />
+          </svg>
+          <h3 style="font-size: 18px; color: var(--aws-text); margin-top: 0; margin-bottom: 12px;">The Golden Rule</h3>
+          <p style="font-size: 15px; color: var(--aws-text-light); font-style: italic; margin-bottom: 0;">
+            "Cluster Autoscaler and Karpenter are not competitors — they serve different purposes and work best together.
+            Use Cluster Autoscaler to manage a stable, guaranteed On-Demand Managed Node Group for your most critical,
+            latency-sensitive workloads that cannot tolerate Spot interruption. Use Karpenter to manage everything else
+            — Spot for cost, On-Demand fallback for resilience, continuous consolidation for efficiency. The combination
+            gives you the compliance safety of guaranteed On-Demand capacity and the cost efficiency of right-sized,
+            bin-packed Spot compute. Running only one of them leaves either money on the table or operational risk on the
+            table."
+          </p>
+        </div>
+
+        <div style="margin: 40px 0;">
+          <span
+            style="font-weight: 700; color: var(--aws-text-light); margin-right: 12px; font-size: 13px;">Tags:</span>
+          <span class="tag">#AWS</span> <span class="tag">#EKS</span> <span class="tag">#Karpenter</span> <span
+            class="tag">#ClusterAutoscaler</span> <span class="tag">#Spot</span> <span class="tag">#FinOps</span> <span
+            class="tag">#Kubernetes</span> <span class="tag">#DevSecOps</span> <span class="tag">#IaC</span> <span
+            class="tag">#Terraform</span> <span class="tag">#Helm</span>
+        </div>
+      </div> <!-- End Blog Body -->
+
+      <div class="share-section">
+        <span style="font-weight: 700; color: var(--aws-text-light);">Share this article:</span>
+        <a href="https://www.linkedin.com/sharing/share-offsite/?url=https://www.ankushpanday.com/blog/compute/karpenter-vs-cluster-autoscaler-eks.html"
+          target="_blank" class="share-btn linkedin-btn">
+          <i class="fa-brands fa-linkedin"></i> Share on LinkedIn
+        </a>
+      </div>
+
+      <div class="author-card">
+        <div class="author-img"><i class="fa-solid fa-user-tie"></i></div>
+        <div>
+          <h4 style="margin: 0 0 8px 0; color: var(--aws-text);">Ankush Panday</h4>
+          <p style="margin: 0; font-size: 14px; color: var(--aws-text-light);">Specializing in highly scalable AWS
+            infrastructure and automated quality engineering.</p>
+          <a href="https://www.linkedin.com/in/ankush-panday-39b97824/" target="_blank"
+            style="display: inline-block; margin-top: 10px; color: var(--aws-blue); text-decoration: none; font-size: 13px; font-weight: 600;">Connect
+            on LinkedIn <i class="fa-solid fa-external-link" style="font-size: 10px;"></i></a>
+        </div>
+      </div>
+
+    </article>
+
+    <!-- NAVIGATION LINKS -->
+    <div class="nav-links">
+      <a href="ingress-alb-nlb-eks-traffic-routing.html" class="nav-link">
+        <i class="fa-solid fa-arrow-left"></i> Previous: Ingress vs ALB vs NLB in EKS
+      </a>
+      <a href="../index.html" class="nav-link">
+        Return to Blog Hub <i class="fa-solid fa-arrow-right"></i>
+      </a>
+    </div>
+
+  </main>
+
+  <footer class="aws-footer">
+    Built for Performance. Architected for the Cloud. &bull; &copy; 2026 <span>Ankush Panday</span>
+  </footer>
+
+</body>
+
+</html>

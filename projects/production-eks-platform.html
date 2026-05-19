@@ -917,6 +917,107 @@
           </div>
         </div>
 
+        <!-- WHAT I WOULD DO DIFFERENTLY -->
+        <h2>What I Would Do Differently</h2>
+
+        <p style="font-size: 14px; color: var(--aws-text-light); line-height: 1.7; margin-bottom: 24px;">
+          If I were starting this platform from scratch today, these are the decisions I would make differently — not
+          because the original decisions were wrong, but because experience reveals what matters earlier than you
+          expect.
+        </p>
+
+        <div class="lesson-card">
+          <div class="lesson-number">1</div>
+          <div class="lesson-content">
+            <div class="lesson-title">Define the namespace and RBAC model before any team deploys</div>
+            <div class="lesson-text">
+              The namespace structure evolved organically in the first few weeks — a natural consequence of building
+              a platform while other teams are actively trying to use it. The cost of retrofitting namespace
+              isolation, ResourceQuotas, and RBAC boundaries onto a running cluster is significantly higher than
+              designing those boundaries upfront. Even a rough RBAC model written on a whiteboard before the cluster
+              is provisioned saves weeks of careful migration work later. Define who owns which namespace, what
+              quotas apply, and what permissions each team has before the first workload is deployed — not after.
+            </div>
+          </div>
+        </div>
+
+        <div class="lesson-card">
+          <div class="lesson-number">2</div>
+          <div class="lesson-content">
+            <div class="lesson-title">Start with the two-cluster model (dev + prod) from the beginning</div>
+            <div class="lesson-text">
+              The initial architecture used a single cluster with namespace isolation between environments. It
+              worked — until it didn't. A noisy dev workload affecting staging, a cluster upgrade that impacted all
+              environments simultaneously, and audit questions about prod/non-prod separation eventually drove a
+              migration to dedicated clusters. The migration with live workloads was non-trivial. Starting with
+              separate clusters from Day 1 costs one extra control plane charge (~$73/month) and saves a significant
+              amount of future migration work. In a regulated environment, the prod/non-prod separation question
+              will always be asked. Answer it in the architecture, not in a meeting.
+            </div>
+          </div>
+        </div>
+
+        <div class="lesson-card">
+          <div class="lesson-number">3</div>
+          <div class="lesson-content">
+            <div class="lesson-title">Invest in Helm value hierarchy design before the first chart</div>
+            <div class="lesson-text">
+              The three-layer Helm values pattern — base, environment override, service override — was not in place
+              from the start. Early services had environment-specific values scattered with no consistent pattern.
+              Standardising this retroactively required touching every chart in the repository simultaneously. The
+              standard should have been defined and documented before the first chart was written, not extracted
+              from 10 charts that had already diverged from each other.
+            </div>
+          </div>
+        </div>
+
+        <div class="lesson-card">
+          <div class="lesson-number">4</div>
+          <div class="lesson-content">
+            <div class="lesson-title">Plan ACM certificate coverage before the first service goes external</div>
+            <div class="lesson-text">
+              We used ACM certificate ARNs attached at the NLB for both internal and external Nginx Ingress — the
+              right pattern. What we did not do upfront was provision wildcard certificates for all internal domain
+              patterns before services started needing external access. Individual certificates were requested per
+              service as each one needed to be exposed, creating a manual process that produced gaps when a service
+              needed to be reachable quickly. Provisioning wildcard ACM certificates for all expected domain
+              patterns on Day 1 and referencing them consistently via the NLB annotation across all Ingress
+              resources is the correct starting point. One certificate, one annotation value, consistent from the
+              start.
+            </div>
+          </div>
+        </div>
+
+        <div class="lesson-card">
+          <div class="lesson-number">5</div>
+          <div class="lesson-content">
+            <div class="lesson-title">Test Spot interruption handling explicitly before enabling Spot</div>
+            <div class="lesson-text">
+              Spot was enabled for batch workloads with the assumption that applications handled SIGTERM gracefully.
+              Most did. A small number did not — they had no <code>preStop</code> hook and no graceful shutdown
+              logic. The first Spot interruption event on those services caused dropped connections that were
+              difficult to reproduce in a test environment. Interruption handling should be a mandatory checklist
+              item verified for every service before Spot is enabled in production, not an assumption validated by
+              a live interruption event.
+            </div>
+          </div>
+        </div>
+
+        <div class="lesson-card">
+          <div class="lesson-number">6</div>
+          <div class="lesson-content">
+            <div class="lesson-title">Document the "why" in real time, not retrospectively</div>
+            <div class="lesson-text">
+              The Terraform code and Helm charts are well-documented. The architectural decision records — why a
+              specific networking pattern was chosen, why the scoring service runs On-Demand while enrichment runs
+              Spot, why Nginx Ingress was chosen over the ALB Ingress Controller — were written months after the
+              decisions were made. Memory is imperfect. Decisions that seemed obvious at the time required
+              reconstruction. Writing a one-paragraph decision record at the moment of the decision costs ten
+              minutes. Reconstructing it six months later costs an hour and is never quite accurate.
+            </div>
+          </div>
+        </div>
+
         <!-- IMPACT -->
         <h2>Outcomes &amp; Impact</h2>
 

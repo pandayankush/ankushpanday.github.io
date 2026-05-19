@@ -205,7 +205,7 @@ body {
   margin-left: 240px;
   flex: 1;
   padding: 24px;
-  padding-bottom: 400px;
+  padding-bottom: 40px;
   min-height: calc(100vh - 80px);
 }
 

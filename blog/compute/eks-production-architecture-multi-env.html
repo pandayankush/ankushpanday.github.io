@@ -150,6 +150,16 @@
     }
     .linkedin-btn:hover { background: #005f8d; color: white; }
   </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <style>
+    .hljs { background: transparent; padding: 0; color: #f8f8f2; }
+    .hljs-comment, .hljs-quote { color: #6a9955; }
+    .hljs-keyword, .hljs-built_in, .hljs-type { color: #569cd6; }
+    .hljs-string, .hljs-title { color: #ce9178; }
+    .hljs-attr, .hljs-variable, .hljs-selector-id { color: #9cdcfe; }
+    .hljs-number, .hljs-literal { color: #b5cea8; }
+    .hljs-meta, .hljs-tag { color: #f8f8f2; }
+  </style>
 </head>
 
 <body>
@@ -290,7 +300,7 @@
 
         <h3>Option A — One Cluster, Multiple Namespaces</h3>
 
-        <pre><code>prod-eks-cluster
+        <pre><code class="language-plaintext">prod-eks-cluster
 ├── namespace: fraud-detection-prod
 ├── namespace: fraud-detection-staging
 ├── namespace: fraud-detection-dev
@@ -305,7 +315,7 @@
 
         <h3>Option B — Cluster Per Environment (Recommended for Production Platforms)</h3>
 
-        <pre><code>dev-eks-cluster     (shared dev + staging, Spot-heavy, low cost)
+        <pre><code class="language-plaintext">dev-eks-cluster     (shared dev + staging, Spot-heavy, low cost)
 prod-eks-cluster    (production only, On-Demand for critical path)</code></pre>
 
         <p><strong>When this is right:</strong> Regulated environments (DORA, PCI-DSS, SOC 2), multi-team platforms,
@@ -319,7 +329,7 @@ prod-eks-cluster    (production only, On-Demand for critical path)</code></pre>
 
         <h3>Terraform — Multi-Cluster Pattern</h3>
 
-        <pre><code><span style="color:#6a9955"># environments/dev/main.tf</span>
+        <pre><code class="nohighlight"><span style="color:#6a9955"># environments/dev/main.tf</span>
 <span style="color:#569cd6">module</span> <span style="color:#ce9178">"eks_dev"</span> {
   <span style="color:#9cdcfe">source</span>  = <span style="color:#ce9178">"../../modules/eks-cluster"</span>
 
@@ -363,7 +373,7 @@ prod-eks-cluster    (production only, On-Demand for critical path)</code></pre>
 
         <h3>The Reusable EKS Cluster Module</h3>
 
-        <pre><code><span style="color:#6a9955"># modules/eks-cluster/main.tf</span>
+        <pre><code class="nohighlight"><span style="color:#6a9955"># modules/eks-cluster/main.tf</span>
 <span style="color:#569cd6">resource</span> <span style="color:#ce9178">"aws_eks_cluster"</span> <span style="color:#ce9178">"this"</span> {
   <span style="color:#9cdcfe">name</span>     = var.cluster_name
   <span style="color:#9cdcfe">role_arn</span> = aws_iam_role.cluster.arn
@@ -422,7 +432,7 @@ prod-eks-cluster    (production only, On-Demand for critical path)</code></pre>
           agent, Splunk forwarder, kube-proxy, VPC CNI. These pods must survive an AZ interruption without Kubernetes
           having to reschedule them from a terminated Spot node.</p>
 
-        <pre><code><span style="color:#569cd6">resource</span> <span style="color:#ce9178">"aws_eks_node_group"</span> <span style="color:#ce9178">"system"</span> {
+        <pre><code class="nohighlight"><span style="color:#569cd6">resource</span> <span style="color:#ce9178">"aws_eks_node_group"</span> <span style="color:#ce9178">"system"</span> {
   <span style="color:#9cdcfe">cluster_name</span>    = aws_eks_cluster.this.name
   <span style="color:#9cdcfe">node_group_name</span> = <span style="color:#ce9178">"system"</span>
   <span style="color:#9cdcfe">node_role_arn</span>   = aws_iam_role.node.arn
@@ -462,7 +472,7 @@ prod-eks-cluster    (production only, On-Demand for critical path)</code></pre>
 
         <p>Handles latency-sensitive workloads. On-Demand only — no Spot interruption risk for the critical path.</p>
 
-        <pre><code># karpenter/nodepools/on-demand.yaml
+        <pre><code class="language-yaml"># karpenter/nodepools/on-demand.yaml
 apiVersion: karpenter.sh/v1
 kind: NodePool
 metadata:
@@ -505,7 +515,7 @@ spec:
 
         <p>Handles background processors, ML batch jobs, enrichment services. Spot-only, aggressively bin-packed.</p>
 
-        <pre><code># karpenter/nodepools/spot-batch.yaml
+        <pre><code class="language-yaml"># karpenter/nodepools/spot-batch.yaml
 apiVersion: karpenter.sh/v1
 kind: NodePool
 metadata:
@@ -539,7 +549,7 @@ spec:
 
         <h3>EC2NodeClass — Shared Configuration</h3>
 
-        <pre><code># karpenter/nodeclass.yaml
+        <pre><code class="language-yaml"># karpenter/nodeclass.yaml
 apiVersion: karpenter.k8s.aws/v1
 kind: EC2NodeClass
 metadata:
@@ -576,7 +586,7 @@ spec:
 
         <h3>Assigning Pods to the Right Node Pool</h3>
 
-        <pre><code># Helm values — scoring service (latency-sensitive path)
+        <pre><code class="language-yaml"># Helm values — scoring service (latency-sensitive path)
 tolerations:
   - key: "workload-type"
     value: "latency-sensitive"
@@ -601,7 +611,7 @@ nodeSelector:
 
         <h3>Namespace Design — By Domain, Not By Team</h3>
 
-        <pre><code>prod-eks-cluster
+        <pre><code class="language-plaintext">prod-eks-cluster
 ├── kube-system        # Kubernetes system components — hands off
 ├── kube-public        # Public cluster info — hands off
 ├── argocd             # GitOps control plane — platform team only
@@ -618,7 +628,7 @@ nodeSelector:
 
         <h3>Terraform — Namespace + ResourceQuota + LimitRange</h3>
 
-        <pre><code><span style="color:#6a9955"># modules/eks-namespace/main.tf</span>
+        <pre><code class="nohighlight"><span style="color:#6a9955"># modules/eks-namespace/main.tf</span>
 <span style="color:#569cd6">resource</span> <span style="color:#ce9178">"kubernetes_namespace"</span> <span style="color:#ce9178">"this"</span> {
   <span style="color:#9cdcfe">metadata</span> {
     <span style="color:#9cdcfe">name</span>        = var.namespace_name
@@ -692,7 +702,7 @@ nodeSelector:
           significant security gap in a multi-team platform. Network Policies enforce which namespaces and pods can
           communicate.</p>
 
-        <pre><code># Default deny — apply to every namespace as the baseline
+        <pre><code class="language-yaml"># Default deny — apply to every namespace as the baseline
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -797,7 +807,7 @@ spec:
 
         <h3>The Access Model</h3>
 
-        <pre><code>Platform Team:  cluster-admin on all namespaces (via EKS Access Entry)
+        <pre><code class="language-plaintext">Platform Team:  cluster-admin on all namespaces (via EKS Access Entry)
 Domain Teams:   edit on their namespace(s) only
 CI/CD (ArgoCD): specific permissions per namespace via ArgoCD RBAC
 Read-Only:      view on all namespaces (architects, SREs, auditors)
@@ -805,7 +815,7 @@ No Direct Prod: nobody runs kubectl apply in production — ArgoCD only</code></
 
         <h3>Terraform — EKS Access Entries</h3>
 
-        <pre><code><span style="color:#6a9955"># Platform team — full cluster access</span>
+        <pre><code class="nohighlight"><span style="color:#6a9955"># Platform team — full cluster access</span>
 <span style="color:#569cd6">resource</span> <span style="color:#ce9178">"aws_eks_access_entry"</span> <span style="color:#ce9178">"platform_team"</span> {
   <span style="color:#9cdcfe">cluster_name</span>  = aws_eks_cluster.this.name
   <span style="color:#9cdcfe">principal_arn</span> = aws_iam_role.platform_engineer.arn
@@ -855,7 +865,7 @@ No Direct Prod: nobody runs kubectl apply in production — ArgoCD only</code></
         <p>The AWS managed <code>AmazonEKSEditPolicy</code> is broad. For regulated environments, create a custom Role
           that gives developers exactly what they need — no more:</p>
 
-        <pre><code># Read + debug only — no direct deployments in prod
+        <pre><code class="language-yaml"># Read + debug only — no direct deployments in prod
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
@@ -901,7 +911,7 @@ roleRef:
 
         <h3>The Three-Layer Hierarchy</h3>
 
-        <pre><code>charts/
+        <pre><code class="language-plaintext">charts/
 └── fraud-detection-service/
     ├── Chart.yaml
     ├── values.yaml           # Base — defaults for ALL environments
@@ -909,7 +919,7 @@ roleRef:
     ├── values-staging.yaml   # Staging overrides
     └── values-prod.yaml      # Production overrides</code></pre>
 
-        <pre><code># values.yaml — base defaults
+        <pre><code class="language-yaml"># values.yaml — base defaults
 replicaCount: 1
 
 image:
@@ -954,7 +964,7 @@ readinessProbe:
   initialDelaySeconds: 15
   periodSeconds: 5</code></pre>
 
-        <pre><code># values-dev.yaml — development overrides
+        <pre><code class="language-yaml"># values-dev.yaml — development overrides
 replicaCount: 1
 
 resources:
@@ -973,7 +983,7 @@ topologySpreadConstraints:
     topologyKey: topology.kubernetes.io/zone
     whenUnsatisfiable: ScheduleAnyway</code></pre>
 
-        <pre><code># values-prod.yaml — production overrides
+        <pre><code class="language-yaml"># values-prod.yaml — production overrides
 replicaCount: 2
 
 resources:
@@ -1006,7 +1016,7 @@ nodeSelector:
 
         <h3>ArgoCD ApplicationSet — Deploy to All Environments from One Definition</h3>
 
-        <pre><code># applicationset.yaml — one definition, three environments
+        <pre><code class="language-yaml"># applicationset.yaml — one definition, three environments
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
@@ -1100,7 +1110,7 @@ spec:
 
         <h3>Terraform — Controlled Version Bumps</h3>
 
-        <pre><code><span style="color:#569cd6">variable</span> <span style="color:#ce9178">"cluster_version"</span> {
+        <pre><code class="nohighlight"><span style="color:#569cd6">variable</span> <span style="color:#ce9178">"cluster_version"</span> {
   <span style="color:#9cdcfe">description</span> = <span style="color:#ce9178">"EKS Kubernetes version — change here to trigger upgrade"</span>
   <span style="color:#9cdcfe">type</span>        = string
   <span style="color:#9cdcfe">default</span>     = <span style="color:#ce9178">"1.30"</span>
@@ -1141,7 +1151,7 @@ spec:
 
         <h3>Dev Cluster — Scale to Zero Overnight</h3>
 
-        <pre><code><span style="color:#569cd6">resource</span> <span style="color:#ce9178">"aws_scheduler_schedule"</span> <span style="color:#ce9178">"dev_scale_down"</span> {
+        <pre><code class="nohighlight"><span style="color:#569cd6">resource</span> <span style="color:#ce9178">"aws_scheduler_schedule"</span> <span style="color:#ce9178">"dev_scale_down"</span> {
   <span style="color:#9cdcfe">name</span> = <span style="color:#ce9178">"dev-cluster-scale-down"</span>
 
   <span style="color:#9cdcfe">flexible_time_window</span> { <span style="color:#9cdcfe">mode</span> = <span style="color:#ce9178">"OFF"</span> }
@@ -1179,7 +1189,7 @@ spec:
 
         <h3>Kubecost — Per-Namespace Cost Visibility</h3>
 
-        <pre><code><span style="color:#569cd6">resource</span> <span style="color:#ce9178">"helm_release"</span> <span style="color:#ce9178">"kubecost"</span> {
+        <pre><code class="nohighlight"><span style="color:#569cd6">resource</span> <span style="color:#ce9178">"helm_release"</span> <span style="color:#ce9178">"kubecost"</span> {
   <span style="color:#9cdcfe">name</span>             = <span style="color:#ce9178">"kubecost"</span>
   <span style="color:#9cdcfe">repository</span>       = <span style="color:#ce9178">"https://kubecost.github.io/cost-analyzer/"</span>
   <span style="color:#9cdcfe">chart</span>            = <span style="color:#ce9178">"cost-analyzer"</span>
@@ -1200,7 +1210,7 @@ spec:
 
         <h3>Cost Summary — Multi-Environment</h3>
 
-        <pre><code>Dev Cluster  (Spot-heavy, scaled down overnight)
+        <pre><code class="language-plaintext">Dev Cluster  (Spot-heavy, scaled down overnight)
   Control plane:           $73/month
   Karpenter Spot nodes:   ~$80/month  (avg 2-3 nodes, business hours)
   ─────────────────────────────────────────
@@ -1423,6 +1433,7 @@ Prod Cluster  (MNG system + Karpenter)
       });
     }
   </script>
+  <script>hljs.highlightAll();</script>
 </body>
 
 </html>

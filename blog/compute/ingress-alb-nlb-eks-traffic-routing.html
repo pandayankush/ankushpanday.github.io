@@ -125,6 +125,16 @@
     .linkedin-btn { background: #0077b5; color: white; border: none; }
     .linkedin-btn:hover { background: #005f8d; color: white; }
   </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <style>
+    .hljs { background: transparent; padding: 0; color: #f8f8f2; }
+    .hljs-comment, .hljs-quote { color: #6a9955; }
+    .hljs-keyword, .hljs-built_in, .hljs-type { color: #569cd6; }
+    .hljs-string, .hljs-title { color: #ce9178; }
+    .hljs-attr, .hljs-variable, .hljs-selector-id { color: #9cdcfe; }
+    .hljs-number, .hljs-literal { color: #b5cea8; }
+    .hljs-meta, .hljs-tag { color: #f8f8f2; }
+  </style>
 </head>
 
 <body>
@@ -273,7 +283,7 @@
 
         <p>Before choosing any option, understand the full traffic path into your EKS cluster:</p>
 
-<pre><code>Internet
+<pre><code class="language-plaintext">Internet
     ↓
 Route 53 (DNS)
     ↓
@@ -301,7 +311,7 @@ Application pods — in PRIVATE subnets</code></pre>
 
         <p><strong>Nginx Ingress Controller</strong> is the most widely used. It runs as a Deployment in your cluster, reads all Ingress objects cluster-wide, and programs an Nginx reverse proxy accordingly. An NLB or ALB sits in front of the Nginx pods and forwards all traffic to them — Nginx then handles the Layer 7 routing.</p>
 
-<pre><code>Internet → NLB (L4, TCP passthrough) → Nginx Ingress pods → Application pods</code></pre>
+<pre><code class="language-plaintext">Internet → NLB (L4, TCP passthrough) → Nginx Ingress pods → Application pods</code></pre>
 
         <h3>Why Nginx Over the ALB Ingress Controller</h3>
 
@@ -315,7 +325,7 @@ Application pods — in PRIVATE subnets</code></pre>
 
         <h3>Full Nginx Ingress Setup — Terraform + Helm</h3>
 
-<pre><code><span style="color:#6a9955"># NLB for Nginx — Layer 4 passthrough, preserves client IP</span>
+<pre><code class="nohighlight"><span style="color:#6a9955"># NLB for Nginx — Layer 4 passthrough, preserves client IP</span>
 <span style="color:#569cd6">resource</span> <span style="color:#ce9178">"helm_release"</span> <span style="color:#ce9178">"nginx_ingress"</span> {
   <span style="color:#9cdcfe">name</span>             = <span style="color:#ce9178">"ingress-nginx"</span>
   <span style="color:#9cdcfe">repository</span>       = <span style="color:#ce9178">"https://kubernetes.github.io/ingress-nginx"</span>
@@ -397,7 +407,7 @@ Application pods — in PRIVATE subnets</code></pre>
 
         <h3>Ingress Resources — Routing Rules</h3>
 
-<pre><code># fraud-detection ingress — path-based routing to multiple services
+<pre><code class="language-yaml"># fraud-detection ingress — path-based routing to multiple services
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -488,7 +498,7 @@ spec:
 
         <p>This is the capability that saves the most money in a multi-namespace cluster:</p>
 
-<pre><code># Single Ingress in the ingress-nginx namespace routing to services
+<pre><code class="language-yaml"># Single Ingress in the ingress-nginx namespace routing to services
 # across multiple namespaces — not possible with ALB Ingress Controller
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -519,7 +529,7 @@ spec:
 
         <p>The <strong>AWS Load Balancer Controller</strong> is a Kubernetes controller that watches for Ingress objects with <code>ingressClassName: alb</code> and automatically creates and manages AWS Application Load Balancers. Each Ingress creates one ALB. The ALB routes directly to pod IPs (in <code>ip</code> target mode) — no Nginx pod in the middle.</p>
 
-<pre><code>Internet → ALB (managed by AWS LBC) → Pod IPs directly (via VPC ENI)</code></pre>
+<pre><code class="language-plaintext">Internet → ALB (managed by AWS LBC) → Pod IPs directly (via VPC ENI)</code></pre>
 
         <h3>When ALB Is the Right Choice</h3>
 
@@ -532,7 +542,7 @@ spec:
 
         <h3>Full ALB Ingress Controller Setup</h3>
 
-<pre><code><span style="color:#6a9955"># AWS Load Balancer Controller — IAM role via Pod Identity</span>
+<pre><code class="nohighlight"><span style="color:#6a9955"># AWS Load Balancer Controller — IAM role via Pod Identity</span>
 <span style="color:#569cd6">resource</span> <span style="color:#ce9178">"aws_iam_role"</span> <span style="color:#ce9178">"aws_lb_controller"</span> {
   <span style="color:#9cdcfe">name</span> = <span style="color:#ce9178">"aws-load-balancer-controller"</span>
 
@@ -586,7 +596,7 @@ spec:
 
         <h3>ALB Ingress — Production Configuration</h3>
 
-<pre><code># ALB Ingress — full production annotation set
+<pre><code class="language-yaml"># ALB Ingress — full production annotation set
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -651,7 +661,7 @@ spec:
 
         <p>This is the cost optimisation that changes the ALB cost equation. Without IngressGroup, each Ingress creates one ALB (~$22/month). With IngressGroup, multiple Ingress objects share one ALB:</p>
 
-<pre><code># Ingress 1 — fraud detection service
+<pre><code class="language-yaml"># Ingress 1 — fraud detection service
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -711,7 +721,7 @@ spec:
 
         <p>A Network Load Balancer operates at Layer 4 — it routes TCP and UDP packets without inspecting HTTP headers. In EKS, you create an NLB by creating a Kubernetes Service of type <code>LoadBalancer</code> with AWS-specific annotations. The AWS Load Balancer Controller provisions and manages the NLB automatically.</p>
 
-<pre><code>Internet → NLB (TCP passthrough) → Pod IPs directly</code></pre>
+<pre><code class="language-plaintext">Internet → NLB (TCP passthrough) → Pod IPs directly</code></pre>
 
         <h3>When NLB Is the Right Choice</h3>
 
@@ -726,7 +736,7 @@ spec:
 
         <h3>NLB via Kubernetes Service</h3>
 
-<pre><code># NLB Service — internet-facing with static EIP
+<pre><code class="language-yaml"># NLB Service — internet-facing with static EIP
 apiVersion: v1
 kind: Service
 metadata:
@@ -776,7 +786,7 @@ spec:
 
         <h3>NLB with TLS Passthrough vs TLS Termination</h3>
 
-<pre><code># TLS passthrough — NLB doesn't decrypt, pod handles TLS
+<pre><code class="language-yaml"># TLS passthrough — NLB doesn't decrypt, pod handles TLS
 # Use when your gRPC service does its own mTLS
 metadata:
   annotations:
@@ -797,7 +807,7 @@ metadata:
 
         <h3>The Default Behaviour (And Why It Fails)</h3>
 
-<pre><code>Default VPC CNI behaviour:
+<pre><code class="language-plaintext">Default VPC CNI behaviour:
 Node warm pool = max(WARM_ENI_TARGET, WARM_IP_TARGET)
 Default: WARM_ENI_TARGET = 1
 
@@ -810,7 +820,7 @@ Result: 30 IPs consumed before you've scheduled any meaningful workloads</code><
 
         <p>Prefix Delegation allocates a /28 block (16 IPs) per ENI slot instead of individual IPs. Same ENI count, 16× more IPs:</p>
 
-<pre><code><span style="color:#6a9955"># Enable prefix delegation in VPC CNI addon config</span>
+<pre><code class="nohighlight"><span style="color:#6a9955"># Enable prefix delegation in VPC CNI addon config</span>
 <span style="color:#569cd6">resource</span> <span style="color:#ce9178">"aws_eks_addon"</span> <span style="color:#ce9178">"vpc_cni"</span> {
   <span style="color:#9cdcfe">cluster_name</span>  = aws_eks_cluster.main.name
   <span style="color:#9cdcfe">addon_name</span>    = <span style="color:#ce9178">"vpc-cni"</span>
@@ -833,7 +843,7 @@ Result: 30 IPs consumed before you've scheduled any meaningful workloads</code><
 
         <p>Before Ingress makes sense, you need to understand Kubernetes Service types because Ingress sits on top of them:</p>
 
-<pre><code># ClusterIP — internal only, no external access
+<pre><code class="language-yaml"># ClusterIP — internal only, no external access
 # Default type — use for service-to-service communication
 apiVersion: v1
 kind: Service
@@ -887,7 +897,7 @@ spec:
 
         <p><strong>The cost implications:</strong></p>
 
-<pre><code>30 services × LoadBalancer type (NLB) = 30 NLBs × ~$16/month = $480/month
+<pre><code class="language-plaintext">30 services × LoadBalancer type (NLB) = 30 NLBs × ~$16/month = $480/month
 30 services × ClusterIP + 1 Nginx Ingress (NLB) = 1 NLB × ~$16/month = $16/month
 Saving: $464/month — just from using Ingress instead of LoadBalancer per service</code></pre>
 
@@ -895,7 +905,7 @@ Saving: $464/month — just from using Ingress instead of LoadBalancer per servi
 
         <p>Regardless of whether you use Nginx or ALB Ingress, you need TLS. For Nginx, cert-manager automates certificate issuance from Let's Encrypt or your internal CA. For ALB, ACM handles certificates natively — but cert-manager is still useful for internal services.</p>
 
-<pre><code><span style="color:#6a9955"># cert-manager via Helm</span>
+<pre><code class="nohighlight"><span style="color:#6a9955"># cert-manager via Helm</span>
 <span style="color:#569cd6">resource</span> <span style="color:#ce9178">"helm_release"</span> <span style="color:#ce9178">"cert_manager"</span> {
   <span style="color:#9cdcfe">name</span>             = <span style="color:#ce9178">"cert-manager"</span>
   <span style="color:#9cdcfe">repository</span>       = <span style="color:#ce9178">"https://charts.jetstack.io"</span>
@@ -916,7 +926,7 @@ Saving: $464/month — just from using Ingress instead of LoadBalancer per servi
   }
 }</code></pre>
 
-<pre><code># ClusterIssuer — Let's Encrypt with DNS-01 validation via Route 53
+<pre><code class="language-yaml"># ClusterIssuer — Let's Encrypt with DNS-01 validation via Route 53
 apiVersion: cert-manager.io/v1
 kind: ClusterIssuer
 metadata:
@@ -951,7 +961,7 @@ spec:
 
         <p>At Rabobank, the fraud detection platform used a hybrid approach that I'd replicate on any similar platform:</p>
 
-<pre><code>External access (developer tools, ArgoCD UI):
+<pre><code class="language-plaintext">External access (developer tools, ArgoCD UI):
   → ALB (AWS LBC) with WAF WebACL + ACM certificate
   → Single ALB shared via IngressGroup annotation
   → WAF blocks known bad IPs, rate limits, OWASP rules
@@ -978,7 +988,7 @@ gRPC services (internal service-to-service):
 
         <h2>9. Cost Comparison — Real Numbers</h2>
 
-<pre><code>Scenario: 30 microservices in EKS, eu-west-1
+<pre><code class="language-plaintext">Scenario: 30 microservices in EKS, eu-west-1
 
 Option A — LoadBalancer per service (30 NLBs):
   30 NLBs × $16.43/month           = $492.90/month
@@ -1006,7 +1016,7 @@ Annual saving:                       = $6,077.64/year</code></pre>
 
         <h2>10. The Decision Framework</h2>
 
-<pre><code>Do you need Layer 7 routing (path/host-based)?
+<pre><code class="language-plaintext">Do you need Layer 7 routing (path/host-based)?
 ├── NO → NLB (Service LoadBalancer type)
 │   ├── Need static IP? → NLB + EIP
 │   ├── gRPC / WebSocket / TCP? → NLB (TCP passthrough)
@@ -1047,7 +1057,7 @@ Service-to-service communication (internal only)?
           <h4>Mistake 3: Forgetting the Subnet Tags for ALB/NLB Discovery</h4>
           <p>The AWS Load Balancer Controller discovers subnets by tag. Without these tags, ALB/NLB creation silently fails with a confusing error:</p>
 
-<pre><code><span style="color:#6a9955"># Public subnets — required for internet-facing ALB/NLB</span>
+<pre><code class="nohighlight"><span style="color:#6a9955"># Public subnets — required for internet-facing ALB/NLB</span>
 <span style="color:#569cd6">resource</span> <span style="color:#ce9178">"aws_subnet"</span> <span style="color:#ce9178">"public"</span> {
   <span style="color:#9cdcfe">tags</span> = {
     <span style="color:#ce9178">"kubernetes.io/cluster/${var.cluster_name}"</span> = <span style="color:#ce9178">"shared"</span>
@@ -1069,7 +1079,7 @@ Service-to-service communication (internal only)?
           <h4>Mistake 4: No Connection Draining on Pod Termination</h4>
           <p>Without connection draining, a pod being terminated drops in-flight requests. The fix is two-part: deregistration delay on the target group (30 seconds) AND a <code>preStop</code> hook on the pod:</p>
 
-<pre><code>lifecycle:
+<pre><code class="language-yaml">lifecycle:
   preStop:
     exec:
       command: ["/bin/sh", "-c", "sleep 15"]   # Wait for LB to stop sending traffic
@@ -1082,7 +1092,7 @@ terminationGracePeriodSeconds: 45              # Must be &gt; deregistration del
           <h4>Mistake 5: Using Nginx Without Resource Requests</h4>
           <p>Nginx Ingress pods without CPU/memory requests will be scheduled on any available node and can be evicted by Karpenter during bin-packing. Set resource requests that reflect actual usage, and use topology spread constraints to keep one Nginx pod per AZ:</p>
 
-<pre><code>resources:
+<pre><code class="language-yaml">resources:
   requests:
     cpu: "200m"
     memory: "256Mi"
@@ -1100,7 +1110,7 @@ terminationGracePeriodSeconds: 45              # Must be &gt; deregistration del
           <h4>Mistake 7: Mixing Ingress Classes Without Isolation</h4>
           <p>Running both Nginx and ALB Ingress Controller on the same cluster without explicit <code>ingressClassName</code> on every Ingress resource causes both controllers to pick up every Ingress object and fight over it. Always set <code>ingressClassName</code> explicitly:</p>
 
-<pre><code>spec:
+<pre><code class="language-yaml">spec:
   ingressClassName: nginx    # or "alb" — always explicit, never rely on default</code></pre>
         </div>
 
@@ -1292,5 +1302,6 @@ terminationGracePeriodSeconds: 45              # Must be &gt; deregistration del
       });
     }
   </script>
+  <script>hljs.highlightAll();</script>
 </body>
 </html>

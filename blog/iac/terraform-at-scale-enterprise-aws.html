@@ -23,7 +23,16 @@
 
   <link rel="stylesheet" href="../../style.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
   <style>
+    /* highlight.js colour overrides — match manual span colours used in other blogs */
+    .hljs { background: transparent; padding: 0; color: #f8f8f2; }
+    .hljs-comment, .hljs-quote { color: #6a9955; }
+    .hljs-keyword, .hljs-built_in, .hljs-type { color: #569cd6; }
+    .hljs-string, .hljs-title { color: #ce9178; }
+    .hljs-attr, .hljs-variable, .hljs-selector-id { color: #9cdcfe; }
+    .hljs-number, .hljs-literal { color: #b5cea8; }
+    .hljs-meta, .hljs-tag { color: #f8f8f2; }
     .blog-page-container {
       max-width: 900px;
       margin: 100px auto 40px auto;
@@ -407,7 +416,7 @@
 
         <h3>The Wrong Way — The Monorepo Trap</h3>
 
-        <pre><code>terraform/
+        <pre><code class="language-plaintext">terraform/
 └── main.tf          ← VPC, EKS, IAM, RDS, all in here
     variables.tf
     outputs.tf
@@ -429,7 +438,7 @@
 
         <h3>The Right Way — Layered Repository Structure</h3>
 
-        <pre><code>infrastructure/
+        <pre><code class="language-plaintext">infrastructure/
 ├── modules/                     # Reusable building blocks
 │   ├── vpc/
 │   ├── eks-cluster/
@@ -486,7 +495,7 @@
 
         <h3>Backend Configuration</h3>
 
-        <pre><code># backend.hcl — per environment, per layer
+        <pre><code class="language-hcl"># backend.hcl — per environment, per layer
 terraform {
   backend "s3" {
     bucket         = "org-terraform-state-prod"
@@ -500,7 +509,7 @@ terraform {
 
         <h3>State Bucket — Hardened Configuration</h3>
 
-        <pre><code>resource "aws_s3_bucket" "terraform_state" {
+        <pre><code class="language-hcl">resource "aws_s3_bucket" "terraform_state" {
   bucket = "org-terraform-state-prod"
 
   lifecycle {
@@ -585,7 +594,7 @@ resource "aws_dynamodb_table" "terraform_lock" {
 
         <h3>State Separation by Layer and Environment</h3>
 
-        <pre><code>S3 bucket: org-terraform-state-prod
+        <pre><code class="language-plaintext">S3 bucket: org-terraform-state-prod
 ├── prod/networking/vpc.tfstate
 ├── prod/networking/tgw.tfstate
 ├── prod/security/kms.tfstate
@@ -605,7 +614,7 @@ S3 bucket: org-terraform-state-dev
 
         <h3>Reading State from Another Layer</h3>
 
-        <pre><code># In prod/platform/eks-cluster — reads VPC outputs from the networking layer
+        <pre><code class="language-hcl"># In prod/platform/eks-cluster — reads VPC outputs from the networking layer
 data "terraform_remote_state" "networking" {
   backend = "s3"
 
@@ -650,7 +659,7 @@ resource "aws_eks_cluster" "main" {
 
         <h3>Module Structure</h3>
 
-        <pre><code>modules/
+        <pre><code class="language-plaintext">modules/
 └── eks-cluster/
     ├── main.tf          # Resources
     ├── variables.tf     # Input definitions with types, defaults, validation
@@ -660,7 +669,7 @@ resource "aws_eks_cluster" "main" {
 
         <h3>Well-Designed Module — eks-cluster</h3>
 
-        <pre><code># modules/eks-cluster/variables.tf
+        <pre><code class="language-hcl"># modules/eks-cluster/variables.tf
 variable "cluster_name" {
   description = "EKS cluster name — used for resource naming and tags"
   type        = string
@@ -793,7 +802,7 @@ output "cluster_security_group_id" {
 
         <h3>Calling the Module from an Environment</h3>
 
-        <pre><code># environments/prod/platform/eks-cluster/main.tf
+        <pre><code class="language-hcl"># environments/prod/platform/eks-cluster/main.tf
 module "eks" {
   source = "../../../../modules/eks-cluster"
 
@@ -837,7 +846,7 @@ module "eks" {
         <p>Variables in Terraform have a loading order. Understanding it prevents the most common configuration
           mistakes:</p>
 
-        <pre><code>Priority (highest to lowest):
+        <pre><code class="language-plaintext">Priority (highest to lowest):
 1. -var flag on CLI                    → terraform apply -var="region=eu-west-1"
 2. -var-file flag on CLI               → terraform apply -var-file="prod.tfvars"
 3. terraform.tfvars in module dir      → auto-loaded
@@ -848,7 +857,7 @@ module "eks" {
 
         <h3>What Goes Where</h3>
 
-        <pre><code># dev.tfvars — non-sensitive dev values, committed to Git
+        <pre><code class="language-hcl"># dev.tfvars — non-sensitive dev values, committed to Git
 environment     = "dev"
 cluster_version = "1.30"
 min_node_count  = 1
@@ -884,7 +893,7 @@ data "aws_secretsmanager_secret_version" "db_password" {
 
         <h3>The Two-Stage Pipeline</h3>
 
-        <pre><code>Developer pushes branch
+        <pre><code class="language-plaintext">Developer pushes branch
     ↓
 Pull Request opened
     ↓
@@ -908,7 +917,7 @@ PR approved and merged to main
 
         <h3>GitHub Actions Pipeline</h3>
 
-        <pre><code># .github/workflows/terraform.yaml
+        <pre><code class="language-yaml"># .github/workflows/terraform.yaml
 name: Terraform CI/CD
 
 on:
@@ -1028,7 +1037,7 @@ jobs:
         <p>Never use the same IAM role for planning and applying. A plan role reads but cannot modify. An apply role
           can modify but only through the CI/CD pipeline.</p>
 
-        <pre><code># Plan role — read-only, used in PR checks
+        <pre><code class="language-hcl"># Plan role — read-only, used in PR checks
 resource "aws_iam_role" "terraform_plan" {
   name = "terraform-plan-role"
 
@@ -1088,7 +1097,7 @@ resource "aws_iam_role" "terraform_apply" {
           regulated environments, drift is a compliance finding. In all environments, drift is a ticking time bomb —
           the next <code>terraform apply</code> will revert the manual change, potentially breaking something.</p>
 
-        <pre><code># .github/workflows/drift-detection.yaml
+        <pre><code class="language-yaml"># .github/workflows/drift-detection.yaml
 name: Drift Detection
 
 on:
@@ -1145,7 +1154,7 @@ jobs:
 
         <p>For context, this is how the EKS fraud detection platform infrastructure is actually organised:</p>
 
-        <pre><code>infrastructure/
+        <pre><code class="language-plaintext">infrastructure/
 ├── modules/
 │   ├── vpc/                      # VPC, subnets, IGW, NAT GW, routes
 │   ├── eks-cluster/              # EKS control plane, encryption, logging
@@ -1367,5 +1376,6 @@ jobs:
     Built for Performance. Architected for the Cloud. &bull; &copy; 2026 <span>Ankush Panday</span>
   </footer>
 
+  <script>hljs.highlightAll();</script>
 </body>
 </html>

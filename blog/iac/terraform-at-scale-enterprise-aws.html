@@ -496,73 +496,73 @@
 
         <h3>Backend Configuration</h3>
 
-        <pre><code class="language-hcl"># backend.hcl — per environment, per layer
-terraform {
-  backend "s3" {
-    bucket         = "org-terraform-state-prod"
-    key            = "prod/platform/eks-cluster.tfstate"
-    region         = "eu-west-1"
-    encrypt        = true
-    kms_key_id     = "arn:aws:kms:eu-west-1:123456789012:key/terraform-state-key"
-    dynamodb_table = "terraform-state-lock"
+        <pre><code class="nohighlight"><span style="color:#6a9955"># backend.hcl — per environment, per layer</span>
+<span style="color:#569cd6">terraform</span> {
+  <span style="color:#569cd6">backend</span> <span style="color:#ce9178">"s3"</span> {
+    <span style="color:#9cdcfe">bucket</span>         = <span style="color:#ce9178">"org-terraform-state-prod"</span>
+    <span style="color:#9cdcfe">key</span>            = <span style="color:#ce9178">"prod/platform/eks-cluster.tfstate"</span>
+    <span style="color:#9cdcfe">region</span>         = <span style="color:#ce9178">"eu-west-1"</span>
+    <span style="color:#9cdcfe">encrypt</span>        = <span style="color:#b5cea8">true</span>
+    <span style="color:#9cdcfe">kms_key_id</span>     = <span style="color:#ce9178">"arn:aws:kms:eu-west-1:123456789012:key/terraform-state-key"</span>
+    <span style="color:#9cdcfe">dynamodb_table</span> = <span style="color:#ce9178">"terraform-state-lock"</span>
   }
 }</code></pre>
 
         <h3>State Bucket — Hardened Configuration</h3>
 
-        <pre><code class="language-hcl">resource "aws_s3_bucket" "terraform_state" {
-  bucket = "org-terraform-state-prod"
+        <pre><code class="nohighlight"><span style="color:#569cd6">resource</span> <span style="color:#ce9178">"aws_s3_bucket"</span> <span style="color:#ce9178">"terraform_state"</span> {
+  <span style="color:#9cdcfe">bucket</span> = <span style="color:#ce9178">"org-terraform-state-prod"</span>
 
-  lifecycle {
-    prevent_destroy = true   # Prevent accidental deletion of state bucket
+  <span style="color:#569cd6">lifecycle</span> {
+    <span style="color:#9cdcfe">prevent_destroy</span> = <span style="color:#b5cea8">true</span>   <span style="color:#6a9955"># Prevent accidental deletion of state bucket</span>
   }
 
-  tags = { Name = "terraform-state-prod", Sensitivity = "critical" }
+  <span style="color:#9cdcfe">tags</span> = { <span style="color:#9cdcfe">Name</span> = <span style="color:#ce9178">"terraform-state-prod"</span>, <span style="color:#9cdcfe">Sensitivity</span> = <span style="color:#ce9178">"critical"</span> }
 }
 
-resource "aws_s3_bucket_versioning" "state" {
-  bucket = aws_s3_bucket.terraform_state.id
-  versioning_configuration { status = "Enabled" }
+<span style="color:#569cd6">resource</span> <span style="color:#ce9178">"aws_s3_bucket_versioning"</span> <span style="color:#ce9178">"state"</span> {
+  <span style="color:#9cdcfe">bucket</span> = aws_s3_bucket.terraform_state.id
+  <span style="color:#569cd6">versioning_configuration</span> { <span style="color:#9cdcfe">status</span> = <span style="color:#ce9178">"Enabled"</span> }
 }
 
-resource "aws_s3_bucket_server_side_encryption_configuration" "state" {
-  bucket = aws_s3_bucket.terraform_state.id
+<span style="color:#569cd6">resource</span> <span style="color:#ce9178">"aws_s3_bucket_server_side_encryption_configuration"</span> <span style="color:#ce9178">"state"</span> {
+  <span style="color:#9cdcfe">bucket</span> = aws_s3_bucket.terraform_state.id
 
-  rule {
-    apply_server_side_encryption_by_default {
-      sse_algorithm     = "aws:kms"
-      kms_master_key_id = aws_kms_key.terraform_state.arn
+  <span style="color:#569cd6">rule</span> {
+    <span style="color:#569cd6">apply_server_side_encryption_by_default</span> {
+      <span style="color:#9cdcfe">sse_algorithm</span>     = <span style="color:#ce9178">"aws:kms"</span>
+      <span style="color:#9cdcfe">kms_master_key_id</span> = aws_kms_key.terraform_state.arn
     }
-    bucket_key_enabled = true
+    <span style="color:#9cdcfe">bucket_key_enabled</span> = <span style="color:#b5cea8">true</span>
   }
 }
 
-resource "aws_s3_bucket_public_access_block" "state" {
-  bucket                  = aws_s3_bucket.terraform_state.id
-  block_public_acls       = true
-  block_public_policy     = true
-  ignore_public_acls      = true
-  restrict_public_buckets = true
+<span style="color:#569cd6">resource</span> <span style="color:#ce9178">"aws_s3_bucket_public_access_block"</span> <span style="color:#ce9178">"state"</span> {
+  <span style="color:#9cdcfe">bucket</span>                  = aws_s3_bucket.terraform_state.id
+  <span style="color:#9cdcfe">block_public_acls</span>       = <span style="color:#b5cea8">true</span>
+  <span style="color:#9cdcfe">block_public_policy</span>     = <span style="color:#b5cea8">true</span>
+  <span style="color:#9cdcfe">ignore_public_acls</span>      = <span style="color:#b5cea8">true</span>
+  <span style="color:#9cdcfe">restrict_public_buckets</span> = <span style="color:#b5cea8">true</span>
 }
 
-resource "aws_s3_bucket_policy" "state" {
-  bucket = aws_s3_bucket.terraform_state.id
+<span style="color:#569cd6">resource</span> <span style="color:#ce9178">"aws_s3_bucket_policy"</span> <span style="color:#ce9178">"state"</span> {
+  <span style="color:#9cdcfe">bucket</span> = aws_s3_bucket.terraform_state.id
 
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
+  <span style="color:#9cdcfe">policy</span> = jsonencode({
+    <span style="color:#9cdcfe">Version</span> = <span style="color:#ce9178">"2012-10-17"</span>
+    <span style="color:#9cdcfe">Statement</span> = [
       {
-        Sid    = "DenyNonTerraformAccess"
-        Effect = "Deny"
-        Principal = { AWS = "*" }
-        Action = "s3:*"
-        Resource = [
+        <span style="color:#9cdcfe">Sid</span>    = <span style="color:#ce9178">"DenyNonTerraformAccess"</span>
+        <span style="color:#9cdcfe">Effect</span> = <span style="color:#ce9178">"Deny"</span>
+        <span style="color:#9cdcfe">Principal</span> = { <span style="color:#9cdcfe">AWS</span> = <span style="color:#ce9178">"*"</span> }
+        <span style="color:#9cdcfe">Action</span> = <span style="color:#ce9178">"s3:*"</span>
+        <span style="color:#9cdcfe">Resource</span> = [
           aws_s3_bucket.terraform_state.arn,
-          "${aws_s3_bucket.terraform_state.arn}/*"
+          <span style="color:#ce9178">"${aws_s3_bucket.terraform_state.arn}/*"</span>
         ]
-        Condition = {
-          StringNotEquals = {
-            "aws:PrincipalArn" = [
+        <span style="color:#9cdcfe">Condition</span> = {
+          <span style="color:#9cdcfe">StringNotEquals</span> = {
+            <span style="color:#ce9178">"aws:PrincipalArn"</span> = [
               aws_iam_role.terraform_ci.arn,
               aws_iam_role.platform_engineer.arn
             ]
@@ -573,24 +573,24 @@ resource "aws_s3_bucket_policy" "state" {
   })
 }
 
-resource "aws_dynamodb_table" "terraform_lock" {
-  name         = "terraform-state-lock"
-  billing_mode = "PAY_PER_REQUEST"
-  hash_key     = "LockID"
+<span style="color:#569cd6">resource</span> <span style="color:#ce9178">"aws_dynamodb_table"</span> <span style="color:#ce9178">"terraform_lock"</span> {
+  <span style="color:#9cdcfe">name</span>         = <span style="color:#ce9178">"terraform-state-lock"</span>
+  <span style="color:#9cdcfe">billing_mode</span> = <span style="color:#ce9178">"PAY_PER_REQUEST"</span>
+  <span style="color:#9cdcfe">hash_key</span>     = <span style="color:#ce9178">"LockID"</span>
 
-  attribute {
-    name = "LockID"
-    type = "S"
+  <span style="color:#569cd6">attribute</span> {
+    <span style="color:#9cdcfe">name</span> = <span style="color:#ce9178">"LockID"</span>
+    <span style="color:#9cdcfe">type</span> = <span style="color:#ce9178">"S"</span>
   }
 
-  server_side_encryption {
-    enabled     = true
-    kms_key_arn = aws_kms_key.terraform_state.arn
+  <span style="color:#569cd6">server_side_encryption</span> {
+    <span style="color:#9cdcfe">enabled</span>     = <span style="color:#b5cea8">true</span>
+    <span style="color:#9cdcfe">kms_key_arn</span> = aws_kms_key.terraform_state.arn
   }
 
-  point_in_time_recovery { enabled = true }
+  <span style="color:#569cd6">point_in_time_recovery</span> { <span style="color:#9cdcfe">enabled</span> = <span style="color:#b5cea8">true</span> }
 
-  tags = { Name = "terraform-state-lock" }
+  <span style="color:#9cdcfe">tags</span> = { <span style="color:#9cdcfe">Name</span> = <span style="color:#ce9178">"terraform-state-lock"</span> }
 }</code></pre>
 
         <h3>State Separation by Layer and Environment</h3>
@@ -615,21 +615,21 @@ S3 bucket: org-terraform-state-dev
 
         <h3>Reading State from Another Layer</h3>
 
-        <pre><code class="language-hcl"># In prod/platform/eks-cluster — reads VPC outputs from the networking layer
-data "terraform_remote_state" "networking" {
-  backend = "s3"
+        <pre><code class="nohighlight"><span style="color:#6a9955"># In prod/platform/eks-cluster — reads VPC outputs from the networking layer</span>
+<span style="color:#569cd6">data</span> <span style="color:#ce9178">"terraform_remote_state"</span> <span style="color:#ce9178">"networking"</span> {
+  <span style="color:#569cd6">backend</span> = <span style="color:#ce9178">"s3"</span>
 
-  config = {
-    bucket  = "org-terraform-state-prod"
-    key     = "prod/networking/vpc.tfstate"
-    region  = "eu-west-1"
+  <span style="color:#9cdcfe">config</span> = {
+    <span style="color:#9cdcfe">bucket</span>  = <span style="color:#ce9178">"org-terraform-state-prod"</span>
+    <span style="color:#9cdcfe">key</span>     = <span style="color:#ce9178">"prod/networking/vpc.tfstate"</span>
+    <span style="color:#9cdcfe">region</span>  = <span style="color:#ce9178">"eu-west-1"</span>
   }
 }
 
-resource "aws_eks_cluster" "main" {
-  vpc_config {
-    subnet_ids = data.terraform_remote_state.networking.outputs.private_subnet_ids
-    # No hardcoding of subnet IDs — pulled directly from networking state
+<span style="color:#569cd6">resource</span> <span style="color:#ce9178">"aws_eks_cluster"</span> <span style="color:#ce9178">"main"</span> {
+  <span style="color:#569cd6">vpc_config</span> {
+    <span style="color:#9cdcfe">subnet_ids</span> = <span style="color:#569cd6">data</span>.terraform_remote_state.networking.outputs.private_subnet_ids
+    <span style="color:#6a9955"># No hardcoding of subnet IDs — pulled directly from networking state</span>
   }
 }</code></pre>
 
@@ -670,175 +670,175 @@ resource "aws_eks_cluster" "main" {
 
         <h3>Well-Designed Module — eks-cluster</h3>
 
-        <pre><code class="language-hcl"># modules/eks-cluster/variables.tf
-variable "cluster_name" {
-  description = "EKS cluster name — used for resource naming and tags"
-  type        = string
+        <pre><code class="nohighlight"><span style="color:#6a9955"># modules/eks-cluster/variables.tf</span>
+<span style="color:#569cd6">variable</span> <span style="color:#ce9178">"cluster_name"</span> {
+  <span style="color:#9cdcfe">description</span> = <span style="color:#ce9178">"EKS cluster name — used for resource naming and tags"</span>
+  <span style="color:#9cdcfe">type</span>        = string
 
-  validation {
-    condition     = can(regex("^[a-z][a-z0-9-]{2,38}[a-z0-9]$", var.cluster_name))
-    error_message = "Cluster name must be lowercase, 4-40 chars, alphanumeric and hyphens only."
+  <span style="color:#569cd6">validation</span> {
+    <span style="color:#9cdcfe">condition</span>     = can(regex(<span style="color:#ce9178">"^[a-z][a-z0-9-]{2,38}[a-z0-9]$"</span>, var.cluster_name))
+    <span style="color:#9cdcfe">error_message</span> = <span style="color:#ce9178">"Cluster name must be lowercase, 4-40 chars, alphanumeric and hyphens only."</span>
   }
 }
 
-variable "cluster_version" {
-  description = "Kubernetes version — must be a supported EKS version"
-  type        = string
-  default     = "1.30"
+<span style="color:#569cd6">variable</span> <span style="color:#ce9178">"cluster_version"</span> {
+  <span style="color:#9cdcfe">description</span> = <span style="color:#ce9178">"Kubernetes version — must be a supported EKS version"</span>
+  <span style="color:#9cdcfe">type</span>        = string
+  <span style="color:#9cdcfe">default</span>     = <span style="color:#ce9178">"1.30"</span>
 
-  validation {
-    condition     = contains(["1.28", "1.29", "1.30", "1.31"], var.cluster_version)
-    error_message = "Cluster version must be a currently supported EKS version."
+  <span style="color:#569cd6">validation</span> {
+    <span style="color:#9cdcfe">condition</span>     = contains([<span style="color:#ce9178">"1.28"</span>, <span style="color:#ce9178">"1.29"</span>, <span style="color:#ce9178">"1.30"</span>, <span style="color:#ce9178">"1.31"</span>], var.cluster_version)
+    <span style="color:#9cdcfe">error_message</span> = <span style="color:#ce9178">"Cluster version must be a currently supported EKS version."</span>
   }
 }
 
-variable "environment" {
-  description = "Environment — drives defaults for log retention, endpoint access, etc."
-  type        = string
+<span style="color:#569cd6">variable</span> <span style="color:#ce9178">"environment"</span> {
+  <span style="color:#9cdcfe">description</span> = <span style="color:#ce9178">"Environment — drives defaults for log retention, endpoint access, etc."</span>
+  <span style="color:#9cdcfe">type</span>        = string
 
-  validation {
-    condition     = contains(["dev", "staging", "prod"], var.environment)
-    error_message = "Environment must be dev, staging, or prod."
+  <span style="color:#569cd6">validation</span> {
+    <span style="color:#9cdcfe">condition</span>     = contains([<span style="color:#ce9178">"dev"</span>, <span style="color:#ce9178">"staging"</span>, <span style="color:#ce9178">"prod"</span>], var.environment)
+    <span style="color:#9cdcfe">error_message</span> = <span style="color:#ce9178">"Environment must be dev, staging, or prod."</span>
   }
 }
 
-variable "vpc_id" {
-  description = "VPC ID for the EKS cluster"
-  type        = string
+<span style="color:#569cd6">variable</span> <span style="color:#ce9178">"vpc_id"</span> {
+  <span style="color:#9cdcfe">description</span> = <span style="color:#ce9178">"VPC ID for the EKS cluster"</span>
+  <span style="color:#9cdcfe">type</span>        = string
 }
 
-variable "subnet_ids" {
-  description = "Private subnet IDs — must span at least 2 AZs"
-  type        = list(string)
+<span style="color:#569cd6">variable</span> <span style="color:#ce9178">"subnet_ids"</span> {
+  <span style="color:#9cdcfe">description</span> = <span style="color:#ce9178">"Private subnet IDs — must span at least 2 AZs"</span>
+  <span style="color:#9cdcfe">type</span>        = list(string)
 
-  validation {
-    condition     = length(var.subnet_ids) >= 2
-    error_message = "At least 2 subnets required for multi-AZ node deployment."
+  <span style="color:#569cd6">validation</span> {
+    <span style="color:#9cdcfe">condition</span>     = length(var.subnet_ids) >= <span style="color:#b5cea8">2</span>
+    <span style="color:#9cdcfe">error_message</span> = <span style="color:#ce9178">"At least 2 subnets required for multi-AZ node deployment."</span>
   }
 }
 
-variable "endpoint_public_access" {
-  description = "Allow public kubectl access — should be false in prod"
-  type        = bool
-  default     = false   # Secure by default
+<span style="color:#569cd6">variable</span> <span style="color:#ce9178">"endpoint_public_access"</span> {
+  <span style="color:#9cdcfe">description</span> = <span style="color:#ce9178">"Allow public kubectl access — should be false in prod"</span>
+  <span style="color:#9cdcfe">type</span>        = bool
+  <span style="color:#9cdcfe">default</span>     = <span style="color:#b5cea8">false</span>   <span style="color:#6a9955"># Secure by default</span>
 }
 
-variable "tags" {
-  description = "Additional tags applied to all resources"
-  type        = map(string)
-  default     = {}
+<span style="color:#569cd6">variable</span> <span style="color:#ce9178">"tags"</span> {
+  <span style="color:#9cdcfe">description</span> = <span style="color:#ce9178">"Additional tags applied to all resources"</span>
+  <span style="color:#9cdcfe">type</span>        = map(string)
+  <span style="color:#9cdcfe">default</span>     = {}
 }
 
-# modules/eks-cluster/main.tf
-locals {
-  log_retention_days = var.environment == "prod" ? 90 : 14
-  kms_deletion_days  = var.environment == "prod" ? 30 : 7
+<span style="color:#6a9955"># modules/eks-cluster/main.tf</span>
+<span style="color:#569cd6">locals</span> {
+  <span style="color:#9cdcfe">log_retention_days</span> = var.<span style="color:#9cdcfe">environment</span> == <span style="color:#ce9178">"prod"</span> ? <span style="color:#b5cea8">90</span> : <span style="color:#b5cea8">14</span>
+  <span style="color:#9cdcfe">kms_deletion_days</span>  = var.<span style="color:#9cdcfe">environment</span> == <span style="color:#ce9178">"prod"</span> ? <span style="color:#b5cea8">30</span> : <span style="color:#b5cea8">7</span>
 
-  common_tags = merge(var.tags, {
-    Environment = var.environment
-    ManagedBy   = "terraform"
-    Module      = "eks-cluster"
-    Cluster     = var.cluster_name
+  <span style="color:#9cdcfe">common_tags</span> = merge(var.tags, {
+    <span style="color:#9cdcfe">Environment</span> = var.environment
+    <span style="color:#9cdcfe">ManagedBy</span>   = <span style="color:#ce9178">"terraform"</span>
+    <span style="color:#9cdcfe">Module</span>      = <span style="color:#ce9178">"eks-cluster"</span>
+    <span style="color:#9cdcfe">Cluster</span>     = var.cluster_name
   })
 }
 
-resource "aws_eks_cluster" "this" {
-  name     = var.cluster_name
-  role_arn = aws_iam_role.cluster.arn
-  version  = var.cluster_version
+<span style="color:#569cd6">resource</span> <span style="color:#ce9178">"aws_eks_cluster"</span> <span style="color:#ce9178">"this"</span> {
+  <span style="color:#9cdcfe">name</span>     = var.cluster_name
+  <span style="color:#9cdcfe">role_arn</span> = aws_iam_role.cluster.arn
+  <span style="color:#9cdcfe">version</span>  = var.cluster_version
 
-  vpc_config {
-    subnet_ids              = var.subnet_ids
-    endpoint_private_access = true
-    endpoint_public_access  = var.endpoint_public_access
-    security_group_ids      = [aws_security_group.cluster.id]
+  <span style="color:#569cd6">vpc_config</span> {
+    <span style="color:#9cdcfe">subnet_ids</span>              = var.subnet_ids
+    <span style="color:#9cdcfe">endpoint_private_access</span> = <span style="color:#b5cea8">true</span>
+    <span style="color:#9cdcfe">endpoint_public_access</span>  = var.endpoint_public_access
+    <span style="color:#9cdcfe">security_group_ids</span>      = [aws_security_group.cluster.id]
   }
 
-  encryption_config {
-    provider  { key_arn = aws_kms_key.secrets.arn }
-    resources = ["secrets"]
+  <span style="color:#569cd6">encryption_config</span> {
+    <span style="color:#569cd6">provider</span>  { <span style="color:#9cdcfe">key_arn</span> = aws_kms_key.secrets.arn }
+    <span style="color:#9cdcfe">resources</span> = [<span style="color:#ce9178">"secrets"</span>]
   }
 
-  enabled_cluster_log_types = var.environment == "prod" ? [
-    "api", "audit", "authenticator", "controllerManager", "scheduler"
-  ] : ["api", "audit"]
+  <span style="color:#9cdcfe">enabled_cluster_log_types</span> = var.<span style="color:#9cdcfe">environment</span> == <span style="color:#ce9178">"prod"</span> ? [
+    <span style="color:#ce9178">"api"</span>, <span style="color:#ce9178">"audit"</span>, <span style="color:#ce9178">"authenticator"</span>, <span style="color:#ce9178">"controllerManager"</span>, <span style="color:#ce9178">"scheduler"</span>
+  ] : [<span style="color:#ce9178">"api"</span>, <span style="color:#ce9178">"audit"</span>]
 
-  access_config {
-    authentication_mode                         = "API_AND_CONFIG_MAP"
-    bootstrap_cluster_creator_admin_permissions = false
+  <span style="color:#569cd6">access_config</span> {
+    <span style="color:#9cdcfe">authentication_mode</span>                         = <span style="color:#ce9178">"API_AND_CONFIG_MAP"</span>
+    <span style="color:#9cdcfe">bootstrap_cluster_creator_admin_permissions</span> = <span style="color:#b5cea8">false</span>
   }
 
-  tags = local.common_tags
+  <span style="color:#9cdcfe">tags</span> = <span style="color:#569cd6">local</span>.common_tags
 }
 
-resource "aws_cloudwatch_log_group" "cluster" {
-  name              = "/aws/eks/${var.cluster_name}/cluster"
-  retention_in_days = local.log_retention_days
-  kms_key_id        = aws_kms_key.secrets.arn
+<span style="color:#569cd6">resource</span> <span style="color:#ce9178">"aws_cloudwatch_log_group"</span> <span style="color:#ce9178">"cluster"</span> {
+  <span style="color:#9cdcfe">name</span>              = <span style="color:#ce9178">"/aws/eks/${var.cluster_name}/cluster"</span>
+  <span style="color:#9cdcfe">retention_in_days</span> = <span style="color:#569cd6">local</span>.log_retention_days
+  <span style="color:#9cdcfe">kms_key_id</span>        = aws_kms_key.secrets.arn
 
-  tags = local.common_tags
+  <span style="color:#9cdcfe">tags</span> = <span style="color:#569cd6">local</span>.common_tags
 }
 
-# modules/eks-cluster/outputs.tf
-output "cluster_name" {
-  value = aws_eks_cluster.this.name
+<span style="color:#6a9955"># modules/eks-cluster/outputs.tf</span>
+<span style="color:#569cd6">output</span> <span style="color:#ce9178">"cluster_name"</span> {
+  <span style="color:#9cdcfe">value</span> = aws_eks_cluster.this.name
 }
 
-output "cluster_endpoint" {
-  value = aws_eks_cluster.this.endpoint
+<span style="color:#569cd6">output</span> <span style="color:#ce9178">"cluster_endpoint"</span> {
+  <span style="color:#9cdcfe">value</span> = aws_eks_cluster.this.endpoint
 }
 
-output "cluster_certificate_authority" {
-  value     = aws_eks_cluster.this.certificate_authority[0].data
-  sensitive = true
+<span style="color:#569cd6">output</span> <span style="color:#ce9178">"cluster_certificate_authority"</span> {
+  <span style="color:#9cdcfe">value</span>     = aws_eks_cluster.this.certificate_authority[<span style="color:#b5cea8">0</span>].<span style="color:#569cd6">data</span>
+  <span style="color:#9cdcfe">sensitive</span> = <span style="color:#b5cea8">true</span>
 }
 
-output "cluster_oidc_issuer_url" {
-  value = aws_eks_cluster.this.identity[0].oidc[0].issuer
+<span style="color:#569cd6">output</span> <span style="color:#ce9178">"cluster_oidc_issuer_url"</span> {
+  <span style="color:#9cdcfe">value</span> = aws_eks_cluster.this.identity[<span style="color:#b5cea8">0</span>].oidc[<span style="color:#b5cea8">0</span>].issuer
 }
 
-output "cluster_security_group_id" {
-  value = aws_eks_cluster.this.vpc_config[0].cluster_security_group_id
+<span style="color:#569cd6">output</span> <span style="color:#ce9178">"cluster_security_group_id"</span> {
+  <span style="color:#9cdcfe">value</span> = aws_eks_cluster.this.<span style="color:#569cd6">vpc_config</span>[<span style="color:#b5cea8">0</span>].cluster_security_group_id
 }</code></pre>
 
         <h3>Calling the Module from an Environment</h3>
 
-        <pre><code class="language-hcl"># environments/prod/platform/eks-cluster/main.tf
-module "eks" {
-  source = "../../../../modules/eks-cluster"
+        <pre><code class="nohighlight"><span style="color:#6a9955"># environments/prod/platform/eks-cluster/main.tf</span>
+<span style="color:#569cd6">module</span> <span style="color:#ce9178">"eks"</span> {
+  <span style="color:#9cdcfe">source</span> = <span style="color:#ce9178">"../../../../modules/eks-cluster"</span>
 
-  cluster_name    = "prod-eks-cluster"
-  cluster_version = "1.30"
-  environment     = "prod"
+  <span style="color:#9cdcfe">cluster_name</span>    = <span style="color:#ce9178">"prod-eks-cluster"</span>
+  <span style="color:#9cdcfe">cluster_version</span> = <span style="color:#ce9178">"1.30"</span>
+  <span style="color:#9cdcfe">environment</span>     = <span style="color:#ce9178">"prod"</span>
 
-  vpc_id     = data.terraform_remote_state.networking.outputs.vpc_id
-  subnet_ids = data.terraform_remote_state.networking.outputs.private_subnet_ids
+  <span style="color:#9cdcfe">vpc_id</span>     = <span style="color:#569cd6">data</span>.terraform_remote_state.networking.outputs.vpc_id
+  <span style="color:#9cdcfe">subnet_ids</span> = <span style="color:#569cd6">data</span>.terraform_remote_state.networking.outputs.private_subnet_ids
 
-  endpoint_public_access = false
+  <span style="color:#9cdcfe">endpoint_public_access</span> = <span style="color:#b5cea8">false</span>
 
-  tags = {
-    CostCentre  = "RISK-001"
-    Team        = "platform"
-    Application = "fraud-detection"
+  <span style="color:#9cdcfe">tags</span> = {
+    <span style="color:#9cdcfe">CostCentre</span>  = <span style="color:#ce9178">"RISK-001"</span>
+    <span style="color:#9cdcfe">Team</span>        = <span style="color:#ce9178">"platform"</span>
+    <span style="color:#9cdcfe">Application</span> = <span style="color:#ce9178">"fraud-detection"</span>
   }
 }
 
-# environments/dev/platform/eks-cluster/main.tf
-module "eks" {
-  source = "../../../../modules/eks-cluster"
+<span style="color:#6a9955"># environments/dev/platform/eks-cluster/main.tf</span>
+<span style="color:#569cd6">module</span> <span style="color:#ce9178">"eks"</span> {
+  <span style="color:#9cdcfe">source</span> = <span style="color:#ce9178">"../../../../modules/eks-cluster"</span>
 
-  cluster_name    = "dev-eks-cluster"
-  cluster_version = "1.30"
-  environment     = "dev"   # Module automatically uses 14-day log retention
+  <span style="color:#9cdcfe">cluster_name</span>    = <span style="color:#ce9178">"dev-eks-cluster"</span>
+  <span style="color:#9cdcfe">cluster_version</span> = <span style="color:#ce9178">"1.30"</span>
+  <span style="color:#9cdcfe">environment</span>     = <span style="color:#ce9178">"dev"</span>   <span style="color:#6a9955"># Module automatically uses 14-day log retention</span>
 
-  vpc_id     = data.terraform_remote_state.networking.outputs.vpc_id
-  subnet_ids = data.terraform_remote_state.networking.outputs.private_subnet_ids
+  <span style="color:#9cdcfe">vpc_id</span>     = <span style="color:#569cd6">data</span>.terraform_remote_state.networking.outputs.vpc_id
+  <span style="color:#9cdcfe">subnet_ids</span> = <span style="color:#569cd6">data</span>.terraform_remote_state.networking.outputs.private_subnet_ids
 
-  endpoint_public_access = true   # Dev — public endpoint for developer kubectl access
+  <span style="color:#9cdcfe">endpoint_public_access</span> = <span style="color:#b5cea8">true</span>   <span style="color:#6a9955"># Dev — public endpoint for developer kubectl access</span>
 
-  tags = {
-    CostCentre = "PLATFORM-DEV"
-    Team       = "platform"
+  <span style="color:#9cdcfe">tags</span> = {
+    <span style="color:#9cdcfe">CostCentre</span> = <span style="color:#ce9178">"PLATFORM-DEV"</span>
+    <span style="color:#9cdcfe">Team</span>       = <span style="color:#ce9178">"platform"</span>
   }
 }</code></pre>
 
@@ -858,25 +858,25 @@ module "eks" {
 
         <h3>What Goes Where</h3>
 
-        <pre><code class="language-hcl"># dev.tfvars — non-sensitive dev values, committed to Git
-environment     = "dev"
-cluster_version = "1.30"
-min_node_count  = 1
-max_node_count  = 5
+        <pre><code class="nohighlight"><span style="color:#6a9955"># dev.tfvars — non-sensitive dev values, committed to Git</span>
+<span style="color:#9cdcfe">environment</span>     = <span style="color:#ce9178">"dev"</span>
+<span style="color:#9cdcfe">cluster_version</span> = <span style="color:#ce9178">"1.30"</span>
+<span style="color:#9cdcfe">min_node_count</span>  = <span style="color:#b5cea8">1</span>
+<span style="color:#9cdcfe">max_node_count</span>  = <span style="color:#b5cea8">5</span>
 
-# prod.tfvars — non-sensitive prod values, committed to Git
-environment     = "prod"
-cluster_version = "1.30"
-min_node_count  = 2
-max_node_count  = 20
+<span style="color:#6a9955"># prod.tfvars — non-sensitive prod values, committed to Git</span>
+<span style="color:#9cdcfe">environment</span>     = <span style="color:#ce9178">"prod"</span>
+<span style="color:#9cdcfe">cluster_version</span> = <span style="color:#ce9178">"1.30"</span>
+<span style="color:#9cdcfe">min_node_count</span>  = <span style="color:#b5cea8">2</span>
+<span style="color:#9cdcfe">max_node_count</span>  = <span style="color:#b5cea8">20</span>
 
-# NEVER in tfvars — sensitive values come from data sources
-# Bad:
-db_password = "MyS3cretPassword"   # ❌ Ends up in state file AND Git
+<span style="color:#6a9955"># NEVER in tfvars — sensitive values come from data sources</span>
+<span style="color:#6a9955"># Bad:</span>
+<span style="color:#9cdcfe">db_password</span> = <span style="color:#ce9178">"MyS3cretPassword"</span>   <span style="color:#6a9955"># ❌ Ends up in state file AND Git</span>
 
-# Good — retrieved at apply time, not stored in state:
-data "aws_secretsmanager_secret_version" "db_password" {
-  secret_id = "prod/rds/password"   # ✅ ARN stored in state, not the value
+<span style="color:#6a9955"># Good — retrieved at apply time, not stored in state:</span>
+<span style="color:#569cd6">data</span> <span style="color:#ce9178">"aws_secretsmanager_secret_version"</span> <span style="color:#ce9178">"db_password"</span> {
+  <span style="color:#9cdcfe">secret_id</span> = <span style="color:#ce9178">"prod/rds/password"</span>   <span style="color:#6a9955"># ✅ ARN stored in state, not the value</span>
 }</code></pre>
 
         <blockquote class="production-callout"><strong>Why this matters in production:</strong> Terraform state is
@@ -1038,58 +1038,58 @@ jobs:
         <p>Never use the same IAM role for planning and applying. A plan role reads but cannot modify. An apply role
           can modify but only through the CI/CD pipeline.</p>
 
-        <pre><code class="language-hcl"># Plan role — read-only, used in PR checks
-resource "aws_iam_role" "terraform_plan" {
-  name = "terraform-plan-role"
+        <pre><code class="nohighlight"><span style="color:#6a9955"># Plan role — read-only, used in PR checks</span>
+<span style="color:#569cd6">resource</span> <span style="color:#ce9178">"aws_iam_role"</span> <span style="color:#ce9178">"terraform_plan"</span> {
+  <span style="color:#9cdcfe">name</span> = <span style="color:#ce9178">"terraform-plan-role"</span>
 
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Effect = "Allow"
-      Principal = {
-        Federated = aws_iam_openid_connect_provider.github.arn
+  <span style="color:#9cdcfe">assume_role_policy</span> = jsonencode({
+    <span style="color:#9cdcfe">Version</span> = <span style="color:#ce9178">"2012-10-17"</span>
+    <span style="color:#9cdcfe">Statement</span> = [{
+      <span style="color:#9cdcfe">Effect</span> = <span style="color:#ce9178">"Allow"</span>
+      <span style="color:#9cdcfe">Principal</span> = {
+        <span style="color:#9cdcfe">Federated</span> = aws_iam_openid_connect_provider.github.arn
       }
-      Action = "sts:AssumeRoleWithWebIdentity"
-      Condition = {
-        StringEquals = {
-          "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
+      <span style="color:#9cdcfe">Action</span> = <span style="color:#ce9178">"sts:AssumeRoleWithWebIdentity"</span>
+      <span style="color:#9cdcfe">Condition</span> = {
+        <span style="color:#9cdcfe">StringEquals</span> = {
+          <span style="color:#ce9178">"token.actions.githubusercontent.com:aud"</span> = <span style="color:#ce9178">"sts.amazonaws.com"</span>
         }
-        StringLike = {
-          "token.actions.githubusercontent.com:sub" = "repo:org/infrastructure:pull_request"
+        <span style="color:#9cdcfe">StringLike</span> = {
+          <span style="color:#ce9178">"token.actions.githubusercontent.com:sub"</span> = <span style="color:#ce9178">"repo:org/infrastructure:pull_request"</span>
         }
       }
     }]
   })
 }
 
-resource "aws_iam_role_policy_attachment" "plan_readonly" {
-  role       = aws_iam_role.terraform_plan.name
-  policy_arn = "arn:aws:iam::aws:policy/ReadOnlyAccess"
+<span style="color:#569cd6">resource</span> <span style="color:#ce9178">"aws_iam_role_policy_attachment"</span> <span style="color:#ce9178">"plan_readonly"</span> {
+  <span style="color:#9cdcfe">role</span>       = aws_iam_role.terraform_plan.name
+  <span style="color:#9cdcfe">policy_arn</span> = <span style="color:#ce9178">"arn:aws:iam::aws:policy/ReadOnlyAccess"</span>
 }
 
-# Apply role — full permissions, only from main branch
-resource "aws_iam_role" "terraform_apply" {
-  name = "terraform-apply-role"
+<span style="color:#6a9955"># Apply role — full permissions, only from main branch</span>
+<span style="color:#569cd6">resource</span> <span style="color:#ce9178">"aws_iam_role"</span> <span style="color:#ce9178">"terraform_apply"</span> {
+  <span style="color:#9cdcfe">name</span> = <span style="color:#ce9178">"terraform-apply-role"</span>
 
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Effect = "Allow"
-      Principal = {
-        Federated = aws_iam_openid_connect_provider.github.arn
+  <span style="color:#9cdcfe">assume_role_policy</span> = jsonencode({
+    <span style="color:#9cdcfe">Version</span> = <span style="color:#ce9178">"2012-10-17"</span>
+    <span style="color:#9cdcfe">Statement</span> = [{
+      <span style="color:#9cdcfe">Effect</span> = <span style="color:#ce9178">"Allow"</span>
+      <span style="color:#9cdcfe">Principal</span> = {
+        <span style="color:#9cdcfe">Federated</span> = aws_iam_openid_connect_provider.github.arn
       }
-      Action = "sts:AssumeRoleWithWebIdentity"
-      Condition = {
-        StringEquals = {
-          "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
-          # CRITICAL: Only main branch can assume the apply role
-          "token.actions.githubusercontent.com:sub" = "repo:org/infrastructure:ref:refs/heads/main"
+      <span style="color:#9cdcfe">Action</span> = <span style="color:#ce9178">"sts:AssumeRoleWithWebIdentity"</span>
+      <span style="color:#9cdcfe">Condition</span> = {
+        <span style="color:#9cdcfe">StringEquals</span> = {
+          <span style="color:#ce9178">"token.actions.githubusercontent.com:aud"</span> = <span style="color:#ce9178">"sts.amazonaws.com"</span>
+          <span style="color:#6a9955"># CRITICAL: Only main branch can assume the apply role</span>
+          <span style="color:#ce9178">"token.actions.githubusercontent.com:sub"</span> = <span style="color:#ce9178">"repo:org/infrastructure:ref:refs/heads/main"</span>
         }
       }
     }]
   })
 
-  max_session_duration = 3600
+  <span style="color:#9cdcfe">max_session_duration</span> = <span style="color:#b5cea8">3600</span>
 }</code></pre>
 
         <h2>7. Drift Detection — Knowing When Reality Diverges from Code</h2>

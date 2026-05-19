@@ -1,0 +1,1371 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- SEO PRIMARY -->
+  <title>Terraform at Scale: Structuring IaC for Enterprise AWS Environments | Ankush Panday</title>
+  <meta name="description"
+    content="How to structure Terraform for enterprise AWS — layered repos, remote state with S3+DynamoDB, opinionated modules, CI/CD with plan approval gates, and drift detection from production at Rabobank.">
+  <meta name="keywords"
+    content="Terraform, IaC, AWS, GitOps, DevSecOps, Remote State, S3, DynamoDB, CI/CD, GitHub Actions, EKS, CloudArchitecture">
+  <link rel="canonical" href="https://www.ankushpanday.com/blog/iac/terraform-at-scale-enterprise-aws.html">
+
+  <!-- OPEN GRAPH -->
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://www.ankushpanday.com/blog/iac/terraform-at-scale-enterprise-aws.html">
+  <meta property="og:title" content="Terraform at Scale: Structuring IaC for Enterprise AWS Environments">
+  <meta property="og:description"
+    content="Layered repos, S3 remote state, opinionated modules, plan-on-PR CI/CD with approval gates, and daily drift detection — the Terraform structure behind a production EKS platform.">
+  <meta property="og:image" content="https://www.ankushpanday.com/images/aws-terraform-iac-enterprise-structure.png">
+
+  <link rel="stylesheet" href="../../style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    .blog-page-container {
+      max-width: 900px;
+      margin: 100px auto 40px auto;
+      padding: 0 20px;
+      min-height: calc(100vh - 200px);
+    }
+
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--aws-blue);
+      text-decoration: none;
+      font-weight: 500;
+      margin-bottom: 24px;
+    }
+
+    .blog-content-card {
+      background: var(--aws-white);
+      border: 1px solid var(--aws-border);
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    }
+
+    .blog-header {
+      background: #f8f9fa;
+      padding: 40px;
+      border-bottom: 1px solid var(--aws-border);
+    }
+
+    .blog-body {
+      padding: 40px;
+      line-height: 1.8;
+      font-size: 16px;
+      color: var(--aws-text);
+    }
+
+    .blog-body h2 {
+      margin-top: 48px;
+      font-size: 26px;
+      color: var(--aws-text);
+      border-bottom: 2px solid var(--aws-orange);
+      display: inline-block;
+      padding-bottom: 4px;
+      margin-bottom: 24px;
+    }
+
+    .blog-body h3 {
+      margin-top: 32px;
+      font-size: 22px;
+      color: var(--aws-blue);
+      margin-bottom: 16px;
+    }
+
+    .blog-body h4 {
+      margin-top: 24px;
+      font-size: 18px;
+      color: var(--aws-text);
+      font-weight: 700;
+    }
+
+    .blog-body p {
+      margin-bottom: 20px;
+    }
+
+    .blog-body ul,
+    .blog-body ol {
+      margin-bottom: 24px;
+      padding-left: 24px;
+    }
+
+    .blog-body li {
+      margin-bottom: 12px;
+    }
+
+    .blog-body strong {
+      color: var(--aws-text);
+    }
+
+    .blog-body blockquote {
+      font-style: italic;
+      color: var(--aws-text-light);
+      margin: 30px 0;
+      border-left: 4px solid var(--aws-orange);
+      padding-left: 15px;
+      background: #fcfcfc;
+      padding: 20px;
+    }
+
+    .blog-body blockquote.production-callout {
+      background: var(--aws-highlight);
+      border-radius: 0 6px 6px 0;
+      padding: 14px 20px;
+      margin: 24px 0 32px 0;
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    .compare-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+
+    .compare-table th {
+      background: var(--aws-blue);
+      color: white;
+      padding: 12px;
+      border: 1px solid var(--aws-border);
+    }
+
+    .compare-table td {
+      padding: 12px;
+      border: 1px solid var(--aws-border);
+    }
+
+    .compare-table tr:nth-child(even) {
+      background: #f9f9f9;
+    }
+
+    pre {
+      background: #232f3e;
+      color: #f8f8f2;
+      padding: 20px;
+      border-radius: 6px;
+      overflow-x: auto;
+      margin: 24px 0;
+      font-size: 13px;
+      line-height: 1.5;
+      border-left: 4px solid var(--aws-orange);
+    }
+
+    code {
+      font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+      background: #f1f3f5;
+      color: #232f3e;
+      padding: 2px 4px;
+      border-radius: 4px;
+      border: 1px solid #dee2e6;
+      font-size: 0.9em;
+    }
+
+    pre code {
+      background: none;
+      color: inherit;
+      padding: 0;
+      border: none;
+      font-size: inherit;
+    }
+
+    .pitfall-card {
+      background: #fff5f5;
+      border: 1px solid #fed7d7;
+      border-left: 4px solid #d13212;
+      padding: 20px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+    }
+
+    .author-card {
+      display: flex;
+      gap: 20px;
+      align-items: center;
+      padding: 30px;
+      background: #fcfcfc;
+      border-top: 1px solid var(--aws-border);
+    }
+
+    .author-img {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background: var(--aws-highlight);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 30px;
+      color: var(--aws-orange);
+      border: 2px solid var(--aws-border);
+    }
+
+    .nav-links {
+      display: flex;
+      justify-content: space-between;
+      margin: 40px 0;
+      padding: 20px 0;
+      border-top: 1px solid var(--aws-border);
+    }
+
+    .nav-link {
+      text-decoration: none;
+      color: var(--aws-blue);
+      font-weight: 600;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .tag {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-right: 8px;
+      margin-bottom: 8px;
+    }
+
+    .tag.blue {
+      background: #e7f2fa;
+      color: #0073bb;
+    }
+
+    .tag.orange {
+      background: #fef3e2;
+      color: #d86400;
+    }
+
+    .share-section {
+      padding: 20px 40px;
+      border-top: 1px solid var(--aws-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #fff;
+    }
+
+    .share-btn {
+      padding: 8px 16px;
+      border: 1px solid var(--aws-border);
+      border-radius: 4px;
+      background: #fff;
+      color: var(--aws-text);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .share-btn:hover { background: #f8f9fa; }
+
+    .linkedin-btn {
+      background: #0077b5;
+      color: white;
+      border: none;
+    }
+    .linkedin-btn:hover { background: #005f8d; color: white; }
+  </style>
+</head>
+
+<body>
+
+  <!-- TOP NAV -->
+  <nav class="aws-topnav">
+    <a href="../../index.html" class="logo">
+      <i class="fa-solid fa-cloud" style="color: var(--aws-orange); font-size: 20px;"></i>
+      <span>Ankush Panday</span>
+    </a>
+    <div class="nav-spacer"></div>
+    <div class="nav-icons">
+      <a href="../../index.html" class="nav-icon-btn" style="text-decoration: none;">Portfolio Home</a>
+      <a href="../index.html" class="nav-icon-btn orange" style="text-decoration: none; font-weight: 600;">Blog Hub</a>
+      <button class="nav-icon-btn"><i class="fa-solid fa-earth-europe"
+          style="margin-right: 6px; font-size: 12px; color: var(--aws-orange);"></i> Europe (nl-ams-1)</button>
+      <button class="nav-icon-btn">ankushpandey@hotmail.com <i class="fa-solid fa-caret-down"
+          style="margin-left: 4px;"></i></button>
+    </div>
+  </nav>
+
+  <main class="blog-page-container">
+    <a href="../index.html" class="back-btn"><i class="fa-solid fa-arrow-left"></i> Back to Blog Hub</a>
+
+    <article class="blog-content-card">
+      <header class="blog-header">
+        <h1 style="font-size: 32px; color: var(--aws-text); margin-bottom: 16px; line-height: 1.2;">Terraform at Scale:
+          Structuring IaC for Enterprise AWS Environments</h1>
+        <div
+          style="display: flex; gap: 12px; align-items: center; color: var(--aws-text-light); font-size: 14px; flex-wrap: wrap;">
+          <span>May 19, 2026</span>
+          <span>•</span>
+          <span>28 min read</span>
+          <span class="tag blue">IaC</span>
+          <span class="tag orange">GitOps</span>
+        </div>
+      </header>
+
+      <div class="blog-body">
+        <p
+          style="font-style: italic; color: var(--aws-text-light); margin-bottom: 30px; border-left: 4px solid var(--aws-orange); padding-left: 15px;">
+          <strong>AWS Series | Part 14</strong> — Building secure, cost-optimised, cloud-native infrastructure on AWS.
+          How to structure Terraform for enterprise scale — layered repos, remote state, opinionated modules, CI/CD with
+          approval gates, and daily drift detection grounded in production at Rabobank.
+        </p>
+
+        <!-- Main Image -->
+        <img src="../../images/aws-terraform-iac-enterprise-structure.png"
+          alt="Terraform at Scale Enterprise IaC Structure"
+          style="display: block; width: 100%; border-radius: 8px; border: 1px solid var(--aws-border); margin-bottom: 40px;">
+
+        <h2>TL;DR</h2>
+
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th>Decision</th>
+              <th>Wrong Approach</th>
+              <th>Right Approach</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Repository structure</strong></td>
+              <td>Everything in one repo</td>
+              <td>Layered repos — networking, platform, apps</td>
+            </tr>
+            <tr>
+              <td><strong>State management</strong></td>
+              <td>Local state</td>
+              <td>Remote state — S3 + DynamoDB locking</td>
+            </tr>
+            <tr>
+              <td><strong>Module design</strong></td>
+              <td>Copy-paste between envs</td>
+              <td>Reusable modules with variable inputs</td>
+            </tr>
+            <tr>
+              <td><strong>Environment separation</strong></td>
+              <td><code>if environment == "prod"</code> in one config</td>
+              <td>Separate workspaces or directories per env</td>
+            </tr>
+            <tr>
+              <td><strong>Secrets</strong></td>
+              <td>Hardcoded in <code>.tfvars</code></td>
+              <td>AWS Secrets Manager or SSM, never in state</td>
+            </tr>
+            <tr>
+              <td><strong>CI/CD</strong></td>
+              <td><code>terraform apply</code> from laptop</td>
+              <td>Pipeline with plan approval gate in prod</td>
+            </tr>
+            <tr>
+              <td><strong>Drift detection</strong></td>
+              <td>Manual</td>
+              <td>Automated scheduled <code>terraform plan</code></td>
+            </tr>
+            <tr>
+              <td><strong>Team access</strong></td>
+              <td>Everyone applies everything</td>
+              <td>Role-based — devs plan, platform approves prod</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h2>Introduction — Why Terraform Structure Matters More Than Terraform Syntax</h2>
+
+        <p>Most engineers learn Terraform by writing a <code>main.tf</code> that creates a VPC and an EC2 instance. It
+          works. It feels clean. Then the team grows, the infrastructure grows, and six months later there are 47
+          resources in one file, a state file that takes 4 minutes to refresh, three engineers who are afraid to run
+          <code>terraform apply</code> in case it breaks something they do not understand, and a
+          <code>prod.tfvars</code> committed to the repository with a database password in it.</p>
+
+        <p>The Terraform syntax is the easy part. The hard part is the structure — how you organise modules, how you
+          manage state across accounts and environments, how you control who can apply what, and how you build a CI/CD
+          pipeline that lets engineers move fast without breaking production.</p>
+
+        <p>On the EKS platform I run in production, every resource — VPCs, subnets, EKS cluster, node groups,
+          Karpenter, ArgoCD, IAM roles, security groups, Route 53 records, KMS keys, CloudWatch log groups — is managed
+          in Terraform. These are the patterns that worked, and the anti-patterns that caused incidents before we fixed
+          them.</p>
+
+        <hr style="border-top: 1px solid var(--aws-border); margin: 40px 0;">
+
+        <h2>1. Repository Structure — The Foundation of Everything</h2>
+
+        <h3>The Wrong Way — The Monorepo Trap</h3>
+
+        <pre><code>terraform/
+└── main.tf          ← VPC, EKS, IAM, RDS, all in here
+    variables.tf
+    outputs.tf
+    terraform.tfvars ← dev values
+    prod.tfvars      ← prod values (committed to Git)</code></pre>
+
+        <p>This works for one environment. It breaks for three reasons as you scale:</p>
+
+        <ul>
+          <li><strong>State blast radius</strong> — one state file for everything means a <code>terraform plan</code>
+            locks the entire infrastructure. Two engineers cannot work in parallel. A failed apply during VPC changes
+            blocks an urgent EKS fix.</li>
+          <li><strong>No environment isolation</strong> — <code>terraform apply -var-file=prod.tfvars</code> is the
+            only thing separating dev from prod. One wrong argument on the CLI is a production incident.</li>
+          <li><strong>No layer separation</strong> — VPC changes and EKS changes share a state file. A networking
+            change requires a full plan that evaluates every EKS resource, ECS service, and RDS instance — thousands
+            of resources, 10-minute refresh times.</li>
+        </ul>
+
+        <h3>The Right Way — Layered Repository Structure</h3>
+
+        <pre><code>infrastructure/
+├── modules/                     # Reusable building blocks
+│   ├── vpc/
+│   ├── eks-cluster/
+│   ├── eks-nodegroup/
+│   ├── ecs-cluster/
+│   ├── rds/
+│   ├── iam-role/
+│   └── eks-namespace/
+│
+├── layers/                      # Ordered by dependency
+│   ├── 00-accounts/             # AWS account-level config (SCPs, OU structure)
+│   ├── 01-networking/           # VPCs, subnets, TGW, Route 53
+│   ├── 02-security/             # KMS keys, IAM boundaries, Security Hub
+│   ├── 03-platform/             # EKS cluster, node groups, Karpenter
+│   ├── 04-addons/               # Helm releases, cert-manager, ArgoCD
+│   └── 05-applications/         # ECS services, RDS, application-level resources
+│
+├── environments/
+│   ├── dev/
+│   │   ├── networking/          # Calls layer 01 module with dev variables
+│   │   ├── platform/            # Calls layer 03 module with dev variables
+│   │   └── backend.hcl          # Dev state backend config
+│   ├── staging/
+│   │   └── backend.hcl
+│   └── prod/
+│       ├── networking/
+│       ├── platform/
+│       └── backend.hcl          # Prod state — different bucket, different account
+│
+└── ci/
+    ├── plan.yaml                # CI pipeline — runs terraform plan on PR
+    └── apply.yaml               # CD pipeline — applies on merge, with approval gate</code></pre>
+
+        <p><strong>Why layers matter:</strong> Layer 01 (networking) changes rarely — maybe once a month. Layer 05
+          (applications) changes daily. By separating them, a daily application deployment runs
+          <code>terraform plan</code> against 50 resources, not 5,000. The networking layer's state file is untouched
+          and unlocked.</p>
+
+        <p><strong>Why environments matter:</strong> <code>dev/platform/</code> and <code>prod/platform/</code> both
+          call the same <code>modules/eks-cluster/</code> module with different variable values. The module code is
+          identical — the inputs differ. A change to the module is tested in dev before it ever reaches prod.</p>
+
+        <blockquote class="production-callout"><strong>Why this matters in production:</strong> On the EKS fraud
+          detection platform at Rabobank, the networking layer (VPCs, subnets, Transit Gateway) and the platform layer
+          (EKS, Karpenter, node groups) are in separate state files. A cluster upgrade — which touches hundreds of
+          resources — runs against the platform state only. It does not lock the networking state, so the network team
+          can work in parallel. Before this separation, every plan took 8+ minutes because a single state file held
+          everything. After splitting, platform plans run in under 90 seconds.</blockquote>
+
+        <h2>2. Remote State — S3 + DynamoDB</h2>
+
+        <p>Local state is fine for learning. It is never acceptable in a team environment — state conflicts, lost state
+          files, and no audit trail of who applied what are all guaranteed outcomes.</p>
+
+        <h3>Backend Configuration</h3>
+
+        <pre><code># backend.hcl — per environment, per layer
+terraform {
+  backend "s3" {
+    bucket         = "org-terraform-state-prod"
+    key            = "prod/platform/eks-cluster.tfstate"
+    region         = "eu-west-1"
+    encrypt        = true
+    kms_key_id     = "arn:aws:kms:eu-west-1:123456789012:key/terraform-state-key"
+    dynamodb_table = "terraform-state-lock"
+  }
+}</code></pre>
+
+        <h3>State Bucket — Hardened Configuration</h3>
+
+        <pre><code>resource "aws_s3_bucket" "terraform_state" {
+  bucket = "org-terraform-state-prod"
+
+  lifecycle {
+    prevent_destroy = true   # Prevent accidental deletion of state bucket
+  }
+
+  tags = { Name = "terraform-state-prod", Sensitivity = "critical" }
+}
+
+resource "aws_s3_bucket_versioning" "state" {
+  bucket = aws_s3_bucket.terraform_state.id
+  versioning_configuration { status = "Enabled" }
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "state" {
+  bucket = aws_s3_bucket.terraform_state.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm     = "aws:kms"
+      kms_master_key_id = aws_kms_key.terraform_state.arn
+    }
+    bucket_key_enabled = true
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "state" {
+  bucket                  = aws_s3_bucket.terraform_state.id
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+resource "aws_s3_bucket_policy" "state" {
+  bucket = aws_s3_bucket.terraform_state.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "DenyNonTerraformAccess"
+        Effect = "Deny"
+        Principal = { AWS = "*" }
+        Action = "s3:*"
+        Resource = [
+          aws_s3_bucket.terraform_state.arn,
+          "${aws_s3_bucket.terraform_state.arn}/*"
+        ]
+        Condition = {
+          StringNotEquals = {
+            "aws:PrincipalArn" = [
+              aws_iam_role.terraform_ci.arn,
+              aws_iam_role.platform_engineer.arn
+            ]
+          }
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_dynamodb_table" "terraform_lock" {
+  name         = "terraform-state-lock"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "LockID"
+
+  attribute {
+    name = "LockID"
+    type = "S"
+  }
+
+  server_side_encryption {
+    enabled     = true
+    kms_key_arn = aws_kms_key.terraform_state.arn
+  }
+
+  point_in_time_recovery { enabled = true }
+
+  tags = { Name = "terraform-state-lock" }
+}</code></pre>
+
+        <h3>State Separation by Layer and Environment</h3>
+
+        <pre><code>S3 bucket: org-terraform-state-prod
+├── prod/networking/vpc.tfstate
+├── prod/networking/tgw.tfstate
+├── prod/security/kms.tfstate
+├── prod/security/iam.tfstate
+├── prod/platform/eks-cluster.tfstate
+├── prod/platform/karpenter.tfstate
+└── prod/applications/ecs-services.tfstate
+
+S3 bucket: org-terraform-state-dev
+├── dev/networking/vpc.tfstate
+├── dev/platform/eks-cluster.tfstate
+└── dev/applications/ecs-services.tfstate</code></pre>
+
+        <p><strong>Why separate buckets per account:</strong> A misconfigured IAM policy in the dev account cannot
+          accidentally access the prod state file. Prod state lives in the prod account's S3 bucket — only the prod
+          CI/CD role and platform team can read it.</p>
+
+        <h3>Reading State from Another Layer</h3>
+
+        <pre><code># In prod/platform/eks-cluster — reads VPC outputs from the networking layer
+data "terraform_remote_state" "networking" {
+  backend = "s3"
+
+  config = {
+    bucket  = "org-terraform-state-prod"
+    key     = "prod/networking/vpc.tfstate"
+    region  = "eu-west-1"
+  }
+}
+
+resource "aws_eks_cluster" "main" {
+  vpc_config {
+    subnet_ids = data.terraform_remote_state.networking.outputs.private_subnet_ids
+    # No hardcoding of subnet IDs — pulled directly from networking state
+  }
+}</code></pre>
+
+        <blockquote>
+          <strong>Why remote state references matter:</strong> Hardcoding subnet IDs or VPC IDs between layers means a
+          networking change requires manually updating every downstream layer. Remote state references update
+          automatically — when the networking layer adds a new subnet and outputs its ID, the platform layer picks it
+          up on the next plan with no manual change.
+        </blockquote>
+
+        <h2>3. Module Design — Reusable, Versioned, Opinionated</h2>
+
+        <h3>The Module Contract</h3>
+
+        <p>A good Terraform module has three characteristics:</p>
+
+        <ol>
+          <li><strong>Single responsibility</strong> — one module does one thing. An <code>eks-cluster</code> module
+            creates the EKS cluster. It does not also create node groups, install Helm charts, or configure Route 53.
+            Each of those is a separate module.</li>
+          <li><strong>Opinionated defaults</strong> — the module encodes your organisation's standards.
+            <code>enable_dns_support</code> is always <code>true</code>. The state bucket is always encrypted.
+            CloudWatch log retention is always 90 days in prod. Engineers using the module cannot accidentally violate
+            standards.</li>
+          <li><strong>Explicit interface</strong> — inputs are documented, typed, and validated. Outputs expose
+            everything downstream modules need.</li>
+        </ol>
+
+        <h3>Module Structure</h3>
+
+        <pre><code>modules/
+└── eks-cluster/
+    ├── main.tf          # Resources
+    ├── variables.tf     # Input definitions with types, defaults, validation
+    ├── outputs.tf       # Output definitions
+    ├── versions.tf      # Required provider versions
+    └── README.md        # Usage examples — non-negotiable</code></pre>
+
+        <h3>Well-Designed Module — eks-cluster</h3>
+
+        <pre><code># modules/eks-cluster/variables.tf
+variable "cluster_name" {
+  description = "EKS cluster name — used for resource naming and tags"
+  type        = string
+
+  validation {
+    condition     = can(regex("^[a-z][a-z0-9-]{2,38}[a-z0-9]$", var.cluster_name))
+    error_message = "Cluster name must be lowercase, 4-40 chars, alphanumeric and hyphens only."
+  }
+}
+
+variable "cluster_version" {
+  description = "Kubernetes version — must be a supported EKS version"
+  type        = string
+  default     = "1.30"
+
+  validation {
+    condition     = contains(["1.28", "1.29", "1.30", "1.31"], var.cluster_version)
+    error_message = "Cluster version must be a currently supported EKS version."
+  }
+}
+
+variable "environment" {
+  description = "Environment — drives defaults for log retention, endpoint access, etc."
+  type        = string
+
+  validation {
+    condition     = contains(["dev", "staging", "prod"], var.environment)
+    error_message = "Environment must be dev, staging, or prod."
+  }
+}
+
+variable "vpc_id" {
+  description = "VPC ID for the EKS cluster"
+  type        = string
+}
+
+variable "subnet_ids" {
+  description = "Private subnet IDs — must span at least 2 AZs"
+  type        = list(string)
+
+  validation {
+    condition     = length(var.subnet_ids) >= 2
+    error_message = "At least 2 subnets required for multi-AZ node deployment."
+  }
+}
+
+variable "endpoint_public_access" {
+  description = "Allow public kubectl access — should be false in prod"
+  type        = bool
+  default     = false   # Secure by default
+}
+
+variable "tags" {
+  description = "Additional tags applied to all resources"
+  type        = map(string)
+  default     = {}
+}
+
+# modules/eks-cluster/main.tf
+locals {
+  log_retention_days = var.environment == "prod" ? 90 : 14
+  kms_deletion_days  = var.environment == "prod" ? 30 : 7
+
+  common_tags = merge(var.tags, {
+    Environment = var.environment
+    ManagedBy   = "terraform"
+    Module      = "eks-cluster"
+    Cluster     = var.cluster_name
+  })
+}
+
+resource "aws_eks_cluster" "this" {
+  name     = var.cluster_name
+  role_arn = aws_iam_role.cluster.arn
+  version  = var.cluster_version
+
+  vpc_config {
+    subnet_ids              = var.subnet_ids
+    endpoint_private_access = true
+    endpoint_public_access  = var.endpoint_public_access
+    security_group_ids      = [aws_security_group.cluster.id]
+  }
+
+  encryption_config {
+    provider  { key_arn = aws_kms_key.secrets.arn }
+    resources = ["secrets"]
+  }
+
+  enabled_cluster_log_types = var.environment == "prod" ? [
+    "api", "audit", "authenticator", "controllerManager", "scheduler"
+  ] : ["api", "audit"]
+
+  access_config {
+    authentication_mode                         = "API_AND_CONFIG_MAP"
+    bootstrap_cluster_creator_admin_permissions = false
+  }
+
+  tags = local.common_tags
+}
+
+resource "aws_cloudwatch_log_group" "cluster" {
+  name              = "/aws/eks/${var.cluster_name}/cluster"
+  retention_in_days = local.log_retention_days
+  kms_key_id        = aws_kms_key.secrets.arn
+
+  tags = local.common_tags
+}
+
+# modules/eks-cluster/outputs.tf
+output "cluster_name" {
+  value = aws_eks_cluster.this.name
+}
+
+output "cluster_endpoint" {
+  value = aws_eks_cluster.this.endpoint
+}
+
+output "cluster_certificate_authority" {
+  value     = aws_eks_cluster.this.certificate_authority[0].data
+  sensitive = true
+}
+
+output "cluster_oidc_issuer_url" {
+  value = aws_eks_cluster.this.identity[0].oidc[0].issuer
+}
+
+output "cluster_security_group_id" {
+  value = aws_eks_cluster.this.vpc_config[0].cluster_security_group_id
+}</code></pre>
+
+        <h3>Calling the Module from an Environment</h3>
+
+        <pre><code># environments/prod/platform/eks-cluster/main.tf
+module "eks" {
+  source = "../../../../modules/eks-cluster"
+
+  cluster_name    = "prod-eks-cluster"
+  cluster_version = "1.30"
+  environment     = "prod"
+
+  vpc_id     = data.terraform_remote_state.networking.outputs.vpc_id
+  subnet_ids = data.terraform_remote_state.networking.outputs.private_subnet_ids
+
+  endpoint_public_access = false
+
+  tags = {
+    CostCentre  = "RISK-001"
+    Team        = "platform"
+    Application = "fraud-detection"
+  }
+}
+
+# environments/dev/platform/eks-cluster/main.tf
+module "eks" {
+  source = "../../../../modules/eks-cluster"
+
+  cluster_name    = "dev-eks-cluster"
+  cluster_version = "1.30"
+  environment     = "dev"   # Module automatically uses 14-day log retention
+
+  vpc_id     = data.terraform_remote_state.networking.outputs.vpc_id
+  subnet_ids = data.terraform_remote_state.networking.outputs.private_subnet_ids
+
+  endpoint_public_access = true   # Dev — public endpoint for developer kubectl access
+
+  tags = {
+    CostCentre = "PLATFORM-DEV"
+    Team       = "platform"
+  }
+}</code></pre>
+
+        <h2>4. Variable Management — The Right Hierarchy</h2>
+
+        <p>Variables in Terraform have a loading order. Understanding it prevents the most common configuration
+          mistakes:</p>
+
+        <pre><code>Priority (highest to lowest):
+1. -var flag on CLI                    → terraform apply -var="region=eu-west-1"
+2. -var-file flag on CLI               → terraform apply -var-file="prod.tfvars"
+3. terraform.tfvars in module dir      → auto-loaded
+4. terraform.tfvars.json in module dir → auto-loaded
+5. *.auto.tfvars in module dir         → auto-loaded
+6. Environment variables (TF_VAR_*)   → TF_VAR_region=eu-west-1
+7. Default values in variable blocks   → variable "region" { default = "eu-west-1" }</code></pre>
+
+        <h3>What Goes Where</h3>
+
+        <pre><code># dev.tfvars — non-sensitive dev values, committed to Git
+environment     = "dev"
+cluster_version = "1.30"
+min_node_count  = 1
+max_node_count  = 5
+
+# prod.tfvars — non-sensitive prod values, committed to Git
+environment     = "prod"
+cluster_version = "1.30"
+min_node_count  = 2
+max_node_count  = 20
+
+# NEVER in tfvars — sensitive values come from data sources
+# Bad:
+db_password = "MyS3cretPassword"   # ❌ Ends up in state file AND Git
+
+# Good — retrieved at apply time, not stored in state:
+data "aws_secretsmanager_secret_version" "db_password" {
+  secret_id = "prod/rds/password"   # ✅ ARN stored in state, not the value
+}</code></pre>
+
+        <blockquote class="production-callout"><strong>Why this matters in production:</strong> Terraform state is
+          JSON. If your state is unencrypted — or if someone with state bucket access runs
+          <code>terraform show</code> — every sensitive value passed as a variable is visible in plaintext. At
+          Rabobank, a state audit during onboarding found three legacy modules passing RDS passwords via
+          <code>tfvars</code>. Those were visible in state for 14 months before discovery. The fix was
+          <code>data "aws_secretsmanager_secret_version"</code> across every module that touched credentials. The ARN
+          appears in state, never the value.</blockquote>
+
+        <h2>5. CI/CD Pipeline — Plan on PR, Apply on Merge</h2>
+
+        <p>This is the pattern that separates teams that use Terraform confidently from teams that are afraid of it.
+        </p>
+
+        <h3>The Two-Stage Pipeline</h3>
+
+        <pre><code>Developer pushes branch
+    ↓
+Pull Request opened
+    ↓
+[CI — automatic]
+  terraform fmt -check          → Fail if formatting is wrong
+  terraform validate            → Fail if syntax is invalid
+  terraform init                → Initialise with remote backend
+  terraform plan                → Generate plan, post as PR comment
+  infracost diff                → Post cost estimate as PR comment
+  tfsec / checkov               → Security and compliance scan
+    ↓
+Code review + plan review
+    ↓
+PR approved and merged to main
+    ↓
+[CD — automatic for dev/staging, manual approval for prod]
+  terraform init
+  terraform plan -out=tfplan    → Save plan artifact
+  [Manual approval gate — prod only]
+  terraform apply tfplan        → Apply the saved plan (not a new plan)</code></pre>
+
+        <h3>GitHub Actions Pipeline</h3>
+
+        <pre><code># .github/workflows/terraform.yaml
+name: Terraform CI/CD
+
+on:
+  pull_request:
+    paths:
+      - 'environments/**'
+      - 'modules/**'
+  push:
+    branches: [main]
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
+jobs:
+  terraform-plan:
+    name: Plan
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    strategy:
+      matrix:
+        environment: [dev, staging, prod]
+        layer: [networking, platform, applications]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ vars[format('{0}_ACCOUNT_ID', matrix.environment)] }}:role/terraform-plan-role
+          aws-region: eu-west-1
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.0"
+
+      - name: Terraform Format Check
+        run: terraform fmt -check -recursive
+        working-directory: environments/${{ matrix.environment }}/${{ matrix.layer }}
+
+      - name: Terraform Init
+        run: terraform init -backend-config=backend.hcl
+        working-directory: environments/${{ matrix.environment }}/${{ matrix.layer }}
+
+      - name: Terraform Validate
+        run: terraform validate
+        working-directory: environments/${{ matrix.environment }}/${{ matrix.layer }}
+
+      - name: Terraform Plan
+        id: plan
+        run: |
+          terraform plan -no-color \
+            -var-file="${{ matrix.environment }}.tfvars" \
+            -out=tfplan 2&gt;&amp;1 | tee plan_output.txt
+        working-directory: environments/${{ matrix.environment }}/${{ matrix.layer }}
+
+      - name: Post Plan as PR Comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const plan = fs.readFileSync(
+              'environments/${{ matrix.environment }}/${{ matrix.layer }}/plan_output.txt', 'utf8'
+            );
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## Terraform Plan — ${{ matrix.environment }}/${{ matrix.layer }}\n\`\`\`\n${plan}\n\`\`\``
+            });
+
+      - name: Security Scan — tfsec
+        uses: aquasecurity/tfsec-action@v1.0.0
+        with:
+          working_directory: environments/${{ matrix.environment }}/${{ matrix.layer }}
+
+  terraform-apply-prod:
+    name: Apply Prod
+    runs-on: ubuntu-latest
+    needs: terraform-apply-dev
+    if: github.ref == 'refs/heads/main'
+    environment: prod   # GitHub Environment — requires manual approval from platform team
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ vars.PROD_ACCOUNT_ID }}:role/terraform-apply-role
+          aws-region: eu-west-1
+
+      - name: Terraform Plan — Save artifact
+        run: |
+          terraform init -backend-config=backend.hcl
+          terraform plan -out=tfplan -var-file="prod.tfvars"
+        working-directory: environments/prod/platform
+
+      - name: Terraform Apply — Prod
+        run: terraform apply tfplan
+        # Applies the SAVED plan — what was reviewed is what gets applied
+        working-directory: environments/prod/platform</code></pre>
+
+        <blockquote>
+          <strong>Why apply the saved plan, not a new plan:</strong> Between <code>terraform plan</code> and
+          <code>terraform apply</code>, another engineer may have merged a different change. If you run a fresh plan at
+          apply time, you may apply something different from what was reviewed and approved. Always save the plan with
+          <code>-out=tfplan</code> and apply that exact artifact. This is the Terraform equivalent of "what you see is
+          what you get."
+        </blockquote>
+
+        <h2>6. IAM Roles for Terraform — Plan vs Apply Separation</h2>
+
+        <p>Never use the same IAM role for planning and applying. A plan role reads but cannot modify. An apply role
+          can modify but only through the CI/CD pipeline.</p>
+
+        <pre><code># Plan role — read-only, used in PR checks
+resource "aws_iam_role" "terraform_plan" {
+  name = "terraform-plan-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Principal = {
+        Federated = aws_iam_openid_connect_provider.github.arn
+      }
+      Action = "sts:AssumeRoleWithWebIdentity"
+      Condition = {
+        StringEquals = {
+          "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
+        }
+        StringLike = {
+          "token.actions.githubusercontent.com:sub" = "repo:org/infrastructure:pull_request"
+        }
+      }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "plan_readonly" {
+  role       = aws_iam_role.terraform_plan.name
+  policy_arn = "arn:aws:iam::aws:policy/ReadOnlyAccess"
+}
+
+# Apply role — full permissions, only from main branch
+resource "aws_iam_role" "terraform_apply" {
+  name = "terraform-apply-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Principal = {
+        Federated = aws_iam_openid_connect_provider.github.arn
+      }
+      Action = "sts:AssumeRoleWithWebIdentity"
+      Condition = {
+        StringEquals = {
+          "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
+          # CRITICAL: Only main branch can assume the apply role
+          "token.actions.githubusercontent.com:sub" = "repo:org/infrastructure:ref:refs/heads/main"
+        }
+      }
+    }]
+  })
+
+  max_session_duration = 3600
+}</code></pre>
+
+        <h2>7. Drift Detection — Knowing When Reality Diverges from Code</h2>
+
+        <p>Drift happens when someone makes a manual change in the AWS Console or via CLI without updating Terraform. In
+          regulated environments, drift is a compliance finding. In all environments, drift is a ticking time bomb —
+          the next <code>terraform apply</code> will revert the manual change, potentially breaking something.</p>
+
+        <pre><code># .github/workflows/drift-detection.yaml
+name: Drift Detection
+
+on:
+  schedule:
+    - cron: '0 6 * * MON-FRI'   # Every weekday at 6am
+
+jobs:
+  detect-drift:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        environment: [prod]
+        layer: [networking, platform, security, applications]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ vars.PROD_ACCOUNT_ID }}:role/terraform-plan-role
+          aws-region: eu-west-1
+
+      - name: Terraform Plan — Detect Drift
+        id: drift
+        run: |
+          terraform init -backend-config=backend.hcl
+          terraform plan -detailed-exitcode \
+            -var-file="prod.tfvars" \
+            -no-color 2&gt;&amp;1 | tee drift_output.txt
+          echo "exit_code=$?" &gt;&gt; $GITHUB_OUTPUT
+        working-directory: environments/${{ matrix.environment }}/${{ matrix.layer }}
+        continue-on-error: true
+
+      - name: Alert on Drift
+        if: steps.drift.outputs.exit_code == '2'   # Exit code 2 = changes detected
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const drift = fs.readFileSync('drift_output.txt', 'utf8');
+            console.log('DRIFT DETECTED in prod/${{ matrix.layer }}');
+            console.log(drift);</code></pre>
+
+        <blockquote class="production-callout"><strong>Why this matters in production:</strong> Drift detection runs
+          every weekday morning on the EKS platform. If an engineer made a console change the previous day — even a
+          small one, like adjusting a security group rule — the 6am plan catches it and alerts the platform team before
+          anyone applies Terraform and silently reverts it. At Rabobank, this caught a manual KMS key alias change made
+          during an incident response before it was overwritten by the next Terraform apply. The alert is the
+          difference between a 5-minute investigation and a 2-hour incident caused by an unexpected revert.
+        </blockquote>
+
+        <h2>8. A Production Terraform Structure — Real Example</h2>
+
+        <p>For context, this is how the EKS fraud detection platform infrastructure is actually organised:</p>
+
+        <pre><code>infrastructure/
+├── modules/
+│   ├── vpc/                      # VPC, subnets, IGW, NAT GW, routes
+│   ├── eks-cluster/              # EKS control plane, encryption, logging
+│   ├── eks-nodegroup/            # Managed node groups (system, on-demand)
+│   ├── karpenter/                # Karpenter IAM, SQS, Helm release
+│   ├── eks-addons/               # VPC CNI, CoreDNS, kube-proxy, EBS CSI
+│   ├── iam-role/                 # Reusable IAM role with trust policy
+│   ├── eks-namespace/            # Namespace + ResourceQuota + LimitRange
+│   ├── argocd/                   # ArgoCD Helm release + SSO config
+│   └── monitoring/               # CloudWatch agent, Container Insights
+│
+├── environments/
+│   ├── dev/
+│   │   ├── 01-networking/
+│   │   ├── 03-platform/
+│   │   └── backend.hcl
+│   └── prod/
+│       ├── 01-networking/
+│       ├── 02-security/
+│       ├── 03-platform/
+│       ├── 04-addons/
+│       └── backend.hcl
+│
+└── .github/workflows/
+    ├── terraform-plan.yaml       # Runs on every PR
+    ├── terraform-apply.yaml      # Runs on merge to main
+    └── drift-detection.yaml      # Runs every weekday morning</code></pre>
+
+        <p>The EKS cluster, Karpenter, ArgoCD, all IAM roles, all security groups, all CloudWatch log groups — every
+          resource is in Terraform. Nothing in the platform was clicked into existence in the AWS Console. When a new
+          engineer joins, they read the Terraform code to understand the infrastructure — not a wiki that may be out of
+          date.</p>
+
+        <h2>9. Common Mistakes &amp; Anti-Patterns</h2>
+
+        <div class="pitfall-card">
+          <strong>Mistake 1: Everything in One State File</strong>
+          <p style="margin-top: 8px; margin-bottom: 0;">One state file for 500 resources means a 10-minute plan
+            refresh, no parallel work, and a blast radius spanning your entire infrastructure on every apply. Split by
+            layer and environment — the networking state never needs to be locked when deploying an application
+            change.</p>
+        </div>
+
+        <div class="pitfall-card">
+          <strong>Mistake 2: Sensitive Values in tfvars</strong>
+          <p style="margin-top: 8px; margin-bottom: 0;"><code>db_password = "prod_password_123"</code> in
+            <code>prod.tfvars</code> means it is in Git history forever, even after deletion. And it ends up in the
+            Terraform state file. Use <code>data "aws_secretsmanager_secret_version"</code> — retrieved at plan time,
+            not stored anywhere you manage.</p>
+        </div>
+
+        <div class="pitfall-card">
+          <strong>Mistake 3: Running terraform apply from a Laptop</strong>
+          <p style="margin-top: 8px; margin-bottom: 0;">Local applies mean no audit trail, no plan review, no CI
+            checks, and credentials stored locally rather than via OIDC. A junior engineer with misconfigured local
+            credentials can accidentally apply to production. All applies go through the pipeline. No exceptions.</p>
+        </div>
+
+        <div class="pitfall-card">
+          <strong>Mistake 4: No Variable Validation</strong>
+          <p style="margin-top: 8px; margin-bottom: 0;">Without <code>validation</code> blocks, a typo in
+            <code>environment = "production"</code> (instead of <code>"prod"</code>) silently creates resources with
+            wrong tags and wrong retention policies. Add validation to every variable that has a constrained value set.
+            Terraform will fail fast at plan time.</p>
+        </div>
+
+        <div class="pitfall-card">
+          <strong>Mistake 5: Modules That Do Too Much</strong>
+          <p style="margin-top: 8px; margin-bottom: 0;">A module that creates a VPC, subnets, route tables, NAT
+            Gateway, security groups, and an EKS cluster in one go is not a module — it is a monolith. It cannot be
+            tested independently and creates enormous state dependencies. One module, one responsibility.</p>
+        </div>
+
+        <div class="pitfall-card">
+          <strong>Mistake 6: No prevent_destroy on Critical Resources</strong>
+          <p style="margin-top: 8px; margin-bottom: 0;">Apply <code>lifecycle { prevent_destroy = true }</code> to
+            your state bucket, KMS keys, RDS databases, and EKS clusters. A <code>terraform destroy</code> run with
+            the wrong workspace selected cannot accidentally delete your production database if
+            <code>prevent_destroy = true</code> is set.</p>
+        </div>
+
+        <div class="pitfall-card">
+          <strong>Mistake 7: Not Pinning Provider Versions</strong>
+          <p style="margin-top: 8px; margin-bottom: 0;">Without a pinned version range, the next
+            <code>terraform init</code> may pull a breaking major provider version. Always use
+            <code>version = "~&gt; 5.50"</code> to allow patch updates while blocking major version bumps. Pin the
+            Terraform CLI version with <code>required_version = "~&gt; 1.9"</code> too.</p>
+        </div>
+
+        <h2>Architecture Decision Matrix</h2>
+
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th>Decision</th>
+              <th>Single tfvars</th>
+              <th>Workspace per env</th>
+              <th>Directory per env</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>State isolation</strong></td>
+              <td>❌ Shared</td>
+              <td>⚠️ Separate but same backend</td>
+              <td>✅ Fully separate</td>
+            </tr>
+            <tr>
+              <td><strong>Role-based apply</strong></td>
+              <td>❌ Impossible</td>
+              <td>⚠️ Complex</td>
+              <td>✅ Different IAM roles per dir</td>
+            </tr>
+            <tr>
+              <td><strong>Blast radius</strong></td>
+              <td>❌ Entire infra</td>
+              <td>⚠️ Per workspace</td>
+              <td>✅ Per layer per environment</td>
+            </tr>
+            <tr>
+              <td><strong>CI/CD clarity</strong></td>
+              <td>❌ Confusing</td>
+              <td>⚠️ Workspace switching</td>
+              <td>✅ Explicit path</td>
+            </tr>
+            <tr>
+              <td><strong>Compliance (audit trail)</strong></td>
+              <td>❌ Hard</td>
+              <td>⚠️ Possible</td>
+              <td>✅ Clear state per env</td>
+            </tr>
+            <tr>
+              <td><strong>Recommended for</strong></td>
+              <td>Learning</td>
+              <td>Small teams</td>
+              <td>Production enterprise</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div
+          style="background: var(--aws-highlight); padding: 32px; border-radius: 8px; border: 1px solid var(--aws-border); margin: 40px 0; text-align: center; border-left: 4px solid var(--aws-orange);">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="15 15 375 265" style="height: 80px; width: auto; fill: var(--aws-orange); display: block; margin: 0 auto 16px;">
+            <!-- Left: layered bars — decreasing width (networking → platform → apps → account) -->
+            <rect x="20" y="22" width="175" height="52" rx="6" />
+            <rect x="20" y="90" width="145" height="52" rx="6" />
+            <rect x="20" y="158" width="115" height="52" rx="6" />
+            <rect x="20" y="226" width="85" height="40" rx="6" />
+            <!-- Right: module grid — uniform squares (reusable building blocks) -->
+            <rect x="232" y="22" width="68" height="48" rx="5" />
+            <rect x="314" y="22" width="68" height="48" rx="5" />
+            <rect x="232" y="88" width="68" height="48" rx="5" />
+            <rect x="314" y="88" width="68" height="48" rx="5" />
+            <rect x="232" y="154" width="68" height="48" rx="5" />
+            <rect x="314" y="154" width="68" height="48" rx="5" />
+            <rect x="232" y="220" width="68" height="46" rx="5" />
+            <rect x="314" y="220" width="68" height="46" rx="5" />
+          </svg>
+          <h3 style="font-size: 18px; color: var(--aws-text); margin-top: 0; margin-bottom: 12px;">The Golden Rule</h3>
+          <p style="font-size: 15px; color: var(--aws-text-light); font-style: italic; margin-bottom: 0;">
+            "Terraform at scale is not about learning more Terraform syntax — it is about structure, discipline, and
+            automation. Separate state by layer and environment. Write modules with a single responsibility and
+            opinionated defaults. Never apply from a laptop. Always plan in CI, always gate prod applies with human
+            review, always apply the saved plan artifact. Run drift detection every morning. And treat the state file
+            like the most sensitive infrastructure asset you own — because it is."
+          </p>
+        </div>
+
+        <div style="margin: 40px 0;">
+          <span style="font-weight: 700; color: var(--aws-text-light); margin-right: 12px; font-size: 13px;">Tags:</span>
+          <span class="tag">#Terraform</span>
+          <span class="tag">#IaC</span>
+          <span class="tag">#AWS</span>
+          <span class="tag">#DevSecOps</span>
+          <span class="tag">#GitOps</span>
+          <span class="tag">#CloudArchitecture</span>
+          <span class="tag">#EKS</span>
+          <span class="tag">#Platform</span>
+          <span class="tag">#CI/CD</span>
+          <span class="tag">#FinOps</span>
+        </div>
+      </div> <!-- End Blog Body -->
+
+      <div class="share-section">
+        <span style="font-weight: 700; color: var(--aws-text-light);">Share this article:</span>
+        <a href="https://www.linkedin.com/sharing/share-offsite/?url=https://www.ankushpanday.com/blog/iac/terraform-at-scale-enterprise-aws.html"
+          target="_blank" class="share-btn linkedin-btn">
+          <i class="fa-brands fa-linkedin"></i> Share on LinkedIn
+        </a>
+      </div>
+
+      <div class="author-card">
+        <div class="author-img"><i class="fa-solid fa-user-tie"></i></div>
+        <div>
+          <h4 style="margin: 0 0 8px 0; color: var(--aws-text);">Ankush Panday</h4>
+          <p style="margin: 0; font-size: 14px; color: var(--aws-text-light);">Specializing in highly scalable AWS
+            infrastructure and automated quality engineering.</p>
+          <a href="https://www.linkedin.com/in/ankush-panday-39b97824/" target="_blank"
+            style="display: inline-block; margin-top: 10px; color: var(--aws-blue); text-decoration: none; font-size: 13px; font-weight: 600;">Connect
+            on LinkedIn <i class="fa-solid fa-external-link" style="font-size: 10px;"></i></a>
+        </div>
+      </div>
+
+    </article>
+
+    <!-- NAVIGATION LINKS -->
+    <div class="nav-links">
+      <a href="../compute/karpenter-vs-cluster-autoscaler-eks.html" class="nav-link">
+        <i class="fa-solid fa-arrow-left"></i> Previous: Karpenter vs Cluster Autoscaler
+      </a>
+      <a href="../index.html" class="nav-link">
+        Return to Blog Hub <i class="fa-solid fa-arrow-right"></i>
+      </a>
+    </div>
+
+  </main>
+
+  <footer class="aws-footer">
+    Built for Performance. Architected for the Cloud. &bull; &copy; 2026 <span>Ankush Panday</span>
+  </footer>
+
+</body>
+</html>

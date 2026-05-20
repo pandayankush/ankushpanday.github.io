@@ -307,6 +307,25 @@
       border-left-color: var(--aws-orange);
     }
 
+    .callout.incident {
+      background: #fdf2f2;
+      border-color: #f1948a;
+      border-left-color: var(--aws-red);
+    }
+
+    .callout.incident .callout-title {
+      color: var(--aws-red);
+      font-size: 15px;
+    }
+
+    .callout.incident .incident-reflection {
+      font-style: italic;
+      font-size: 13px;
+      color: var(--aws-text-muted);
+      margin-top: 12px;
+      margin-bottom: 0;
+    }
+
     .callout-title {
       font-weight: 700;
       margin-bottom: 6px;
@@ -875,6 +894,45 @@
               precisely because there was no one else to absorb the complexity.
             </div>
           </div>
+        </div>
+
+        <div class="callout incident">
+          <div class="callout-title">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            The Incident That Shaped Our Observability Strategy
+          </div>
+          <p style="font-size: 14px; color: var(--aws-text-light); line-height: 1.7; margin: 10px 0 0 0;">
+            Early in the platform's life, a newly onboarded microservice entered a crash loop due to a
+            misconfiguration introduced during its initial setup. The pod was failing — but no alarm fired.
+            No alert reached the team. The service sat degraded in silence until someone noticed it manually.
+          </p>
+          <p style="font-size: 14px; color: var(--aws-text-light); line-height: 1.7; margin: 10px 0 0 0;">
+            The root cause was straightforward in hindsight: the CloudWatch log group for that service had not
+            been added to the alarm configuration. The observability stack was monitoring the log groups that
+            existed at the time it was built — and this service was added after. The monitoring had not been
+            extended to cover it.
+          </p>
+          <p style="font-size: 14px; color: var(--aws-text); font-weight: 600; margin: 14px 0 6px 0;">The pivot: We rebuilt the alarm strategy with three changes.</p>
+          <p style="font-size: 14px; color: var(--aws-text-light); line-height: 1.7; margin: 0 0 8px 0;">
+            <strong>First</strong>, pod-level failure detection moved from log-based alarms to Container Insights
+            metric alarms on <code>pod_number_of_container_restarts</code> — a metric automatically available
+            for every pod in the cluster without any log group configuration. No new service can be invisible
+            to this alarm.
+          </p>
+          <p style="font-size: 14px; color: var(--aws-text-light); line-height: 1.7; margin: 0 0 8px 0;">
+            <strong>Second</strong>, all alarm notifications were routed to multiple channels simultaneously —
+            CloudWatch → SNS → Slack <code>#platform-alerts</code> AND PagerDuty. A single notification
+            channel is a single point of failure in your incident response.
+          </p>
+          <p style="font-size: 14px; color: var(--aws-text-light); line-height: 1.7; margin: 0 0 8px 0;">
+            <strong>Third</strong>, we added a CI check: any new service added to the ArgoCD ApplicationSet
+            must have a corresponding alarm definition in Terraform. A PR that deploys a new service without
+            an associated CloudWatch alarm fails the pipeline. Observability coverage is now a deployment
+            gate, not an afterthought.
+          </p>
+          <p class="incident-reflection">
+            The service was down for longer than it should have been. The platform was better for it.
+          </p>
         </div>
 
         <div class="lesson-card">

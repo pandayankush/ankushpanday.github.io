@@ -450,14 +450,14 @@
           g, platform-engineers, role:admin
 
 <span style="color:#6a9955;">          # Dev teams — can sync their own apps, cannot modify cluster-scoped resources</span>
-          g, fraud-team, role:fraud-deploy
+          g, orders-team, role:orders-deploy
           g, payments-team, role:payments-deploy
 
-<span style="color:#6a9955;">          # Custom role — deploy to fraud namespace only</span>
-          p, role:fraud-deploy, applications, get, fraud-detection/*, allow
-          p, role:fraud-deploy, applications, sync, fraud-detection/*, allow
-          p, role:fraud-deploy, applications, action/*, fraud-detection/*, allow
-          p, role:fraud-deploy, logs, get, fraud-detection/*, allow
+<span style="color:#6a9955;">          # Custom role — deploy to orders namespace only</span>
+          p, role:orders-deploy, applications, get, orders/*, allow
+          p, role:orders-deploy, applications, sync, orders/*, allow
+          p, role:orders-deploy, applications, action/*, orders/*, allow
+          p, role:orders-deploy, logs, get, orders/*, allow
 
 <span style="color:#6a9955;">          # Read-only for architects and auditors</span>
           g, architects, role:readonly
@@ -558,7 +558,7 @@ Apps of Apps (managed by Root App)
     │   ├── Ingress Nginx App
     │   └── cert-manager App
     └── service-apps (manages service-level Applications)
-        ├── fraud-detection-service App
+        ├── orders-service App
         ├── payment-processing-service App
         ├── enrichment-service App
         └── ... (30 more)</code></pre>
@@ -612,7 +612,7 @@ spec:
 │   │   └── argocd-notifications/
 │   │
 │   └── services/                      # Service Helm charts
-│       ├── fraud-detection/
+│       ├── orders/
 │       │   ├── Chart.yaml
 │       │   ├── values.yaml
 │       │   ├── values-dev.yaml
@@ -620,7 +620,7 @@ spec:
 │       └── payment-processing/
 │
 └── projects/                          # ArgoCD Project definitions
-    ├── fraud-detection-project.yaml
+    ├── orders-project.yaml
     └── payments-project.yaml</code></pre>
 
         <h3>Platform Apps &mdash; Managing Cluster Tooling via ArgoCD</h3>
@@ -702,7 +702,7 @@ spec:
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
-  name: fraud-detection-service
+  name: orders-service
   namespace: argocd
 spec:
   # Prevent accidental deletion of all generated apps
@@ -713,39 +713,39 @@ spec:
         elements:
           - env:         dev
             cluster:     https://dev-cluster.example.com
-            namespace:   fraud-detection-dev
+            namespace:   orders-dev
             valuesFile:  values-dev.yaml
             autoSync:    "true"
             prune:       "true"
 
           - env:         staging
             cluster:     https://dev-cluster.example.com   # Shares dev cluster
-            namespace:   fraud-detection-staging
+            namespace:   orders-staging
             valuesFile:  values-staging.yaml
             autoSync:    "true"
             prune:       "true"
 
           - env:         prod
             cluster:     https://prod-cluster.example.com
-            namespace:   fraud-detection
+            namespace:   orders
             valuesFile:  values-prod.yaml
             autoSync:    "false"   # Manual sync in production
             prune:       "false"   # Never auto-prune prod resources
 
   template:
     metadata:
-      name: "fraud-detection-{env}"
+      name: "orders-{env}"
       namespace: argocd
       labels:
         environment: "{env}"
-        app: fraud-detection
+        app: orders
     spec:
-      project: "fraud-detection-{env}"
+      project: "orders-{env}"
 
       source:
         repoURL:        https://github.com/org/gitops-config
         targetRevision: main
-        path:           apps/services/fraud-detection
+        path:           apps/services/orders
         helm:
           valueFiles:
             - values.yaml          # Base — always loaded first
@@ -885,24 +885,24 @@ spec:
         <h2>4. ArgoCD Projects &mdash; Scoping Access and Reducing Blast Radius</h2>
         <p>An ArgoCD Project defines boundaries &mdash; which source repos an Application can pull from, which destination clusters and namespaces it can deploy to, and which Kubernetes resources it can manage. Without Projects, every Application can theoretically deploy anywhere.</p>
 
-        <pre><code class="language-yaml"># projects/fraud-detection-project.yaml
+        <pre><code class="language-yaml"># projects/orders-project.yaml
 apiVersion: argoproj.io/v1alpha1
 kind: AppProject
 metadata:
-  name: fraud-detection-prod
+  name: orders-prod
   namespace: argocd
 spec:
-  description: "Fraud detection services — production cluster"
+  description: "Order processing services — production cluster"
 
   # Only pull from the approved GitOps repo
   sourceRepos:
     - https://github.com/org/gitops-config
-    - https://github.com/org/fraud-detection-service
+    - https://github.com/org/orders-service
 
-  # Only deploy to the fraud-detection namespace in prod
+  # Only deploy to the orders namespace in prod
   destinations:
     - server:    https://prod-cluster.example.com
-      namespace: fraud-detection
+      namespace: orders
 
   # Cluster-scoped resources this project CANNOT manage
   clusterResourceBlacklist:
@@ -932,20 +932,20 @@ spec:
 
   # RBAC — which ArgoCD roles can do what in this project
   roles:
-    - name: fraud-deployer
-      description: "Fraud team — can sync and view, cannot delete"
+    - name: orders-deployer
+      description: "Orders team — can sync and view, cannot delete"
       policies:
-        - p, proj:fraud-detection-prod:fraud-deployer, applications, get, *, allow
-        - p, proj:fraud-detection-prod:fraud-deployer, applications, sync, *, allow
-        - p, proj:fraud-detection-prod:fraud-deployer, applications, action/*, *, allow
-        - p, proj:fraud-detection-prod:fraud-deployer, logs, get, *, allow
+        - p, proj:orders-prod:orders-deployer, applications, get, *, allow
+        - p, proj:orders-prod:orders-deployer, applications, sync, *, allow
+        - p, proj:orders-prod:orders-deployer, applications, action/*, *, allow
+        - p, proj:orders-prod:orders-deployer, logs, get, *, allow
       groups:
-        - fraud-team
+        - orders-team
 
     - name: platform-admin
       description: "Platform team — full access"
       policies:
-        - p, proj:fraud-detection-prod:platform-admin, applications, *, *, allow
+        - p, proj:orders-prod:platform-admin, applications, *, *, allow
       groups:
         - platform-engineers
 
@@ -957,7 +957,7 @@ spec:
       applications:
         - "*"
       namespaces:
-        - fraud-detection
+        - orders
       manualSync: true   # Even manual syncs blocked during this window</code></pre>
 
         <blockquote><strong>Why sync windows matter in production:</strong> A deployment at 9am on a Monday during peak transaction load is the highest-risk time to introduce a change. Sync windows are the ArgoCD-native way to enforce deployment freeze periods without relying on human discipline. They are configured in Git, visible to the whole team, and enforced automatically.</blockquote>
@@ -984,7 +984,7 @@ Wave 5:  Smoke test Job (validates deployment succeeded)</code></pre>
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: fraud-detection
+  name: orders
   annotations:
     argocd.argoproj.io/sync-wave: "-1"
 
@@ -993,8 +993,8 @@ metadata:
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: fraud-db-migration
-  namespace: fraud-detection
+  name: orders-db-migration
+  namespace: orders
   annotations:
     argocd.argoproj.io/sync-wave: "1"
     argocd.argoproj.io/hook: Sync
@@ -1007,13 +1007,13 @@ spec:
       restartPolicy: Never
       containers:
         - name: migration
-          image: 123456789012.dkr.ecr.eu-west-1.amazonaws.com/fraud-db-migrator:latest
+          image: 123456789012.dkr.ecr.eu-west-1.amazonaws.com/orders-db-migrator:latest
           command: ["python", "manage.py", "migrate", "--no-input"]
           env:
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
-                  name: fraud-db-credentials
+                  name: orders-db-credentials
                   key:  url
 
 ---
@@ -1021,13 +1021,13 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: fraud-scoring-service
-  namespace: fraud-detection
+  name: order-processor-service
+  namespace: orders
   annotations:
     argocd.argoproj.io/sync-wave: "2"
 spec:
   selector:
-    app: fraud-scoring
+    app: order-processor
   ports:
     - port: 8080
 
@@ -1036,38 +1036,38 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: fraud-scoring
-  namespace: fraud-detection
+  name: order-processor
+  namespace: orders
   annotations:
     argocd.argoproj.io/sync-wave: "3"
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: fraud-scoring
+      app: order-processor
   template:
     metadata:
       labels:
-        app: fraud-scoring
+        app: order-processor
     spec:
       containers:
         - name: scoring
-          image: 123456789012.dkr.ecr.eu-west-1.amazonaws.com/fraud-scoring:latest
+          image: 123456789012.dkr.ecr.eu-west-1.amazonaws.com/order-processor:latest
 
 ---
 # HPA — wave 4, after Deployment exists
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: fraud-scoring-hpa
-  namespace: fraud-detection
+  name: order-processor-hpa
+  namespace: orders
   annotations:
     argocd.argoproj.io/sync-wave: "4"
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind:       Deployment
-    name:       fraud-scoring
+    name:       order-processor
   minReplicas: 2
   maxReplicas: 20
   metrics:
@@ -1083,21 +1083,21 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: fraud-scoring-ingress
-  namespace: fraud-detection
+  name: order-processor-ingress
+  namespace: orders
   annotations:
     argocd.argoproj.io/sync-wave: "4"
     kubernetes.io/ingress.class:  nginx
 spec:
   rules:
-    - host: fraud-api.internal.company.com
+    - host: orders-api.internal.company.com
       http:
         paths:
           - path:     /api/v1/score
             pathType: Prefix
             backend:
               service:
-                name: fraud-scoring-service
+                name: order-processor-service
                 port:
                   number: 8080
 
@@ -1106,8 +1106,8 @@ spec:
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: fraud-scoring-smoke-test
-  namespace: fraud-detection
+  name: order-processor-smoke-test
+  namespace: orders
   annotations:
     argocd.argoproj.io/sync-wave:        "5"
     argocd.argoproj.io/hook:             PostSync
@@ -1125,7 +1125,7 @@ spec:
             - /bin/sh
             - -c
             - |
-              response=$(curl -s -o /dev/null -w "%{http_code}"                 http://fraud-scoring-service.fraud-detection.svc.cluster.local:8080/health)
+              response=$(curl -s -o /dev/null -w "%{http_code}"                 http://order-processor-service.orders.svc.cluster.local:8080/health)
               if [ "$response" != "200" ]; then
                 echo "Smoke test failed — health check returned $response"
                 exit 1
@@ -1185,7 +1185,7 @@ spec:
             - /bin/sh
             - -c
             - |
-              curl -X POST $SLACK_WEBHOOK_URL                 -H "Content-Type: application/json"                 -d '{"text": "🔴 DEPLOYMENT FAILED: fraud-detection-prod sync failed. Check ArgoCD immediately."}'
+              curl -X POST $SLACK_WEBHOOK_URL                 -H "Content-Type: application/json"                 -d '{"text": "🔴 DEPLOYMENT FAILED: orders-prod sync failed. Check ArgoCD immediately."}'
           env:
             - name: SLACK_WEBHOOK_URL
               valueFrom:
@@ -1389,11 +1389,11 @@ data:
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: fraud-detection-dev
+  name: orders-dev
   annotations:
     # Watch this image for new tags
     argocd-image-updater.argoproj.io/image-list: |
-      scoring=123456789012.dkr.ecr.eu-west-1.amazonaws.com/fraud-scoring
+      scoring=123456789012.dkr.ecr.eu-west-1.amazonaws.com/order-processor
 
     # Update strategy — semver, latest, digest
     argocd-image-updater.argoproj.io/scoring.update-strategy: semver
@@ -1433,11 +1433,11 @@ CI pipeline runs on main:
     ↓
 ArgoCD detects change in gitops-config (within ~3 minutes)
     ↓
-ArgoCD syncs fraud-detection-dev (autoSync: true)
+ArgoCD syncs orders-dev (autoSync: true)
   - Sync Wave 1: database migration Job runs and completes
   - Sync Wave 3: Deployment rolls out new image
   - Sync Wave 5: smoke test Job validates health
-  - Notification → #deployments: "✅ fraud-detection-dev deployed v1.4.2"
+  - Notification → #deployments: "✅ orders-dev deployed v1.4.2"
     ↓
 Staging sync (autoSync: true, same cluster as dev)
     ↓
@@ -1448,9 +1448,9 @@ Platform team triggers MANUAL sync in ArgoCD UI for prod:
   - Checks sync wave order — migration before deployment
   - Clicks Sync
     ↓
-ArgoCD syncs fraud-detection-prod (manual)
+ArgoCD syncs orders-prod (manual)
   - Same wave sequence, same smoke test
-  - Notification → #platform-alerts: "✅ fraud-detection-prod deployed v1.4.2"
+  - Notification → #platform-alerts: "✅ orders-prod deployed v1.4.2"
     ↓
 DORA audit trail:
   - Git commit: who changed what, when, PR review
@@ -1477,20 +1477,20 @@ DORA audit trail:
           <pre style="margin-bottom: 0;"><code class="language-yaml">apiVersion: external-secrets.io/v1beta1
 kind: ExternalSecret
 metadata:
-  name: fraud-db-credentials
-  namespace: fraud-detection
+  name: orders-db-credentials
+  namespace: orders
 spec:
   refreshInterval: 1h
   secretStoreRef:
     name:  aws-secrets-manager
     kind:  ClusterSecretStore
   target:
-    name:           fraud-db-credentials
+    name:           orders-db-credentials
     creationPolicy: Owner
   data:
     - secretKey: url
       remoteRef:
-        key:      prod/fraud/db-credentials
+        key:      prod/orders/db-credentials
         property: connection_url</code></pre>
         </div>
 

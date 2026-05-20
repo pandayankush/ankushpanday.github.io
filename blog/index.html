@@ -99,6 +99,32 @@
         grid-template-columns: repeat(2, 1fr);
       }
     }
+
+    .series-intro {
+      color: var(--aws-text-light);
+      font-size: 14px;
+      margin: -8px 0 24px 4px;
+      line-height: 1.6;
+    }
+
+    .coming-soon-badge {
+      display: inline-block;
+      background: var(--aws-header);
+      color: white;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 10px;
+    }
+
+    .blog-card.coming-soon {
+      opacity: 0.65;
+      cursor: default;
+      pointer-events: none;
+    }
   </style>
 </head>
 
@@ -123,20 +149,18 @@
   <div class="blog-page-container">
     <a href="../index.html#blogs" class="back-btn"><i class="fa-solid fa-arrow-left"></i> Back to Portfolio</a>
     <h1 style="font-size: 32px; color: var(--aws-text); margin-bottom: 8px;">Technical Blog</h1>
-    <p
-      style="color: var(--aws-text-light); border-left: 4px solid var(--aws-blue); padding-left: 15px; margin-bottom: 40px;">
+    <p style="color: var(--aws-text-light); border-left: 4px solid var(--aws-blue); padding-left: 15px; margin-bottom: 40px;">
       Architecting for the Real World: AWS Deep Dives, Production Scaling Patterns, and the AI-Driven Cloud.</p>
 
-    <!-- Phase 1 Series Ribbon -->
-    <div
-      style="background: var(--aws-header); color: white; padding: 12px 20px; border-radius: 6px; display: flex; align-items: center; gap: 12px; margin-bottom: 24px;">
+    <!-- CATEGORY 1: AWS Networking Series -->
+    <div style="background: var(--aws-header); color: white; padding: 12px 20px; border-radius: 6px; display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
       <i class="fa-solid fa-network-wired" style="color: var(--aws-orange);"></i>
-      <span style="font-weight: 700; text-transform: uppercase; letter-spacing: 1px; font-size: 13px;">AWS Networking
-        Series</span>
+      <span style="font-weight: 700; text-transform: uppercase; letter-spacing: 1px; font-size: 13px;">AWS Networking Series</span>
     </div>
+    <p class="series-intro">Seven-part series covering VPC fundamentals through enterprise-grade security architecture.</p>
 
     <div class="blog-grid" style="margin-top: 0; margin-bottom: 60px;">
-      <!-- Blog 1 -->
+      <!-- Part 1 -->
       <a href="networking/demystifying-aws-vpc.html" class="blog-card">
         <div class="blog-card-img">
           <img src="../images/aws-vpc-networking-architecture.png" alt="AWS VPC Basics">
@@ -152,7 +176,7 @@
         </div>
       </a>
 
-      <!-- Blog 2 -->
+      <!-- Part 2 -->
       <a href="networking/advanced-vpc-scaling.html" class="blog-card">
         <div class="blog-card-img">
           <img src="../images/aws-advanced-vpc-scaling.png" alt="Advanced VPC Concepts">
@@ -168,7 +192,7 @@
         </div>
       </a>
 
-      <!-- Blog 3 -->
+      <!-- Part 3 -->
       <a href="networking/nat-gateway-vs-privatelink.html" class="blog-card">
         <div class="blog-card-img">
           <img src="../images/aws-vpc-private-connectivity-diagram.png" alt="NAT Gateway vs PrivateLink Architecture">
@@ -183,7 +207,8 @@
           </div>
         </div>
       </a>
-      <!-- Blog 4 -->
+
+      <!-- Part 4 -->
       <a href="networking/transit-gateway-vs-peering.html" class="blog-card">
         <div class="blog-card-img">
           <img src="../images/aws-transit-gateway-peering-architecture.png" alt="TGW vs VPC Peering">
@@ -198,7 +223,8 @@
           </div>
         </div>
       </a>
-      <!-- Blog 5 -->
+
+      <!-- Part 5 -->
       <a href="networking/how-dns-works-in-aws.html" class="blog-card">
         <div class="blog-card-img">
           <img src="../images/aws-route53-dns-architecture.png" alt="AWS DNS Architecture">
@@ -213,7 +239,8 @@
           </div>
         </div>
       </a>
-      <!-- Blog 6 -->
+
+      <!-- Part 6 -->
       <a href="networking/hybrid-connectivity-vpn-direct-connect.html" class="blog-card">
         <div class="blog-card-img">
           <img src="../images/aws-hybrid-connectivity-vpn-direct-connect.png" alt="Direct Connect vs VPNs Architecture">
@@ -228,18 +255,8 @@
           </div>
         </div>
       </a>
-    </div>
 
-    <!-- AWS Identity & Security Series Section -->
-    <div
-      style="background: var(--aws-header); color: white; padding: 12px 20px; border-radius: 6px; display: flex; align-items: center; gap: 12px; margin-bottom: 24px;">
-      <i class="fa-solid fa-shield-halved" style="color: var(--aws-orange);"></i>
-      <span style="font-weight: 700; text-transform: uppercase; letter-spacing: 1px; font-size: 13px;">AWS Identity &
-        Security Series</span>
-    </div>
-
-    <div class="blog-grid" style="margin-top: 0; margin-bottom: 60px;">
-      <!-- Blog 7 -->
+      <!-- Part 7 -->
       <a href="security/network-firewall-vs-security-groups.html" class="blog-card">
         <div class="blog-card-img">
           <img src="../images/aws-network-firewall-security-groups-nacl.png" alt="AWS Network Firewall vs SG vs NACLs">
@@ -254,8 +271,17 @@
           </div>
         </div>
       </a>
+    </div>
 
-      <!-- Blog 8 -->
+    <!-- CATEGORY 2: AWS Security Series -->
+    <div style="background: var(--aws-header); color: white; padding: 12px 20px; border-radius: 6px; display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+      <i class="fa-solid fa-shield-halved" style="color: var(--aws-orange);"></i>
+      <span style="font-weight: 700; text-transform: uppercase; letter-spacing: 1px; font-size: 13px;">AWS Security Series</span>
+    </div>
+    <p class="series-intro">IAM, GuardDuty, WAF, and the defence-in-depth model for regulated AWS environments.</p>
+
+    <div class="blog-grid" style="margin-top: 0; margin-bottom: 60px;">
+      <!-- Part 8 -->
       <a href="security/aws-iam-deep-dive.html" class="blog-card">
         <div class="blog-card-img">
           <img src="../images/aws-iam-roles-policies-architecture.png" alt="AWS IAM Deep Dive">
@@ -271,7 +297,7 @@
         </div>
       </a>
 
-      <!-- Blog 9 -->
+      <!-- Part 9 -->
       <a href="security/aws-security-in-depth.html" class="blog-card">
         <div class="blog-card-img">
           <img src="../images/aws-security-in-depth-architecture.png" alt="AWS Security in Depth">
@@ -288,16 +314,15 @@
       </a>
     </div>
 
-    <!-- Compute & Containers Series Section -->
-    <div
-      style="background: var(--aws-header); color: white; padding: 12px 20px; border-radius: 6px; display: flex; align-items: center; gap: 12px; margin-bottom: 24px;">
+    <!-- CATEGORY 3: AWS Containers & Platform Engineering -->
+    <div style="background: var(--aws-header); color: white; padding: 12px 20px; border-radius: 6px; display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
       <i class="fa-solid fa-cubes" style="color: var(--aws-orange);"></i>
-      <span style="font-weight: 700; text-transform: uppercase; letter-spacing: 1px; font-size: 13px;">Compute &
-        Containers Series</span>
+      <span style="font-weight: 700; text-transform: uppercase; letter-spacing: 1px; font-size: 13px;">AWS Containers &amp; Platform Engineering</span>
     </div>
+    <p class="series-intro">ECS vs EKS, production cluster design, GitOps, autoscaling, and IaC at enterprise scale.</p>
 
     <div class="blog-grid" style="margin-top: 0; margin-bottom: 60px;">
-      <!-- Blog 10 -->
+      <!-- Part 10 -->
       <a href="compute/aws-ecs-fargate-vs-eks.html" class="blog-card">
         <div class="blog-card-img">
           <img src="../images/aws-ecs-fargate-vs-eks-architecture.png" alt="AWS ECS Fargate vs EKS Architecture">
@@ -313,15 +338,14 @@
         </div>
       </a>
 
-      <!-- Blog 11 -->
+      <!-- Part 11 -->
       <a href="compute/eks-production-architecture-multi-env.html" class="blog-card">
         <div class="blog-card-img">
           <img src="../images/aws-eks-production-multi-env-architecture.png"
             alt="Production-Grade EKS Architecture — Multi-Env, Node Groups and Isolation">
         </div>
         <div class="blog-card-content">
-          <div class="blog-card-title">Production-Grade EKS Architecture: Multi-Env Setup, Node Groups &amp; Isolation
-            Strategy</div>
+          <div class="blog-card-title">Production-Grade EKS Architecture: Multi-Env Setup, Node Groups &amp; Isolation Strategy</div>
           <p class="blog-card-excerpt">The full EKS blueprint — three-tier node groups, namespace isolation with
             NetworkPolicies, RBAC, Helm values hierarchy, and zero-downtime upgrade patterns.</p>
           <div class="blog-card-meta">
@@ -331,7 +355,7 @@
         </div>
       </a>
 
-      <!-- Blog 12 -->
+      <!-- Part 12 -->
       <a href="compute/ingress-alb-nlb-eks-traffic-routing.html" class="blog-card">
         <div class="blog-card-img">
           <img src="../images/aws-eks-ingress-alb-nlb-traffic-routing.png"
@@ -347,7 +371,7 @@
         </div>
       </a>
 
-      <!-- Blog 13 -->
+      <!-- Part 13 -->
       <a href="compute/karpenter-vs-cluster-autoscaler-eks.html" class="blog-card">
         <div class="blog-card-img">
           <img src="../images/karpenter-vs-cluster-autoscaler-eks.png"
@@ -362,34 +386,8 @@
           </div>
         </div>
       </a>
-    </div>
 
-    <!-- GitOps & IaC Series Section -->
-    <div
-      style="background: var(--aws-header); color: white; padding: 12px 20px; border-radius: 6px; display: flex; align-items: center; gap: 12px; margin-bottom: 24px;">
-      <i class="fa-solid fa-code-branch" style="color: var(--aws-orange);"></i>
-      <span style="font-weight: 700; text-transform: uppercase; letter-spacing: 1px; font-size: 13px;">GitOps &amp; IaC
-        Series</span>
-    </div>
-
-    <div class="blog-grid" style="margin-top: 0; margin-bottom: 60px;">
-      <!-- Blog 15 -->
-      <a href="iac/argocd-gitops-helm-eks.html" class="blog-card">
-        <div class="blog-card-img">
-          <img src="../images/argocd-gitops-eks-helm.png"
-            alt="GitOps with ArgoCD Helm on EKS Architecture">
-        </div>
-        <div class="blog-card-content">
-          <div class="blog-card-title">GitOps with ArgoCD + Helm on EKS: App of Apps, Sync Waves &amp; Multi-Cluster Strategy</div>
-          <p class="blog-card-excerpt">App of Apps bootstrap, ApplicationSet generators, Sync Waves for ordered rollout, multi-cluster management, RBAC with SSO, Image Updater, and Notifications. Full working YAML from a production EKS platform.</p>
-          <div class="blog-card-meta">
-            <span><i class="fa-regular fa-calendar"></i> May 20, 2026</span>
-            <span><i class="fa-regular fa-clock"></i> 32 min read</span>
-          </div>
-        </div>
-      </a>
-
-      <!-- Blog 14 -->
+      <!-- Part 14 -->
       <a href="iac/terraform-at-scale-enterprise-aws.html" class="blog-card">
         <div class="blog-card-img">
           <img src="../images/aws-terraform-iac-enterprise-structure.png"
@@ -405,6 +403,46 @@
           </div>
         </div>
       </a>
+
+      <!-- Part 15 -->
+      <a href="iac/argocd-gitops-helm-eks.html" class="blog-card">
+        <div class="blog-card-img">
+          <img src="../images/argocd-gitops-eks-helm.png"
+            alt="GitOps with ArgoCD Helm on EKS Architecture">
+        </div>
+        <div class="blog-card-content">
+          <div class="blog-card-title">GitOps with ArgoCD + Helm on EKS: App of Apps, Sync Waves &amp; Multi-Cluster Strategy</div>
+          <p class="blog-card-excerpt">App of Apps bootstrap, ApplicationSet generators, Sync Waves for ordered rollout, multi-cluster management, RBAC with SSO, Image Updater, and Notifications. Full working YAML from a production EKS platform.</p>
+          <div class="blog-card-meta">
+            <span><i class="fa-regular fa-calendar"></i> May 20, 2026</span>
+            <span><i class="fa-regular fa-clock"></i> 32 min read</span>
+          </div>
+        </div>
+      </a>
+    </div>
+
+    <!-- CATEGORY 4: Production Deep Dives -->
+    <div style="background: var(--aws-header); color: white; padding: 12px 20px; border-radius: 6px; display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+      <i class="fa-solid fa-microscope" style="color: var(--aws-orange);"></i>
+      <span style="font-weight: 700; text-transform: uppercase; letter-spacing: 1px; font-size: 13px;">Production Deep Dives</span>
+    </div>
+    <p class="series-intro">Standalone posts on specific production problems, incidents, and the non-obvious solutions that came from operating real systems.</p>
+
+    <div class="blog-grid" style="margin-top: 0; margin-bottom: 60px;">
+      <!-- Placeholder: Coming Soon -->
+      <div class="blog-card coming-soon">
+        <div class="blog-card-img">
+          <i class="fa-solid fa-flask" style="font-size: 48px; color: var(--aws-border);"></i>
+        </div>
+        <div class="blog-card-content">
+          <div class="coming-soon-badge">Coming Soon</div>
+          <div class="blog-card-title">Stopping EKS Test Environments: Karpenter, Step Functions &amp; the Race Condition</div>
+          <p class="blog-card-excerpt">How we coordinated a multi-phase shutdown of EKS worker nodes and Karpenter-provisioned nodes overnight using AWS Step Functions, Lambda, and tag-based node identification.</p>
+          <div class="blog-card-meta">
+            <span><i class="fa-regular fa-clock"></i> 12 min read</span>
+          </div>
+        </div>
+      </div>
     </div>
 
   </div>

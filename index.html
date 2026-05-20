@@ -334,10 +334,60 @@
             systems at Rabobank and WCC Group.
           </p>
 
-          <!-- FEATURED BLOGS — 4 cards, one per series -->
+          <!-- FEATURED BLOGS — one card per category -->
           <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; margin-top: 28px;">
 
-            <!-- Card 1: GitOps & IaC — Blog 15 (Latest) -->
+            <!-- Card 1: AWS Networking — Part 7 (Network Firewall) -->
+            <a href="blog/security/network-firewall-vs-security-groups.html"
+              style="text-decoration: none; display: flex; flex-direction: column; border: 1px solid var(--aws-border); border-radius: 8px; overflow: hidden; background: var(--aws-white); transition: transform 0.2s, box-shadow 0.2s;"
+              onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 8px 24px rgba(0,0,0,0.10)'"
+              onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='none'">
+              <div style="background: #f8f9fa; border-bottom: 1px solid var(--aws-border); height: 180px; display: flex; align-items: center; justify-content: center;">
+                <img src="images/aws-network-firewall-security-groups-nacl.png" alt="AWS Network Firewall vs SGs vs NACLs"
+                  style="max-width: 80%; max-height: 85%; object-fit: contain;">
+              </div>
+              <div style="padding: 20px; flex-grow: 1; display: flex; flex-direction: column;">
+                <div style="font-size: 11px; color: var(--aws-orange); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">
+                  AWS Networking</div>
+                <h3 style="font-size: 15px; font-weight: 700; color: var(--aws-text); margin-bottom: 10px; line-height: 1.4;">
+                  AWS Network Firewall vs Security Groups vs NACLs</h3>
+                <p style="font-size: 13px; color: var(--aws-text-light); line-height: 1.6; margin-bottom: 16px; flex-grow: 1;">
+                  Layered defence-in-depth: when to enforce at the subnet boundary, when at the instance, and when you need stateful deep-packet inspection.</p>
+                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 11px; color: var(--aws-text-light);">
+                  <span><i class="fa-regular fa-calendar"></i> May 6, 2026</span>
+                  <span>•</span>
+                  <span><i class="fa-regular fa-clock"></i> 22 min</span>
+                  <span class="tag" style="font-size: 10px; padding: 2px 7px; margin-left: 4px;">Networking</span>
+                </div>
+              </div>
+            </a>
+
+            <!-- Card 2: AWS Security — Part 9 (GuardDuty, Security Hub & WAF) -->
+            <a href="blog/security/aws-security-in-depth.html"
+              style="text-decoration: none; display: flex; flex-direction: column; border: 1px solid var(--aws-border); border-radius: 8px; overflow: hidden; background: var(--aws-white); transition: transform 0.2s, box-shadow 0.2s;"
+              onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 8px 24px rgba(0,0,0,0.10)'"
+              onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='none'">
+              <div style="background: #f8f9fa; border-bottom: 1px solid var(--aws-border); height: 180px; display: flex; align-items: center; justify-content: center;">
+                <img src="images/aws-security-in-depth-architecture.png" alt="AWS Security in Depth"
+                  style="max-width: 80%; max-height: 85%; object-fit: contain;">
+              </div>
+              <div style="padding: 20px; flex-grow: 1; display: flex; flex-direction: column;">
+                <div style="font-size: 11px; color: var(--aws-orange); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">
+                  AWS Security</div>
+                <h3 style="font-size: 15px; font-weight: 700; color: var(--aws-text); margin-bottom: 10px; line-height: 1.4;">
+                  AWS Security in Depth: GuardDuty, Security Hub &amp; WAF</h3>
+                <p style="font-size: 13px; color: var(--aws-text-light); line-height: 1.6; margin-bottom: 16px; flex-grow: 1;">
+                  Beyond prevention: continuous monitoring, automated threat response, and application-layer protection using native AWS security services.</p>
+                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 11px; color: var(--aws-text-light);">
+                  <span><i class="fa-regular fa-calendar"></i> May 8, 2026</span>
+                  <span>•</span>
+                  <span><i class="fa-regular fa-clock"></i> 25 min</span>
+                  <span class="tag" style="font-size: 10px; padding: 2px 7px; margin-left: 4px;">Security</span>
+                </div>
+              </div>
+            </a>
+
+            <!-- Card 3: Containers & Platform Engineering — Part 15 (GitOps/ArgoCD) -->
             <a href="blog/iac/argocd-gitops-helm-eks.html"
               style="text-decoration: none; display: flex; flex-direction: column; border: 1px solid var(--aws-border); border-radius: 8px; overflow: hidden; background: var(--aws-white); transition: transform 0.2s, box-shadow 0.2s;"
               onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 8px 24px rgba(0,0,0,0.10)'"
@@ -345,21 +395,16 @@
               <div style="position: relative; background: #f8f9fa; border-bottom: 1px solid var(--aws-border); height: 180px; display: flex; align-items: center; justify-content: center;">
                 <img src="images/argocd-gitops-eks-helm.png" alt="GitOps with ArgoCD Helm on EKS"
                   style="max-width: 80%; max-height: 85%; object-fit: contain;">
-                <span
-                  style="position: absolute; top: 10px; right: 10px; background: var(--aws-orange); color: white; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.5px;">Latest</span>
+                <span style="position: absolute; top: 10px; right: 10px; background: var(--aws-orange); color: white; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.5px;">Latest</span>
               </div>
               <div style="padding: 20px; flex-grow: 1; display: flex; flex-direction: column;">
-                <div
-                  style="font-size: 11px; color: var(--aws-orange); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">
-                  GitOps &amp; IaC</div>
+                <div style="font-size: 11px; color: var(--aws-orange); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">
+                  Containers &amp; Platform Engineering</div>
                 <h3 style="font-size: 15px; font-weight: 700; color: var(--aws-text); margin-bottom: 10px; line-height: 1.4;">
                   GitOps with ArgoCD + Helm on EKS: App of Apps, Sync Waves &amp; Multi-Cluster</h3>
-                <p
-                  style="font-size: 13px; color: var(--aws-text-light); line-height: 1.6; margin-bottom: 16px; flex-grow: 1;">
-                  App of Apps bootstrap, ApplicationSet multi-env deployments, Sync Waves for ordered rollout,
-                  multi-cluster management, RBAC with SSO, and Notifications. Full YAML included.</p>
-                <div
-                  style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 11px; color: var(--aws-text-light);">
+                <p style="font-size: 13px; color: var(--aws-text-light); line-height: 1.6; margin-bottom: 16px; flex-grow: 1;">
+                  App of Apps bootstrap, ApplicationSet multi-env deployments, Sync Waves for ordered rollout, multi-cluster management, RBAC with SSO, and Notifications. Full YAML included.</p>
+                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 11px; color: var(--aws-text-light);">
                   <span><i class="fa-regular fa-calendar"></i> May 20, 2026</span>
                   <span>•</span>
                   <span><i class="fa-regular fa-clock"></i> 32 min</span>
@@ -368,95 +413,25 @@
               </div>
             </a>
 
-            <!-- Card 2: Compute & Containers — Blog 13 (Karpenter) -->
-            <a href="blog/compute/karpenter-vs-cluster-autoscaler-eks.html"
-              style="text-decoration: none; display: flex; flex-direction: column; border: 1px solid var(--aws-border); border-radius: 8px; overflow: hidden; background: var(--aws-white); transition: transform 0.2s, box-shadow 0.2s;"
-              onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 8px 24px rgba(0,0,0,0.10)'"
-              onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='none'">
-              <div
-                style="background: #f8f9fa; border-bottom: 1px solid var(--aws-border); height: 180px; display: flex; align-items: center; justify-content: center;">
-                <img src="images/karpenter-vs-cluster-autoscaler-eks.png" alt="Karpenter vs Cluster Autoscaler EKS"
-                  style="max-width: 80%; max-height: 85%; object-fit: contain;" onerror="this.style.display='none'">
+            <!-- Card 4: Production Deep Dives — placeholder (Coming Soon) -->
+            <div style="display: flex; flex-direction: column; border: 1px solid var(--aws-border); border-radius: 8px; overflow: hidden; background: var(--aws-white); opacity: 0.65; cursor: default;">
+              <div style="background: #f8f9fa; border-bottom: 1px solid var(--aws-border); height: 180px; display: flex; align-items: center; justify-content: center;">
+                <i class="fa-solid fa-flask" style="font-size: 48px; color: var(--aws-border);"></i>
               </div>
               <div style="padding: 20px; flex-grow: 1; display: flex; flex-direction: column;">
-                <div
-                  style="font-size: 11px; color: var(--aws-orange); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">
-                  Compute &amp; Containers</div>
+                <div style="font-size: 11px; color: var(--aws-orange); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">
+                  Production Deep Dives</div>
+                <div style="display: inline-block; background: var(--aws-header); color: white; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; width: fit-content;">Coming Soon</div>
                 <h3 style="font-size: 15px; font-weight: 700; color: var(--aws-text); margin-bottom: 10px; line-height: 1.4;">
-                  Karpenter vs Cluster Autoscaler — Running Both in Production on EKS</h3>
-                <p
-                  style="font-size: 13px; color: var(--aws-text-light); line-height: 1.6; margin-bottom: 16px; flex-grow: 1;">
-                  Three-tier compute: On-Demand MNG (CA) + Spot NodePools (Karpenter). Conflict prevention, interruption
-                  handling, and the real cost levers from a production EKS platform.</p>
-                <div
-                  style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 11px; color: var(--aws-text-light);">
-                  <span><i class="fa-regular fa-calendar"></i> May 18, 2026</span>
-                  <span>•</span>
-                  <span><i class="fa-regular fa-clock"></i> 30 min</span>
-                  <span class="tag" style="font-size: 10px; padding: 2px 7px; margin-left: 4px;">FinOps</span>
+                  Stopping EKS Test Environments: Karpenter, Step Functions &amp; the Race Condition</h3>
+                <p style="font-size: 13px; color: var(--aws-text-light); line-height: 1.6; margin-bottom: 16px; flex-grow: 1;">
+                  Multi-phase shutdown of EKS worker nodes and Karpenter-provisioned nodes overnight using AWS Step Functions, Lambda, and tag-based node identification.</p>
+                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 11px; color: var(--aws-text-light);">
+                  <span><i class="fa-regular fa-clock"></i> 12 min</span>
+                  <span class="tag" style="font-size: 10px; padding: 2px 7px; margin-left: 4px;">Deep Dive</span>
                 </div>
               </div>
-            </a>
-
-            <!-- Card 3: Identity & Security — Blog 8 (IAM) -->
-            <a href="blog/security/aws-iam-deep-dive.html"
-              style="text-decoration: none; display: flex; flex-direction: column; border: 1px solid var(--aws-border); border-radius: 8px; overflow: hidden; background: var(--aws-white); transition: transform 0.2s, box-shadow 0.2s;"
-              onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 8px 24px rgba(0,0,0,0.10)'"
-              onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='none'">
-              <div
-                style="background: #f8f9fa; border-bottom: 1px solid var(--aws-border); height: 180px; display: flex; align-items: center; justify-content: center;">
-                <img src="images/aws-iam-roles-policies-architecture.png" alt="AWS IAM Deep Dive"
-                  style="max-width: 80%; max-height: 85%; object-fit: contain;">
-              </div>
-              <div style="padding: 20px; flex-grow: 1; display: flex; flex-direction: column;">
-                <div
-                  style="font-size: 11px; color: var(--aws-orange); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">
-                  Identity &amp; Security</div>
-                <h3 style="font-size: 15px; font-weight: 700; color: var(--aws-text); margin-bottom: 10px; line-height: 1.4;">
-                  AWS IAM Deep Dive — Roles, Policies, and Zero-Trust at Scale</h3>
-                <p
-                  style="font-size: 13px; color: var(--aws-text-light); line-height: 1.6; margin-bottom: 16px; flex-grow: 1;">
-                  OIDC federation, Permissions Boundaries, cross-account access, and a Zero Trust IAM posture for
-                  enterprise AWS.</p>
-                <div
-                  style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 11px; color: var(--aws-text-light);">
-                  <span><i class="fa-regular fa-calendar"></i> May 7, 2026</span>
-                  <span>•</span>
-                  <span><i class="fa-regular fa-clock"></i> 25 min</span>
-                  <span class="tag" style="font-size: 10px; padding: 2px 7px; margin-left: 4px;">Security</span>
-                </div>
-              </div>
-            </a>
-
-            <!-- Card 4: AWS Networking — Blog 4 (Transit Gateway) -->
-            <a href="blog/networking/transit-gateway-vs-peering.html"
-              style="text-decoration: none; display: flex; flex-direction: column; border: 1px solid var(--aws-border); border-radius: 8px; overflow: hidden; background: var(--aws-white); transition: transform 0.2s, box-shadow 0.2s;"
-              onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 8px 24px rgba(0,0,0,0.10)'"
-              onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='none'">
-              <div
-                style="background: #f8f9fa; border-bottom: 1px solid var(--aws-border); height: 180px; display: flex; align-items: center; justify-content: center;">
-                <img src="images/aws-transit-gateway-peering-architecture.png" alt="Transit Gateway vs VPC Peering"
-                  style="max-width: 80%; max-height: 85%; object-fit: contain;">
-              </div>
-              <div style="padding: 20px; flex-grow: 1; display: flex; flex-direction: column;">
-                <div
-                  style="font-size: 11px; color: var(--aws-orange); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">
-                  AWS Networking</div>
-                <h3 style="font-size: 15px; font-weight: 700; color: var(--aws-text); margin-bottom: 10px; line-height: 1.4;">
-                  Transit Gateway vs VPC Peering — When to Use What</h3>
-                <p
-                  style="font-size: 13px; color: var(--aws-text-light); line-height: 1.6; margin-bottom: 16px; flex-grow: 1;">
-                  Mesh vs hub-and-spoke: the connectivity decision that shapes your entire multi-account AWS
-                  architecture.</p>
-                <div
-                  style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 11px; color: var(--aws-text-light);">
-                  <span><i class="fa-regular fa-calendar"></i> May 1, 2026</span>
-                  <span>•</span>
-                  <span><i class="fa-regular fa-clock"></i> 25 min</span>
-                  <span class="tag" style="font-size: 10px; padding: 2px 7px; margin-left: 4px;">Networking</span>
-                </div>
-              </div>
-            </a>
+            </div>
 
           </div><!-- end grid -->
 

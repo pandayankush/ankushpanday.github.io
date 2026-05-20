@@ -921,14 +921,14 @@
           </p>
           <p style="font-size: 14px; color: var(--aws-text-light); line-height: 1.7; margin: 0 0 8px 0;">
             <strong>Second</strong>, all alarm notifications were routed to multiple channels simultaneously —
-            CloudWatch → SNS → Slack <code>#platform-alerts</code> AND PagerDuty. A single notification
+            CloudWatch → SNS → Teams <code>#platform-alerts</code> AND PagerDuty. A single notification
             channel is a single point of failure in your incident response.
           </p>
           <p style="font-size: 14px; color: var(--aws-text-light); line-height: 1.7; margin: 0 0 8px 0;">
-            <strong>Third</strong>, we added a CI check: any new service added to the ArgoCD ApplicationSet
-            must have a corresponding alarm definition in Terraform. A PR that deploys a new service without
-            an associated CloudWatch alarm fails the pipeline. Observability coverage is now a deployment
-            gate, not an afterthought.
+            <strong>Third</strong>, any alarm firing in production automatically raises a Change Request in
+            the ITSM tool. The incident is not just a notification — it is a tracked work item with an owner,
+            a timeline, and a resolution record. Every production event is handled as a formal CR, ensuring
+            nothing is resolved off the books and audit trails are complete.
           </p>
           <p class="incident-reflection">
             The service was down for longer than it should have been. The platform was better for it.

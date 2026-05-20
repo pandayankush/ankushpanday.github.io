@@ -1584,6 +1584,34 @@ spec:
         </table>
 
         <div style="background: var(--aws-highlight); padding: 32px; border-radius: 8px; border: 1px solid var(--aws-border); margin: 40px 0; text-align: center; border-left: 4px solid var(--aws-orange);">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 225" style="height: 80px; width: auto; fill: var(--aws-orange); display: block; margin: 0 auto 16px;">
+            <!-- Left: Sync Waves — descending staircase (wave 0 → wave 3) -->
+            <rect x="10" y="16" width="165" height="28" rx="5"/>
+            <polygon points="87,46 103,46 95,57"/>
+            <rect x="24" y="58" width="148" height="28" rx="5"/>
+            <polygon points="90,88 106,88 98,99"/>
+            <rect x="38" y="100" width="131" height="28" rx="5"/>
+            <polygon points="93,130 109,130 101,141"/>
+            <rect x="52" y="142" width="114" height="28" rx="5"/>
+            <!-- Divider -->
+            <rect x="199" y="8" width="3" height="210" rx="1" opacity="0.4"/>
+            <!-- Right: App of Apps — three-level hierarchy tree -->
+            <rect x="261" y="8" width="82" height="28" rx="5"/>
+            <rect x="299" y="36" width="6" height="24" rx="2"/>
+            <rect x="241" y="57" width="124" height="5" rx="2"/>
+            <rect x="238" y="57" width="6" height="24" rx="2"/>
+            <rect x="299" y="57" width="6" height="24" rx="2"/>
+            <rect x="360" y="57" width="6" height="24" rx="2"/>
+            <rect x="210" y="81" width="60" height="26" rx="4"/>
+            <rect x="272" y="81" width="60" height="26" rx="4"/>
+            <rect x="334" y="81" width="60" height="26" rx="4"/>
+            <rect x="237" y="107" width="6" height="22" rx="2"/>
+            <rect x="299" y="107" width="6" height="22" rx="2"/>
+            <rect x="361" y="107" width="6" height="22" rx="2"/>
+            <rect x="210" y="129" width="60" height="24" rx="4"/>
+            <rect x="272" y="129" width="60" height="24" rx="4"/>
+            <rect x="334" y="129" width="60" height="24" rx="4"/>
+          </svg>
           <h3 style="font-size: 18px; color: var(--aws-text); margin-top: 0; margin-bottom: 12px;">The Golden Rule</h3>
           <p style="font-size: 15px; color: var(--aws-text-light); font-style: italic; margin-bottom: 0;">
             &ldquo;GitOps is not about the tool &mdash; it is about the discipline. ArgoCD is the enforcement mechanism, but the value comes from the commitment: Git is the only source of truth, every change is a pull request, every deployment has an author and a timestamp, and production syncs are always deliberate. App of Apps from Day 1 so your Application objects are themselves managed as code. Sync Waves for every service with dependencies. <code>autoSync: false</code> in production, always. And notifications on every sync outcome &mdash; because a deployment you don&apos;t know about is an incident you&apos;re not prepared for.&rdquo;

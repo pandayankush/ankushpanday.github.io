@@ -1,0 +1,1648 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- SEO PRIMARY -->
+  <title>GitOps with ArgoCD + Helm on EKS: App of Apps, Sync Waves &amp; Multi-Cluster Strategy | Ankush Panday</title>
+  <meta name="description"
+    content="Production ArgoCD setup: App of Apps bootstrap, ApplicationSet multi-env deployments, Sync Waves for ordered rollout, multi-cluster management, RBAC with SSO, and Notifications. Complete YAML included.">
+  <meta name="keywords"
+    content="AWS, EKS, ArgoCD, GitOps, Helm, Kubernetes, App of Apps, ApplicationSet, Sync Waves, DevSecOps, IaC, Terraform, Multi-Cluster">
+  <link rel="canonical" href="https://www.ankushpanday.com/blog/iac/argocd-gitops-helm-eks.html">
+
+  <!-- OPEN GRAPH -->
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://www.ankushpanday.com/blog/iac/argocd-gitops-helm-eks.html">
+  <meta property="og:title" content="GitOps with ArgoCD + Helm on EKS: App of Apps, Sync Waves &amp; Multi-Cluster Strategy">
+  <meta property="og:description"
+    content="Production ArgoCD setup: App of Apps bootstrap, ApplicationSet multi-env deployments, Sync Waves for ordered rollout, multi-cluster management, RBAC with SSO, and Notifications.">
+  <meta property="og:image" content="https://www.ankushpanday.com/images/argocd-gitops-eks-helm.png">
+
+  <link rel="stylesheet" href="../../style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <style>
+    .blog-page-container {
+      max-width: 900px;
+      margin: 100px auto 40px auto;
+      padding: 0 20px;
+      min-height: calc(100vh - 200px);
+    }
+
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--aws-blue);
+      text-decoration: none;
+      font-weight: 500;
+      margin-bottom: 24px;
+    }
+
+    .blog-content-card {
+      background: var(--aws-white);
+      border: 1px solid var(--aws-border);
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    }
+
+    .blog-header {
+      background: #f8f9fa;
+      padding: 40px;
+      border-bottom: 1px solid var(--aws-border);
+    }
+
+    .blog-body {
+      padding: 40px;
+      line-height: 1.8;
+      font-size: 16px;
+      color: var(--aws-text);
+    }
+
+    .blog-body h2 {
+      margin-top: 48px;
+      font-size: 26px;
+      color: var(--aws-text);
+      border-bottom: 2px solid var(--aws-orange);
+      display: inline-block;
+      padding-bottom: 4px;
+      margin-bottom: 24px;
+    }
+
+    .blog-body h3 {
+      margin-top: 32px;
+      font-size: 22px;
+      color: var(--aws-blue);
+      margin-bottom: 16px;
+    }
+
+    .blog-body h4 {
+      margin-top: 24px;
+      font-size: 18px;
+      color: var(--aws-text);
+      font-weight: 700;
+    }
+
+    .blog-body p {
+      margin-bottom: 20px;
+    }
+
+    .blog-body ul,
+    .blog-body ol {
+      margin-bottom: 24px;
+      padding-left: 24px;
+    }
+
+    .blog-body li {
+      margin-bottom: 12px;
+    }
+
+    .blog-body strong {
+      color: var(--aws-text);
+    }
+
+    .blog-body blockquote {
+      font-style: italic;
+      color: var(--aws-text-light);
+      margin: 30px 0;
+      border-left: 4px solid var(--aws-orange);
+      padding: 20px;
+      background: #fcfcfc;
+    }
+
+    .compare-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+
+    .compare-table th {
+      background: var(--aws-blue);
+      color: white;
+      padding: 12px;
+      border: 1px solid var(--aws-border);
+    }
+
+    .compare-table td {
+      padding: 12px;
+      border: 1px solid var(--aws-border);
+    }
+
+    .compare-table tr:nth-child(even) {
+      background: #f9f9f9;
+    }
+
+    pre {
+      background: #232f3e;
+      color: #f8f8f2;
+      padding: 20px;
+      border-radius: 6px;
+      overflow-x: auto;
+      margin: 24px 0;
+      font-size: 13px;
+      line-height: 1.5;
+      border-left: 4px solid var(--aws-orange);
+    }
+
+    code {
+      font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+      background: #f1f3f5;
+      color: #232f3e;
+      padding: 2px 4px;
+      border-radius: 4px;
+      border: 1px solid #dee2e6;
+      font-size: 0.9em;
+    }
+
+    pre code {
+      background: none;
+      color: inherit;
+      padding: 0;
+      border: none;
+      font-size: inherit;
+    }
+
+    .hljs { background: transparent; padding: 0; color: #f8f8f2; }
+    .hljs-comment, .hljs-quote { color: #6a9955; }
+    .hljs-keyword, .hljs-built_in, .hljs-type { color: #569cd6; }
+    .hljs-string, .hljs-title { color: #ce9178; }
+    .hljs-attr, .hljs-variable, .hljs-selector-id { color: #9cdcfe; }
+    .hljs-number, .hljs-literal { color: #b5cea8; }
+    .hljs-meta, .hljs-tag { color: #f8f8f2; }
+
+    .pitfall-card {
+      background: #fff5f5;
+      border: 1px solid #fed7d7;
+      border-left: 4px solid #d13212;
+      padding: 20px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+    }
+
+    .author-card {
+      display: flex;
+      gap: 20px;
+      align-items: center;
+      padding: 30px;
+      background: #fcfcfc;
+      border-top: 1px solid var(--aws-border);
+    }
+
+    .author-img {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background: var(--aws-highlight);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 30px;
+      color: var(--aws-orange);
+      border: 2px solid var(--aws-border);
+    }
+
+    .nav-links {
+      display: flex;
+      justify-content: space-between;
+      margin: 40px 0;
+      padding: 20px 0;
+      border-top: 1px solid var(--aws-border);
+    }
+
+    .nav-link {
+      text-decoration: none;
+      color: var(--aws-blue);
+      font-weight: 600;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .tag {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-right: 8px;
+      margin-bottom: 8px;
+    }
+
+    .tag.blue {
+      background: #e7f2fa;
+      color: #0073bb;
+    }
+
+    .tag.purple {
+      background: #f2e7fa;
+      color: #6b3fa0;
+    }
+
+    .share-section {
+      padding: 20px 40px;
+      border-top: 1px solid var(--aws-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #fff;
+    }
+
+    .share-btn {
+      padding: 8px 16px;
+      border: 1px solid var(--aws-border);
+      border-radius: 4px;
+      background: #fff;
+      color: var(--aws-text);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .share-btn:hover { background: #f8f9fa; }
+
+    .linkedin-btn { background: #0077b5; color: white; border: none; }
+    .linkedin-btn:hover { background: #005f8d; color: white; }
+  </style>
+</head>
+
+<body>
+
+  <!-- TOP NAV -->
+  <nav class="aws-topnav">
+    <a href="../../index.html" class="logo">
+      <i class="fa-solid fa-cloud" style="color: var(--aws-orange); font-size: 20px;"></i>
+      <span>Ankush Panday</span>
+    </a>
+    <div class="nav-spacer"></div>
+    <div class="nav-icons">
+      <a href="../../index.html" class="nav-icon-btn" style="text-decoration: none;">Portfolio Home</a>
+      <a href="../index.html" class="nav-icon-btn orange" style="text-decoration: none; font-weight: 600;">Blog Hub</a>
+      <button class="nav-icon-btn"><i class="fa-solid fa-earth-europe"
+          style="margin-right: 6px; font-size: 12px; color: var(--aws-orange);"></i> Europe (nl-ams-1)</button>
+      <button class="nav-icon-btn">ankushpandey@hotmail.com <i class="fa-solid fa-caret-down"
+          style="margin-left: 4px;"></i></button>
+    </div>
+  </nav>
+
+  <main class="blog-page-container">
+    <a href="../index.html" class="back-btn"><i class="fa-solid fa-arrow-left"></i> Back to Blog Hub</a>
+
+    <article class="blog-content-card">
+      <header class="blog-header">
+        <h1 style="font-size: 32px; color: var(--aws-text); margin-bottom: 16px; line-height: 1.2;">GitOps with ArgoCD + Helm on EKS: App of Apps, Sync Waves &amp; Multi-Cluster Strategy</h1>
+        <div style="display: flex; gap: 12px; align-items: center; color: var(--aws-text-light); font-size: 14px; flex-wrap: wrap;">
+          <span>May 20, 2026</span>
+          <span>&bull;</span>
+          <span>32 min read</span>
+          <span class="tag blue">GitOps</span>
+          <span class="tag purple">Kubernetes</span>
+        </div>
+      </header>
+
+      <div class="blog-body">
+        <p style="font-style: italic; color: var(--aws-text-light); margin-bottom: 30px; border-left: 4px solid var(--aws-orange); padding-left: 15px;">
+          <strong>AWS Series | Part 15</strong> &mdash; Building secure, cost-optimised, cloud-native infrastructure on AWS.
+        </p>
+
+        <!-- Main Image -->
+        <img src="../../images/argocd-gitops-eks-helm.png"
+          alt="GitOps with ArgoCD Helm on EKS Architecture"
+          style="display: block; width: 100%; border-radius: 8px; border: 1px solid var(--aws-border); margin-bottom: 40px;">
+
+        <h2>TL;DR</h2>
+
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th>Concept</th>
+              <th>What It Solves</th>
+              <th>When You Need It</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>ArgoCD Application</strong></td>
+              <td>Deploys one service from Git</td>
+              <td>Every service</td>
+            </tr>
+            <tr>
+              <td><strong>App of Apps</strong></td>
+              <td>Bootstraps all Applications from one root App</td>
+              <td>Day 1 &mdash; before you have more than 3 services</td>
+            </tr>
+            <tr>
+              <td><strong>ApplicationSet</strong></td>
+              <td>Generates Applications dynamically &mdash; one template, many targets</td>
+              <td>Multi-env, multi-cluster, multi-service</td>
+            </tr>
+            <tr>
+              <td><strong>Sync Waves</strong></td>
+              <td>Orders resource creation within a sync &mdash; databases before apps</td>
+              <td>Any service with dependencies</td>
+            </tr>
+            <tr>
+              <td><strong>Sync Hooks</strong></td>
+              <td>Runs jobs at specific points &mdash; migrations, smoke tests</td>
+              <td>Database migrations, post-deploy validation</td>
+            </tr>
+            <tr>
+              <td><strong>ArgoCD Projects</strong></td>
+              <td>Scopes which repos/clusters/namespaces an Application can touch</td>
+              <td>Multi-team, RBAC, compliance</td>
+            </tr>
+            <tr>
+              <td><strong>Multi-cluster</strong></td>
+              <td>Manages applications across prod + dev clusters from one ArgoCD</td>
+              <td>Two+ clusters in your organisation</td>
+            </tr>
+            <tr>
+              <td><strong>Notifications</strong></td>
+              <td>Alerts on sync success/failure/degraded</td>
+              <td>Production &mdash; always</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h2>Introduction &mdash; IaC Builds the Platform, GitOps Runs the Deployments</h2>
+        <p>Blog 14 covered Terraform at scale &mdash; how to structure IaC that provisions the EKS cluster, VPC, IAM roles, and Karpenter. This post covers what runs on top of that infrastructure: the GitOps layer that deploys and manages your applications.</p>
+
+        <p>The distinction matters. Terraform is state-reconciliation &mdash; it runs when you tell it to. GitOps is continuous reconciliation &mdash; it runs forever, comparing your cluster&apos;s actual state to Git&apos;s desired state and correcting any drift automatically. Terraform builds the stage. ArgoCD manages what performs on it.</p>
+
+        <p>On the production EKS platform managing 33 microservices, ArgoCD is the single deployment mechanism for everything running in the cluster &mdash; applications, Helm releases, Karpenter NodePools, monitoring stack, cert configurations. Nothing is deployed via <code>kubectl apply</code> in production. Nothing is deployed via a Helm CLI command by hand. Every change is a Git commit. Every rollback is a Git revert. Every deployment has an author, a timestamp, and a diff.</p>
+
+        <p>This post covers the full ArgoCD production setup: App of Apps bootstrap, ApplicationSets for multi-environment deployments, Sync Waves for ordered rollout, multi-cluster management, RBAC with SSO, and notifications. Everything has working YAML.</p>
+
+        <hr style="border-top: 1px solid var(--aws-border); margin: 40px 0;">
+
+        <h2>1. ArgoCD Installation &mdash; Production-Grade Helm Setup</h2>
+
+        <h3>Why Helm for ArgoCD, Not the Raw Manifest</h3>
+        <p>The official ArgoCD <code>install.yaml</code> is fine for getting started. For production, it gives you no control over resource requests, replica counts, HA configuration, or SSO integration. The Helm chart exposes all of these as values.</p>
+
+        <pre><code class="nohighlight"><span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">&quot;helm_release&quot;</span> <span style="color:#ce9178;">&quot;argocd&quot;</span> {
+  <span style="color:#9cdcfe;">name</span>             = <span style="color:#ce9178;">&quot;argocd&quot;</span>
+  <span style="color:#9cdcfe;">repository</span>       = <span style="color:#ce9178;">&quot;https://argoproj.github.io/argo-helm&quot;</span>
+  <span style="color:#9cdcfe;">chart</span>            = <span style="color:#ce9178;">&quot;argo-cd&quot;</span>
+  <span style="color:#9cdcfe;">version</span>          = <span style="color:#ce9178;">&quot;7.3.11&quot;</span>
+  <span style="color:#9cdcfe;">namespace</span>        = <span style="color:#ce9178;">&quot;argocd&quot;</span>
+  <span style="color:#9cdcfe;">create_namespace</span> = <span style="color:#b5cea8;">true</span>
+
+<span style="color:#6a9955;">  # Wait for all pods to be ready before Terraform marks the release healthy</span>
+  <span style="color:#9cdcfe;">wait</span>    = <span style="color:#b5cea8;">true</span>
+  <span style="color:#9cdcfe;">timeout</span> = <span style="color:#b5cea8;">600</span>
+
+  <span style="color:#9cdcfe;">values</span> = [yamlencode({
+    <span style="color:#9cdcfe;">global</span> = {
+<span style="color:#6a9955;">      # Image tag — pin to a specific version, not latest</span>
+      <span style="color:#9cdcfe;">image</span> = { <span style="color:#9cdcfe;">tag</span> = <span style="color:#ce9178;">&quot;v2.11.3&quot;</span> }
+    }
+
+    <span style="color:#9cdcfe;">configs</span> = {
+      <span style="color:#9cdcfe;">params</span> = {
+<span style="color:#6a9955;">        # Disable insecure mode — always use TLS</span>
+        <span style="color:#ce9178;">&quot;server.insecure&quot;</span> = <span style="color:#b5cea8;">false</span>
+<span style="color:#6a9955;">        # Enable exec into pods from ArgoCD UI</span>
+        <span style="color:#ce9178;">&quot;server.enable.gzip&quot;</span> = <span style="color:#b5cea8;">true</span>
+      }
+
+      <span style="color:#9cdcfe;">cm</span> = {
+<span style="color:#6a9955;">        # Disable local admin user — SSO only in production</span>
+        <span style="color:#ce9178;">&quot;admin.enabled&quot;</span> = <span style="color:#ce9178;">&quot;false&quot;</span>
+
+<span style="color:#6a9955;">        # SSO via Okta/Azure AD</span>
+        <span style="color:#ce9178;">&quot;oidc.config&quot;</span> = yamlencode({
+          <span style="color:#9cdcfe;">name</span>         = <span style="color:#ce9178;">&quot;Okta&quot;</span>
+          <span style="color:#9cdcfe;">issuer</span>       = var.okta_issuer_url
+          <span style="color:#9cdcfe;">clientID</span>     = var.okta_client_id
+          <span style="color:#9cdcfe;">clientSecret</span> = <span style="color:#ce9178;">&quot;$oidc.okta.clientSecret&quot;</span>
+          <span style="color:#9cdcfe;">requestedScopes</span> = [<span style="color:#ce9178;">&quot;openid&quot;</span>, <span style="color:#ce9178;">&quot;profile&quot;</span>, <span style="color:#ce9178;">&quot;email&quot;</span>, <span style="color:#ce9178;">&quot;groups&quot;</span>]
+          <span style="color:#9cdcfe;">requestedIDTokenClaims</span> = {
+            <span style="color:#9cdcfe;">groups</span> = { <span style="color:#9cdcfe;">essential</span> = <span style="color:#b5cea8;">true</span> }
+          }
+        })
+
+<span style="color:#6a9955;">        # Resource tracking — annotation-based (default, most compatible)</span>
+        <span style="color:#ce9178;">&quot;application.resourceTrackingMethod&quot;</span> = <span style="color:#ce9178;">&quot;annotation&quot;</span>
+
+<span style="color:#6a9955;">        # Status badge — allows embedding deployment status in GitHub PRs</span>
+        <span style="color:#ce9178;">&quot;statusbadge.enabled&quot;</span> = <span style="color:#ce9178;">&quot;true&quot;</span>
+
+<span style="color:#6a9955;">        # Timeout for resource health checks</span>
+        <span style="color:#ce9178;">&quot;timeout.reconciliation&quot;</span> = <span style="color:#ce9178;">&quot;180s&quot;</span>
+      }
+
+<span style="color:#6a9955;">      # RBAC — maps SSO groups to ArgoCD roles</span>
+      <span style="color:#9cdcfe;">rbac</span> = {
+        <span style="color:#ce9178;">&quot;policy.default&quot;</span> = <span style="color:#ce9178;">&quot;role:readonly&quot;</span>
+        <span style="color:#ce9178;">&quot;policy.csv&quot;</span> = &lt;&lt;-EOT
+<span style="color:#6a9955;">          # Platform team — full admin</span>
+          g, platform-engineers, role:admin
+
+<span style="color:#6a9955;">          # Dev teams — can sync their own apps, cannot modify cluster-scoped resources</span>
+          g, fraud-team, role:fraud-deploy
+          g, payments-team, role:payments-deploy
+
+<span style="color:#6a9955;">          # Custom role — deploy to fraud namespace only</span>
+          p, role:fraud-deploy, applications, get, fraud-detection/*, allow
+          p, role:fraud-deploy, applications, sync, fraud-detection/*, allow
+          p, role:fraud-deploy, applications, action/*, fraud-detection/*, allow
+          p, role:fraud-deploy, logs, get, fraud-detection/*, allow
+
+<span style="color:#6a9955;">          # Read-only for architects and auditors</span>
+          g, architects, role:readonly
+        EOT
+      }
+    }
+
+<span style="color:#6a9955;">    # ArgoCD server — HA with 2 replicas</span>
+    <span style="color:#9cdcfe;">server</span> = {
+      <span style="color:#9cdcfe;">replicas</span> = <span style="color:#b5cea8;">2</span>
+
+<span style="color:#6a9955;">      # Ingress — via Nginx Ingress Controller</span>
+      <span style="color:#9cdcfe;">ingress</span> = {
+        <span style="color:#9cdcfe;">enabled</span>          = <span style="color:#b5cea8;">true</span>
+        <span style="color:#9cdcfe;">ingressClassName</span> = <span style="color:#ce9178;">&quot;nginx&quot;</span>
+        <span style="color:#9cdcfe;">annotations</span> = {
+          <span style="color:#ce9178;">&quot;nginx.ingress.kubernetes.io/ssl-passthrough&quot;</span>    = <span style="color:#ce9178;">&quot;true&quot;</span>
+          <span style="color:#ce9178;">&quot;nginx.ingress.kubernetes.io/force-ssl-redirect&quot;</span> = <span style="color:#ce9178;">&quot;true&quot;</span>
+        }
+        <span style="color:#9cdcfe;">hosts</span> = [<span style="color:#ce9178;">&quot;argocd.internal.company.com&quot;</span>]
+        <span style="color:#9cdcfe;">tls</span> = [{
+          <span style="color:#9cdcfe;">secretName</span> = <span style="color:#ce9178;">&quot;argocd-tls&quot;</span>
+          <span style="color:#9cdcfe;">hosts</span>      = [<span style="color:#ce9178;">&quot;argocd.internal.company.com&quot;</span>]
+        }]
+      }
+
+      <span style="color:#9cdcfe;">resources</span> = {
+        <span style="color:#9cdcfe;">requests</span> = { <span style="color:#9cdcfe;">cpu</span> = <span style="color:#ce9178;">&quot;100m&quot;</span>, <span style="color:#9cdcfe;">memory</span> = <span style="color:#ce9178;">&quot;256Mi&quot;</span> }
+        <span style="color:#9cdcfe;">limits</span>   = { <span style="color:#9cdcfe;">cpu</span> = <span style="color:#ce9178;">&quot;1000m&quot;</span>, <span style="color:#9cdcfe;">memory</span> = <span style="color:#ce9178;">&quot;1Gi&quot;</span> }
+      }
+    }
+
+<span style="color:#6a9955;">    # Application controller — processes reconciliation</span>
+    <span style="color:#9cdcfe;">controller</span> = {
+      <span style="color:#9cdcfe;">replicas</span> = <span style="color:#b5cea8;">2</span><span style="color:#6a9955;">   # HA — one per AZ</span>
+
+      <span style="color:#9cdcfe;">resources</span> = {
+        <span style="color:#9cdcfe;">requests</span> = { <span style="color:#9cdcfe;">cpu</span> = <span style="color:#ce9178;">&quot;250m&quot;</span>, <span style="color:#9cdcfe;">memory</span> = <span style="color:#ce9178;">&quot;512Mi&quot;</span> }
+        <span style="color:#9cdcfe;">limits</span>   = { <span style="color:#9cdcfe;">cpu</span> = <span style="color:#ce9178;">&quot;2000m&quot;</span>, <span style="color:#9cdcfe;">memory</span> = <span style="color:#ce9178;">&quot;2Gi&quot;</span> }
+      }
+    }
+
+<span style="color:#6a9955;">    # Repo server — clones and templates Git repos</span>
+    <span style="color:#9cdcfe;">repoServer</span> = {
+      <span style="color:#9cdcfe;">replicas</span> = <span style="color:#b5cea8;">2</span>
+
+      <span style="color:#9cdcfe;">resources</span> = {
+        <span style="color:#9cdcfe;">requests</span> = { <span style="color:#9cdcfe;">cpu</span> = <span style="color:#ce9178;">&quot;100m&quot;</span>, <span style="color:#9cdcfe;">memory</span> = <span style="color:#ce9178;">&quot;256Mi&quot;</span> }
+        <span style="color:#9cdcfe;">limits</span>   = { <span style="color:#9cdcfe;">cpu</span> = <span style="color:#ce9178;">&quot;1000m&quot;</span>, <span style="color:#9cdcfe;">memory</span> = <span style="color:#ce9178;">&quot;1Gi&quot;</span> }
+      }
+    }
+
+<span style="color:#6a9955;">    # Redis — ArgoCD state store, HA mode</span>
+    <span style="color:#9cdcfe;">redis-ha</span> = {
+      <span style="color:#9cdcfe;">enabled</span> = <span style="color:#b5cea8;">true</span><span style="color:#6a9955;">   # HA Redis for production — 3 replicas</span>
+    }
+
+<span style="color:#6a9955;">    # Run ArgoCD on the system node group — not on Karpenter-managed nodes</span>
+    <span style="color:#9cdcfe;">global</span> = {
+      <span style="color:#9cdcfe;">tolerations</span> = [{
+        <span style="color:#9cdcfe;">key</span>      = <span style="color:#ce9178;">&quot;node-role&quot;</span>
+        <span style="color:#9cdcfe;">value</span>    = <span style="color:#ce9178;">&quot;system&quot;</span>
+        <span style="color:#9cdcfe;">operator</span> = <span style="color:#ce9178;">&quot;Equal&quot;</span>
+        <span style="color:#9cdcfe;">effect</span>   = <span style="color:#ce9178;">&quot;NoSchedule&quot;</span>
+      }]
+      <span style="color:#9cdcfe;">affinity</span> = {
+        <span style="color:#9cdcfe;">nodeAffinity</span> = {
+          <span style="color:#9cdcfe;">requiredDuringSchedulingIgnoredDuringExecution</span> = {
+            <span style="color:#9cdcfe;">nodeSelectorTerms</span> = [{
+              <span style="color:#9cdcfe;">matchExpressions</span> = [{
+                <span style="color:#9cdcfe;">key</span>      = <span style="color:#ce9178;">&quot;node-role&quot;</span>
+                <span style="color:#9cdcfe;">operator</span> = <span style="color:#ce9178;">&quot;In&quot;</span>
+                <span style="color:#9cdcfe;">values</span>   = [<span style="color:#ce9178;">&quot;system&quot;</span>]
+              }]
+            }]
+          }
+        }
+      }
+    }
+  })]
+}</code></pre>
+
+        <blockquote><strong>Why ArgoCD must run on the system node group:</strong> If ArgoCD runs on a Karpenter-managed node and Karpenter consolidates that node, ArgoCD goes down. With ArgoCD down, no deployments can happen &mdash; including the deployment that would fix the problem. Pin it to the system MNG permanently.</blockquote>
+
+        <hr style="border-top: 1px solid var(--aws-border); margin: 40px 0;">
+
+        <h2>2. App of Apps &mdash; The Bootstrap Pattern</h2>
+
+        <h3>The Problem It Solves</h3>
+        <p>When you have 33 microservices, you need 33 ArgoCD Application objects. You could apply them manually with <code>kubectl</code> &mdash; but then those Application objects themselves are unmanaged, untracked, and can drift from Git. The App of Apps pattern solves this: one root Application manages all other Application objects, which in turn manage your services.</p>
+
+        <pre><code class="language-plaintext">Root App (managed by humans — applied once)
+    ↓
+Apps of Apps (managed by Root App)
+    ├── platform-apps (manages platform-level Applications)
+    │   ├── ArgoCD Notifications App
+    │   ├── Karpenter App
+    │   ├── Ingress Nginx App
+    │   └── cert-manager App
+    └── service-apps (manages service-level Applications)
+        ├── fraud-detection-service App
+        ├── payment-processing-service App
+        ├── enrichment-service App
+        └── ... (30 more)</code></pre>
+
+        <h3>The Root Application &mdash; Applied Once, Manages Everything</h3>
+
+        <pre><code class="language-yaml"># root-app.yaml — applied manually ONCE during cluster bootstrap
+# After this, everything is managed by ArgoCD
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: root
+  namespace: argocd
+  finalizers:
+    # Cascade delete — deleting this app deletes all child apps
+    # Remove this in production to prevent accidental mass deletion
+    # - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+
+  source:
+    repoURL: https://github.com/org/gitops-config
+    targetRevision: main
+    path: bootstrap/root   # Points to the apps-of-apps directory
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+
+  syncPolicy:
+    automated:
+      prune: false    # Never auto-delete Application objects — too risky
+      selfHeal: true  # Revert manual changes to Application objects
+    syncOptions:
+      - CreateNamespace=true</code></pre>
+
+        <h3>The Apps of Apps Directory Structure</h3>
+
+        <pre><code class="language-plaintext">gitops-config/
+├── bootstrap/
+│   └── root/                          # Root app points here
+│       ├── platform-apps.yaml         # Application for platform tooling
+│       └── service-apps.yaml          # ApplicationSet for all services
+│
+├── apps/
+│   ├── platform/                      # Platform-level Helm releases
+│   │   ├── karpenter/
+│   │   │   ├── Chart.yaml
+│   │   │   └── values.yaml
+│   │   ├── ingress-nginx/
+│   │   └── argocd-notifications/
+│   │
+│   └── services/                      # Service Helm charts
+│       ├── fraud-detection/
+│       │   ├── Chart.yaml
+│       │   ├── values.yaml
+│       │   ├── values-dev.yaml
+│       │   └── values-prod.yaml
+│       └── payment-processing/
+│
+└── projects/                          # ArgoCD Project definitions
+    ├── fraud-detection-project.yaml
+    └── payments-project.yaml</code></pre>
+
+        <h3>Platform Apps &mdash; Managing Cluster Tooling via ArgoCD</h3>
+
+        <pre><code class="language-yaml"># bootstrap/root/platform-apps.yaml
+# ArgoCD manages its own add-ons — including Karpenter, Ingress, monitoring
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: platform-apps
+  namespace: argocd
+spec:
+  project: platform
+
+  source:
+    repoURL: https://github.com/org/gitops-config
+    targetRevision: main
+    path: apps/platform
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true</code></pre>
+
+        <hr style="border-top: 1px solid var(--aws-border); margin: 40px 0;">
+
+        <h2>3. ApplicationSet &mdash; One Template, All Environments</h2>
+        <p>ApplicationSet is the most powerful ArgoCD feature for multi-environment, multi-cluster platforms. Instead of writing one Application per service per environment, you write one template and ArgoCD generates all the Applications automatically.</p>
+
+        <h3>Generator Types &mdash; Choosing the Right One</h3>
+
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th>Generator</th>
+              <th>What It Does</th>
+              <th>Best For</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>List</strong></td>
+              <td>Explicit list of environments/clusters</td>
+              <td>Fixed, known set of targets</td>
+            </tr>
+            <tr>
+              <td><strong>Git</strong></td>
+              <td>Discovers targets from directory structure in Git</td>
+              <td>Dynamic &mdash; new directory = new app</td>
+            </tr>
+            <tr>
+              <td><strong>Matrix</strong></td>
+              <td>Combines two generators (e.g., services &times; environments)</td>
+              <td>Large service counts &times; environment counts</td>
+            </tr>
+            <tr>
+              <td><strong>Cluster</strong></td>
+              <td>Generates one app per registered ArgoCD cluster</td>
+              <td>Multi-cluster deployments</td>
+            </tr>
+            <tr>
+              <td><strong>SCM Provider</strong></td>
+              <td>Discovers repos from GitHub/GitLab org</td>
+              <td>Large organisations with many repos</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>Pattern 1 &mdash; List Generator: Multi-Environment Service Deployment</h3>
+
+        <pre><code class="language-yaml"># bootstrap/root/service-apps.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: fraud-detection-service
+  namespace: argocd
+spec:
+  # Prevent accidental deletion of all generated apps
+  preserveResourcesOnDeletion: true
+
+  generators:
+    - list:
+        elements:
+          - env:         dev
+            cluster:     https://dev-cluster.example.com
+            namespace:   fraud-detection-dev
+            valuesFile:  values-dev.yaml
+            autoSync:    "true"
+            prune:       "true"
+
+          - env:         staging
+            cluster:     https://dev-cluster.example.com   # Shares dev cluster
+            namespace:   fraud-detection-staging
+            valuesFile:  values-staging.yaml
+            autoSync:    "true"
+            prune:       "true"
+
+          - env:         prod
+            cluster:     https://prod-cluster.example.com
+            namespace:   fraud-detection
+            valuesFile:  values-prod.yaml
+            autoSync:    "false"   # Manual sync in production
+            prune:       "false"   # Never auto-prune prod resources
+
+  template:
+    metadata:
+      name: "fraud-detection-{env}"
+      namespace: argocd
+      labels:
+        environment: "{env}"
+        app: fraud-detection
+    spec:
+      project: "fraud-detection-{env}"
+
+      source:
+        repoURL:        https://github.com/org/gitops-config
+        targetRevision: main
+        path:           apps/services/fraud-detection
+        helm:
+          valueFiles:
+            - values.yaml          # Base — always loaded first
+            - "{valuesFile}"     # Environment-specific override
+
+      destination:
+        server:    "{cluster}"
+        namespace: "{namespace}"
+
+      syncPolicy:
+        automated:
+          prune:     "{prune}"
+          selfHeal:  "{autoSync}"
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
+          - PrunePropagationPolicy=foreground
+        retry:
+          limit: 3
+          backoff:
+            duration:    5s
+            factor:      2
+            maxDuration: 3m
+
+      # Ignore differences that are managed externally
+      ignoreDifferences:
+        - group: apps
+          kind:  Deployment
+          jsonPointers:
+            - /spec/replicas   # HPA manages replicas — ArgoCD must not revert HPA scaling</code></pre>
+
+        <blockquote><strong>Critical:</strong> <code>ignoreDifferences</code> on <code>/spec/replicas</code> is essential when using HPA. Without it, ArgoCD continuously reverts the replica count to whatever is in your Helm values, overriding what HPA has set based on actual load. This causes a fight between ArgoCD and HPA that results in constant pod churn.</blockquote>
+
+        <h3>Pattern 2 &mdash; Git Generator: Auto-Discover Services from Directory Structure</h3>
+        <p>For large platforms where new services are added frequently, the Git generator eliminates the need to update the ApplicationSet every time a new service appears:</p>
+
+        <pre><code class="language-yaml"># One ApplicationSet discovers ALL services automatically
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: all-services-prod
+  namespace: argocd
+spec:
+  generators:
+    - git:
+        repoURL:  https://github.com/org/gitops-config
+        revision: main
+        directories:
+          - path: apps/services/*   # Every subdirectory = one Application
+
+  template:
+    metadata:
+      name: "{path.basename}-prod"   # Directory name becomes app name
+      namespace: argocd
+    spec:
+      project: services-prod
+
+      source:
+        repoURL:        https://github.com/org/gitops-config
+        targetRevision: main
+        path:           "{path}"   # Directory path is used as chart path
+        helm:
+          valueFiles:
+            - values.yaml
+            - values-prod.yaml
+
+      destination:
+        server:    https://prod-cluster.example.com
+        namespace: "{path.basename}"   # Service name becomes namespace name
+
+      syncPolicy:
+        automated:
+          prune:    false
+          selfHeal: true</code></pre>
+
+        <p><strong>How adding a new service works:</strong></p>
+        <ol>
+          <li>Create <code>apps/services/new-scoring-service/</code> with Chart.yaml + values.yaml</li>
+          <li>Commit and push to main</li>
+          <li>ArgoCD detects the new directory within ~3 minutes</li>
+          <li>A new Application <code>new-scoring-service-prod</code> is automatically created</li>
+          <li>ArgoCD syncs and deploys &mdash; no manual Application creation needed</li>
+        </ol>
+
+        <h3>Pattern 3 &mdash; Matrix Generator: All Services &times; All Environments</h3>
+
+        <pre><code class="language-yaml"># The most powerful pattern — N services × M environments = N×M Applications
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: all-services-all-envs
+  namespace: argocd
+spec:
+  generators:
+    - matrix:
+        generators:
+          # First dimension: discover services from Git
+          - git:
+              repoURL:  https://github.com/org/gitops-config
+              revision: main
+              directories:
+                - path: apps/services/*
+
+          # Second dimension: fixed list of environments
+          - list:
+              elements:
+                - env:       dev
+                  cluster:   https://dev-cluster.example.com
+                  autoSync:  "true"
+                - env:       prod
+                  cluster:   https://prod-cluster.example.com
+                  autoSync:  "false"
+
+  template:
+    metadata:
+      name: "{path.basename}-{env}"
+    spec:
+      project: "services-{env}"
+      source:
+        repoURL:        https://github.com/org/gitops-config
+        targetRevision: main
+        path:           "{path}"
+        helm:
+          valueFiles:
+            - values.yaml
+            - "values-{env}.yaml"
+      destination:
+        server:    "{cluster}"
+        namespace: "{path.basename}"
+      syncPolicy:
+        automated:
+          selfHeal: "{autoSync}"
+          prune:    "{autoSync}"</code></pre>
+
+        <hr style="border-top: 1px solid var(--aws-border); margin: 40px 0;">
+
+        <h2>4. ArgoCD Projects &mdash; Scoping Access and Reducing Blast Radius</h2>
+        <p>An ArgoCD Project defines boundaries &mdash; which source repos an Application can pull from, which destination clusters and namespaces it can deploy to, and which Kubernetes resources it can manage. Without Projects, every Application can theoretically deploy anywhere.</p>
+
+        <pre><code class="language-yaml"># projects/fraud-detection-project.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: fraud-detection-prod
+  namespace: argocd
+spec:
+  description: "Fraud detection services — production cluster"
+
+  # Only pull from the approved GitOps repo
+  sourceRepos:
+    - https://github.com/org/gitops-config
+    - https://github.com/org/fraud-detection-service
+
+  # Only deploy to the fraud-detection namespace in prod
+  destinations:
+    - server:    https://prod-cluster.example.com
+      namespace: fraud-detection
+
+  # Cluster-scoped resources this project CANNOT manage
+  clusterResourceBlacklist:
+    - group: ""
+      kind:  Node
+    - group: rbac.authorization.k8s.io
+      kind:  ClusterRole
+    - group: rbac.authorization.k8s.io
+      kind:  ClusterRoleBinding
+
+  # Namespace-scoped resources this project CAN manage
+  namespaceResourceWhitelist:
+    - group: apps
+      kind:  Deployment
+    - group: apps
+      kind:  StatefulSet
+    - group: ""
+      kind:  Service
+    - group: ""
+      kind:  ConfigMap
+    - group: autoscaling
+      kind:  HorizontalPodAutoscaler
+    - group: networking.k8s.io
+      kind:  Ingress
+    - group: policy
+      kind:  PodDisruptionBudget
+
+  # RBAC — which ArgoCD roles can do what in this project
+  roles:
+    - name: fraud-deployer
+      description: "Fraud team — can sync and view, cannot delete"
+      policies:
+        - p, proj:fraud-detection-prod:fraud-deployer, applications, get, *, allow
+        - p, proj:fraud-detection-prod:fraud-deployer, applications, sync, *, allow
+        - p, proj:fraud-detection-prod:fraud-deployer, applications, action/*, *, allow
+        - p, proj:fraud-detection-prod:fraud-deployer, logs, get, *, allow
+      groups:
+        - fraud-team
+
+    - name: platform-admin
+      description: "Platform team — full access"
+      policies:
+        - p, proj:fraud-detection-prod:platform-admin, applications, *, *, allow
+      groups:
+        - platform-engineers
+
+  # Sync windows — prevent deployments during business-critical hours
+  syncWindows:
+    - kind:         deny
+      schedule:     "0 8 * * MON-FRI"   # Block syncs 8am–10am weekdays
+      duration:     2h                   # Peak transaction processing window
+      applications:
+        - "*"
+      namespaces:
+        - fraud-detection
+      manualSync: true   # Even manual syncs blocked during this window</code></pre>
+
+        <blockquote><strong>Why sync windows matter in production:</strong> A deployment at 9am on a Monday during peak transaction load is the highest-risk time to introduce a change. Sync windows are the ArgoCD-native way to enforce deployment freeze periods without relying on human discipline. They are configured in Git, visible to the whole team, and enforced automatically.</blockquote>
+
+        <hr style="border-top: 1px solid var(--aws-border); margin: 40px 0;">
+
+        <h2>5. Sync Waves &mdash; Ordered Deployment Within a Sync</h2>
+        <p>Sync Waves solve the dependency ordering problem: a database schema migration must complete before the application that depends on the new schema starts. A ConfigMap must exist before the Deployment that mounts it.</p>
+
+        <p>Without Sync Waves, ArgoCD applies all resources simultaneously &mdash; which works for independent resources but fails silently for dependent ones.</p>
+
+        <h3>How Waves Work</h3>
+        <p>Resources are applied in ascending wave order. ArgoCD waits for all resources in wave N to be healthy before starting wave N+1.</p>
+
+        <pre><code class="language-plaintext">Wave -1: Namespace, ResourceQuota (must exist before anything else)
+Wave 0:  ConfigMaps, Secrets references (default — no annotation needed)
+Wave 1:  Database migration Job (must complete before app starts)
+Wave 2:  Service, ServiceAccount, PodDisruptionBudget
+Wave 3:  Deployment (starts after migration is complete)
+Wave 4:  HorizontalPodAutoscaler, Ingress (after pods are running)
+Wave 5:  Smoke test Job (validates deployment succeeded)</code></pre>
+
+        <pre><code class="language-yaml"># Namespace — applied first, before any other resource
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: fraud-detection
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+
+---
+# Database migration Job — must complete before app Deployment
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: fraud-db-migration
+  namespace: fraud-detection
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 3
+  activeDeadlineSeconds: 300   # Fail if migration takes more than 5 minutes
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: migration
+          image: 123456789012.dkr.ecr.eu-west-1.amazonaws.com/fraud-db-migrator:latest
+          command: ["python", "manage.py", "migrate", "--no-input"]
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: fraud-db-credentials
+                  key:  url
+
+---
+# Service — wave 2, before Deployment
+apiVersion: v1
+kind: Service
+metadata:
+  name: fraud-scoring-service
+  namespace: fraud-detection
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  selector:
+    app: fraud-scoring
+  ports:
+    - port: 8080
+
+---
+# Deployment — wave 3, after migration and Service exist
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fraud-scoring
+  namespace: fraud-detection
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: fraud-scoring
+  template:
+    metadata:
+      labels:
+        app: fraud-scoring
+    spec:
+      containers:
+        - name: scoring
+          image: 123456789012.dkr.ecr.eu-west-1.amazonaws.com/fraud-scoring:latest
+
+---
+# HPA — wave 4, after Deployment exists
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: fraud-scoring-hpa
+  namespace: fraud-detection
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind:       Deployment
+    name:       fraud-scoring
+  minReplicas: 2
+  maxReplicas: 20
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type:               Utilization
+          averageUtilization: 65
+
+---
+# Ingress — wave 4, after Deployment is healthy
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: fraud-scoring-ingress
+  namespace: fraud-detection
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+    kubernetes.io/ingress.class:  nginx
+spec:
+  rules:
+    - host: fraud-api.internal.company.com
+      http:
+        paths:
+          - path:     /api/v1/score
+            pathType: Prefix
+            backend:
+              service:
+                name: fraud-scoring-service
+                port:
+                  number: 8080
+
+---
+# Post-sync smoke test — wave 5, validates deployment succeeded
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: fraud-scoring-smoke-test
+  namespace: fraud-detection
+  annotations:
+    argocd.argoproj.io/sync-wave:        "5"
+    argocd.argoproj.io/hook:             PostSync
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded
+spec:
+  backoffLimit: 2
+  activeDeadlineSeconds: 60
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: smoke-test
+          image: curlimages/curl:latest
+          command:
+            - /bin/sh
+            - -c
+            - |
+              response=$(curl -s -o /dev/null -w "%{http_code}"                 http://fraud-scoring-service.fraud-detection.svc.cluster.local:8080/health)
+              if [ "$response" != "200" ]; then
+                echo "Smoke test failed — health check returned $response"
+                exit 1
+              fi
+              echo "Smoke test passed — service is healthy"</code></pre>
+
+        <h3>Sync Hooks &mdash; Running Jobs at Specific Points</h3>
+
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th>Hook</th>
+              <th>When It Runs</th>
+              <th>Use Case</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>PreSync</code></td>
+              <td>Before any resources are applied</td>
+              <td>Drain connections, notify downstream</td>
+            </tr>
+            <tr>
+              <td><code>Sync</code></td>
+              <td>During the sync (respects wave order)</td>
+              <td>Database migrations</td>
+            </tr>
+            <tr>
+              <td><code>PostSync</code></td>
+              <td>After all resources are healthy</td>
+              <td>Smoke tests, notifications, cache warm</td>
+            </tr>
+            <tr>
+              <td><code>SyncFail</code></td>
+              <td>If the sync fails</td>
+              <td>Alert, rollback trigger, cleanup</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <pre><code class="language-yaml"># SyncFail hook — alert when a production deployment fails
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: deployment-failure-alert
+  annotations:
+    argocd.argoproj.io/hook:             SyncFail
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: alert
+          image: curlimages/curl:latest
+          command:
+            - /bin/sh
+            - -c
+            - |
+              curl -X POST $SLACK_WEBHOOK_URL                 -H "Content-Type: application/json"                 -d '{"text": "🔴 DEPLOYMENT FAILED: fraud-detection-prod sync failed. Check ArgoCD immediately."}'
+          env:
+            - name: SLACK_WEBHOOK_URL
+              valueFrom:
+                secretKeyRef:
+                  name: alerting-secrets
+                  key:  slack-webhook</code></pre>
+
+        <hr style="border-top: 1px solid var(--aws-border); margin: 40px 0;">
+
+        <h2>6. Multi-Cluster Strategy &mdash; Managing Dev and Prod from One ArgoCD</h2>
+        <p>ArgoCD can manage multiple clusters from a single installation. This is the standard pattern for an organisation with a dedicated prod cluster and a shared dev/staging cluster.</p>
+
+        <h3>Registering Clusters with ArgoCD</h3>
+
+        <pre><code class="language-bash"># Register the prod cluster with ArgoCD
+argocd cluster add prod-eks-cluster   --name prod   --kubeconfig ~/.kube/prod-config   --in-cluster=false
+
+# Verify registration
+argocd cluster list</code></pre>
+
+        <pre><code class="language-plaintext">SERVER                              NAME   VERSION  STATUS
+https://prod-cluster.example.com    prod   1.30     Successful
+https://kubernetes.default.svc      dev    1.30     Successful</code></pre>
+
+        <h3>Terraform &mdash; Automating Cluster Registration</h3>
+
+        <pre><code class="nohighlight"><span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">&quot;kubernetes_secret&quot;</span> <span style="color:#ce9178;">&quot;argocd_prod_cluster&quot;</span> {
+  metadata {
+    <span style="color:#9cdcfe;">name</span>      = <span style="color:#ce9178;">&quot;prod-cluster&quot;</span>
+    <span style="color:#9cdcfe;">namespace</span> = <span style="color:#ce9178;">&quot;argocd&quot;</span>
+    <span style="color:#9cdcfe;">labels</span> = {
+      <span style="color:#ce9178;">&quot;argocd.argoproj.io/secret-type&quot;</span> = <span style="color:#ce9178;">&quot;cluster&quot;</span>
+    }
+  }
+
+  <span style="color:#9cdcfe;">data</span> = {
+    <span style="color:#9cdcfe;">name</span>   = <span style="color:#ce9178;">&quot;prod&quot;</span>
+    <span style="color:#9cdcfe;">server</span> = aws_eks_cluster.prod.endpoint
+    <span style="color:#9cdcfe;">config</span> = jsonencode({
+      <span style="color:#9cdcfe;">bearerToken</span> = data.aws_eks_cluster_auth.prod.token
+      <span style="color:#9cdcfe;">tlsClientConfig</span> = {
+        <span style="color:#9cdcfe;">insecure</span> = <span style="color:#b5cea8;">false</span>
+        <span style="color:#9cdcfe;">caData</span>   = aws_eks_cluster.prod.certificate_authority[<span style="color:#b5cea8;">0</span>].<span style="color:#569cd6;">data</span>
+      }
+    })
+  }
+
+  <span style="color:#9cdcfe;">type</span> = <span style="color:#ce9178;">&quot;Opaque&quot;</span>
+}</code></pre>
+
+        <h3>Network Connectivity Between Clusters</h3>
+        <p>ArgoCD (running in the dev/platform cluster) must be able to reach the prod cluster&apos;s API server. Since the prod cluster has <code>endpoint_public_access = false</code>, traffic must route privately:</p>
+
+        <pre><code class="language-plaintext">ArgoCD pod (dev cluster, eu-west-1)
+    → Pod IP → Dev VPC
+        → Transit Gateway
+            → Prod VPC
+                → Prod EKS API server (private endpoint: 10.x.x.x)</code></pre>
+
+        <pre><code class="nohighlight"><span style="color:#6a9955;"># TGW route — dev cluster pods can reach prod cluster API endpoint</span>
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">&quot;aws_ec2_transit_gateway_route&quot;</span> <span style="color:#ce9178;">&quot;dev_to_prod_api&quot;</span> {
+  <span style="color:#9cdcfe;">destination_cidr_block</span>         = <span style="color:#ce9178;">&quot;10.1.0.0/16&quot;</span><span style="color:#6a9955;">   # Prod VPC CIDR</span>
+  <span style="color:#9cdcfe;">transit_gateway_attachment_id</span>  = aws_ec2_transit_gateway_vpc_attachment.dev.id
+  <span style="color:#9cdcfe;">transit_gateway_route_table_id</span> = aws_ec2_transit_gateway_route_table.platform.id
+}
+
+<span style="color:#6a9955;"># Security group rule — prod cluster API server accepts from dev cluster ArgoCD pods</span>
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">&quot;aws_security_group_rule&quot;</span> <span style="color:#ce9178;">&quot;argocd_to_prod_api&quot;</span> {
+  <span style="color:#9cdcfe;">type</span>              = <span style="color:#ce9178;">&quot;ingress&quot;</span>
+  <span style="color:#9cdcfe;">from_port</span>         = <span style="color:#b5cea8;">443</span>
+  <span style="color:#9cdcfe;">to_port</span>           = <span style="color:#b5cea8;">443</span>
+  <span style="color:#9cdcfe;">protocol</span>          = <span style="color:#ce9178;">&quot;tcp&quot;</span>
+  <span style="color:#9cdcfe;">cidr_blocks</span>       = [<span style="color:#ce9178;">&quot;10.0.0.0/16&quot;</span>]<span style="color:#6a9955;">   # Dev VPC CIDR — ArgoCD pod IPs</span>
+  <span style="color:#9cdcfe;">security_group_id</span> = aws_security_group.prod_eks_cluster.id
+  <span style="color:#9cdcfe;">description</span>       = <span style="color:#ce9178;">&quot;ArgoCD from dev cluster to prod API server&quot;</span>
+}</code></pre>
+
+        <hr style="border-top: 1px solid var(--aws-border); margin: 40px 0;">
+
+        <h2>7. ArgoCD Notifications &mdash; Know When Deployments Fail</h2>
+        <p>ArgoCD without notifications is a black box. Engineers must manually check the UI to know if a deployment succeeded. In production, a failed deployment must trigger an immediate alert.</p>
+
+        <pre><code class="nohighlight"><span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">&quot;helm_release&quot;</span> <span style="color:#ce9178;">&quot;argocd_notifications&quot;</span> {
+  <span style="color:#9cdcfe;">name</span>       = <span style="color:#ce9178;">&quot;argocd-notifications&quot;</span>
+  <span style="color:#9cdcfe;">repository</span> = <span style="color:#ce9178;">&quot;https://argoproj.github.io/argo-helm&quot;</span>
+  <span style="color:#9cdcfe;">chart</span>      = <span style="color:#ce9178;">&quot;argocd-notifications&quot;</span>
+  <span style="color:#9cdcfe;">version</span>    = <span style="color:#ce9178;">&quot;1.8.1&quot;</span>
+  <span style="color:#9cdcfe;">namespace</span>  = <span style="color:#ce9178;">&quot;argocd&quot;</span>
+
+  <span style="color:#9cdcfe;">values</span> = [yamlencode({
+    <span style="color:#9cdcfe;">tolerations</span> = [{
+      <span style="color:#9cdcfe;">key</span> = <span style="color:#ce9178;">&quot;node-role&quot;</span>, <span style="color:#9cdcfe;">value</span> = <span style="color:#ce9178;">&quot;system&quot;</span>,
+      <span style="color:#9cdcfe;">operator</span> = <span style="color:#ce9178;">&quot;Equal&quot;</span>, <span style="color:#9cdcfe;">effect</span> = <span style="color:#ce9178;">&quot;NoSchedule&quot;</span>
+    }]
+  })]
+}</code></pre>
+
+        <pre><code class="language-yaml"># argocd-notifications-cm ConfigMap — triggers and templates
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-notifications-cm
+  namespace: argocd
+data:
+  # Notification triggers — when to notify
+  trigger.on-sync-failed: |
+    - when: app.status.operationState.phase in ['Error', 'Failed']
+      send: [app-sync-failed]
+
+  trigger.on-sync-succeeded: |
+    - when: app.status.operationState.phase in ['Succeeded']
+      send: [app-sync-succeeded]
+
+  trigger.on-deployed: |
+    - when: app.status.operationState.phase in ['Succeeded'] and app.status.health.status == 'Healthy'
+      send: [app-deployed]
+
+  trigger.on-health-degraded: |
+    - when: app.status.health.status == 'Degraded'
+      send: [app-health-degraded]
+
+  # Notification templates — what to send
+  template.app-sync-failed: |
+    slack:
+      attachments: |
+        [{
+          "title": "🔴 Deployment Failed: {{.app.metadata.name}}",
+          "color": "#E53E3E",
+          "fields": [
+            {"title": "Environment", "value": "{{.app.metadata.labels.environment}}", "short": true},
+            {"title": "Namespace", "value": "{{.app.spec.destination.namespace}}", "short": true},
+            {"title": "Error", "value": "{{.app.status.operationState.message}}", "short": false}
+          ],
+          "actions": [{
+            "type": "button",
+            "text": "View in ArgoCD",
+            "url": "{{.context.argocdUrl}}/applications/{{.app.metadata.name}}"
+          }]
+        }]
+
+  template.app-sync-succeeded: |
+    slack:
+      attachments: |
+        [{
+          "title": "✅ Deployment Succeeded: {{.app.metadata.name}}",
+          "color": "#38A169",
+          "fields": [
+            {"title": "Environment", "value": "{{.app.metadata.labels.environment}}", "short": true},
+            {"title": "Revision", "value": "{{.app.status.sync.revision}}", "short": true}
+          ]
+        }]
+
+  template.app-health-degraded: |
+    slack:
+      attachments: |
+        [{
+          "title": "⚠️ Application Degraded: {{.app.metadata.name}}",
+          "color": "#D69E2E",
+          "fields": [
+            {"title": "Health Status", "value": "{{.app.status.health.status}}", "short": true},
+            {"title": "Namespace", "value": "{{.app.spec.destination.namespace}}", "short": true}
+          ]
+        }]
+
+  # Notification services — where to send
+  service.slack: |
+    token: $slack-token
+
+---
+# Subscribe Applications to notifications via annotations
+# Add to each Application or ApplicationSet template
+metadata:
+  annotations:
+    notifications.argoproj.io/subscribe.on-sync-failed.slack:     "platform-alerts"
+    notifications.argoproj.io/subscribe.on-health-degraded.slack:  "platform-alerts"
+    notifications.argoproj.io/subscribe.on-deployed.slack:         "deployments"</code></pre>
+
+        <hr style="border-top: 1px solid var(--aws-border); margin: 40px 0;">
+
+        <h2>8. Image Updater &mdash; Automating Image Tag Updates</h2>
+        <p>Without Image Updater, updating a service&apos;s image tag requires a Git commit to change <code>image.tag</code> in values.yaml &mdash; then waiting for ArgoCD to sync. With Image Updater, ArgoCD watches ECR for new image tags and automatically commits the update to Git.</p>
+
+        <pre><code class="language-yaml"># argocd-image-updater ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-image-updater-config
+  namespace: argocd
+data:
+  # ECR registry — authenticate via Pod Identity
+  registries.conf: |
+    registries:
+      - name: ECR
+        prefix: 123456789012.dkr.ecr.eu-west-1.amazonaws.com
+        api_url: https://123456789012.dkr.ecr.eu-west-1.amazonaws.com
+        credentials: ext:/scripts/ecr-login.sh
+        default: true
+
+---
+# Annotate Application to enable Image Updater
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: fraud-detection-dev
+  annotations:
+    # Watch this image for new tags
+    argocd-image-updater.argoproj.io/image-list: |
+      scoring=123456789012.dkr.ecr.eu-west-1.amazonaws.com/fraud-scoring
+
+    # Update strategy — semver, latest, digest
+    argocd-image-updater.argoproj.io/scoring.update-strategy: semver
+    argocd-image-updater.argoproj.io/scoring.allow-tags: "regexp:^v[0-9]+\.[0-9]+\.[0-9]+$"
+
+    # Write back to Git (not just in-memory)
+    argocd-image-updater.argoproj.io/write-back-method: git
+    argocd-image-updater.argoproj.io/git-branch: main
+
+    # Which Helm value to update
+    argocd-image-updater.argoproj.io/scoring.helm.image-name: image.repository
+    argocd-image-updater.argoproj.io/scoring.helm.image-tag:  image.tag</code></pre>
+
+        <blockquote><strong>Use Image Updater for dev only.</strong> In production, image tag updates should go through a PR review. Never enable Image Updater with <code>autoSync: true</code> in production &mdash; that is a direct pipeline from ECR to production with no human review.</blockquote>
+
+        <hr style="border-top: 1px solid var(--aws-border); margin: 40px 0;">
+
+        <h2>9. The Production GitOps Workflow &mdash; End to End</h2>
+
+        <pre><code class="language-plaintext">Developer pushes code to feature branch
+    ↓
+CI pipeline runs (GitHub Actions):
+  - Build Docker image
+  - Run unit + integration tests
+  - Push to ECR with semver tag (e.g., v1.4.2)
+  - Run Terraform plan (infrastructure changes)
+  - Run tfsec / Checkov security scan
+  - Post results as PR comment
+    ↓
+PR opened → review by peer + platform team
+    ↓
+PR approved + merged to main
+    ↓
+CI pipeline runs on main:
+  - Build and push release image to ECR
+  - Update image tag in values-dev.yaml → commit to gitops-config repo
+    ↓
+ArgoCD detects change in gitops-config (within ~3 minutes)
+    ↓
+ArgoCD syncs fraud-detection-dev (autoSync: true)
+  - Sync Wave 1: database migration Job runs and completes
+  - Sync Wave 3: Deployment rolls out new image
+  - Sync Wave 5: smoke test Job validates health
+  - Notification → #deployments: "✅ fraud-detection-dev deployed v1.4.2"
+    ↓
+Staging sync (autoSync: true, same cluster as dev)
+    ↓
+QA validation on staging
+    ↓
+Platform team triggers MANUAL sync in ArgoCD UI for prod:
+  - Reviews diff — exactly which resources change
+  - Checks sync wave order — migration before deployment
+  - Clicks Sync
+    ↓
+ArgoCD syncs fraud-detection-prod (manual)
+  - Same wave sequence, same smoke test
+  - Notification → #platform-alerts: "✅ fraud-detection-prod deployed v1.4.2"
+    ↓
+DORA audit trail:
+  - Git commit: who changed what, when, PR review
+  - ArgoCD sync history: what deployed, to which cluster, at what time
+  - ECR image: immutable tag, digest verifiable</code></pre>
+
+        <hr style="border-top: 1px solid var(--aws-border); margin: 40px 0;">
+
+        <h2>10. Common Mistakes &amp; Anti-Patterns</h2>
+
+        <div class="pitfall-card">
+          <h4 style="color: #d13212; margin-top: 0;">Mistake 1: <code>autoSync: true</code> in Production With <code>selfHeal: true</code></h4>
+          <p style="margin-bottom: 0;">The most dangerous combination. A bad merge to main + autoSync = immediate production rollout. selfHeal = any manual emergency fix via kubectl is reverted within seconds. In production, <code>autoSync: false</code> is non-negotiable. selfHeal can be true &mdash; but only if autoSync is false (ArgoCD will revert manual changes but won&apos;t auto-deploy new commits).</p>
+        </div>
+
+        <div class="pitfall-card">
+          <h4 style="color: #d13212; margin-top: 0;">Mistake 2: No <code>ignoreDifferences</code> for HPA-Managed Replicas</h4>
+          <p style="margin-bottom: 0;">ArgoCD continuously reconciles <code>/spec/replicas</code> to match your Helm values. HPA continuously adjusts replicas based on load. The result is a constant fight &mdash; HPA scales to 8, ArgoCD reverts to 2, HPA scales back to 8. Add <code>ignoreDifferences</code> for <code>/spec/replicas</code> on every Deployment managed by HPA.</p>
+        </div>
+
+        <div class="pitfall-card">
+          <h4 style="color: #d13212; margin-top: 0;">Mistake 3: Storing Secrets in the GitOps Repo</h4>
+          <p>Values files in Git must never contain secrets. Use External Secrets Operator to pull from AWS Secrets Manager at sync time:</p>
+          <pre style="margin-bottom: 0;"><code class="language-yaml">apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: fraud-db-credentials
+  namespace: fraud-detection
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name:  aws-secrets-manager
+    kind:  ClusterSecretStore
+  target:
+    name:           fraud-db-credentials
+    creationPolicy: Owner
+  data:
+    - secretKey: url
+      remoteRef:
+        key:      prod/fraud/db-credentials
+        property: connection_url</code></pre>
+        </div>
+
+        <div class="pitfall-card">
+          <h4 style="color: #d13212; margin-top: 0;">Mistake 4: Sync Waves Without Health Checks</h4>
+          <p style="margin-bottom: 0;">A Deployment in wave 3 is healthy when its pods are Running and Ready. A Job in wave 1 is complete when its status is <code>Complete</code>. A migration Job that hangs indefinitely will block the entire sync &mdash; always set <code>activeDeadlineSeconds</code>.</p>
+        </div>
+
+        <div class="pitfall-card">
+          <h4 style="color: #d13212; margin-top: 0;">Mistake 5: No App of Apps &mdash; Managing Applications Manually</h4>
+          <p style="margin-bottom: 0;">Manually applying Application YAML files means those Application objects themselves are not tracked in Git. An accidentally deleted Application takes down the service it manages with no record in Git of what it looked like. The App of Apps pattern ensures Application objects are themselves managed as code.</p>
+        </div>
+
+        <div class="pitfall-card">
+          <h4 style="color: #d13212; margin-top: 0;">Mistake 6: One ArgoCD Project for Everything</h4>
+          <p style="margin-bottom: 0;">A single default Project means every team can see, sync, and delete every other team&apos;s Applications. Projects are free to create and provide the namespace and cluster scoping that prevents accidental cross-team interference. Create one Project per team per environment.</p>
+        </div>
+
+        <div class="pitfall-card">
+          <h4 style="color: #d13212; margin-top: 0;">Mistake 7: Not Pinning ArgoCD Version</h4>
+          <p style="margin-bottom: 0;">ArgoCD upgrades can change behaviour &mdash; ApplicationSet generators, sync policies, health check logic. Pin the Helm chart version and the ArgoCD image tag in your Terraform/Helm values. Test upgrades in dev before upgrading prod.</p>
+        </div>
+
+        <h2>Architecture Decision Matrix</h2>
+
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th>Pattern</th>
+              <th>Use Case</th>
+              <th>Complexity</th>
+              <th>When to Use</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Single Application</strong></td>
+              <td>One service, one environment</td>
+              <td>Low</td>
+              <td>Getting started, simple setups</td>
+            </tr>
+            <tr>
+              <td><strong>App of Apps</strong></td>
+              <td>Bootstrap all Applications from Git</td>
+              <td>Medium</td>
+              <td>Any production cluster</td>
+            </tr>
+            <tr>
+              <td><strong>ApplicationSet (List)</strong></td>
+              <td>Fixed set of envs per service</td>
+              <td>Low-Medium</td>
+              <td>Standard multi-env deployment</td>
+            </tr>
+            <tr>
+              <td><strong>ApplicationSet (Git)</strong></td>
+              <td>Auto-discover services from repo</td>
+              <td>Medium</td>
+              <td>Large platforms, frequent new services</td>
+            </tr>
+            <tr>
+              <td><strong>ApplicationSet (Matrix)</strong></td>
+              <td>N services &times; M environments</td>
+              <td>Medium-High</td>
+              <td>Enterprise platforms</td>
+            </tr>
+            <tr>
+              <td><strong>Sync Waves</strong></td>
+              <td>Ordered deployment &mdash; migrations first</td>
+              <td>Medium</td>
+              <td>Any service with DB dependencies</td>
+            </tr>
+            <tr>
+              <td><strong>Sync Hooks</strong></td>
+              <td>Pre/Post actions &mdash; smoke tests</td>
+              <td>Medium</td>
+              <td>Production deployments</td>
+            </tr>
+            <tr>
+              <td><strong>Multi-cluster</strong></td>
+              <td>Prod + dev from one ArgoCD</td>
+              <td>Medium</td>
+              <td>Two+ clusters in your organisation</td>
+            </tr>
+            <tr>
+              <td><strong>Image Updater</strong></td>
+              <td>Auto-update image tags in Git</td>
+              <td>Medium</td>
+              <td>Dev/staging continuous delivery</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div style="background: var(--aws-highlight); padding: 32px; border-radius: 8px; border: 1px solid var(--aws-border); margin: 40px 0; text-align: center; border-left: 4px solid var(--aws-orange);">
+          <h3 style="font-size: 18px; color: var(--aws-text); margin-top: 0; margin-bottom: 12px;">The Golden Rule</h3>
+          <p style="font-size: 15px; color: var(--aws-text-light); font-style: italic; margin-bottom: 0;">
+            &ldquo;GitOps is not about the tool &mdash; it is about the discipline. ArgoCD is the enforcement mechanism, but the value comes from the commitment: Git is the only source of truth, every change is a pull request, every deployment has an author and a timestamp, and production syncs are always deliberate. App of Apps from Day 1 so your Application objects are themselves managed as code. Sync Waves for every service with dependencies. <code>autoSync: false</code> in production, always. And notifications on every sync outcome &mdash; because a deployment you don&apos;t know about is an incident you&apos;re not prepared for.&rdquo;
+          </p>
+        </div>
+
+        <div style="margin: 40px 0;">
+          <span style="font-weight: 700; color: var(--aws-text-light); margin-right: 12px; font-size: 13px;">Tags:</span>
+          <span class="tag">#ArgoCD</span>
+          <span class="tag">#GitOps</span>
+          <span class="tag">#EKS</span>
+          <span class="tag">#Kubernetes</span>
+          <span class="tag">#Helm</span>
+          <span class="tag">#DevSecOps</span>
+          <span class="tag">#IaC</span>
+          <span class="tag">#DORA</span>
+          <span class="tag">#AppOfApps</span>
+          <span class="tag">#ApplicationSet</span>
+          <span class="tag">#SyncWaves</span>
+          <span class="tag">#MultiCluster</span>
+        </div>
+      </div> <!-- End Blog Body -->
+
+      <div class="share-section">
+        <span style="font-weight: 700; color: var(--aws-text-light);">Share this article:</span>
+        <a href="https://www.linkedin.com/sharing/share-offsite/?url=https://www.ankushpanday.com/blog/iac/argocd-gitops-helm-eks.html"
+          target="_blank" class="share-btn linkedin-btn">
+          <i class="fa-brands fa-linkedin"></i> Share on LinkedIn
+        </a>
+      </div>
+
+      <div class="author-card">
+        <div class="author-img"><i class="fa-solid fa-user-tie"></i></div>
+        <div>
+          <h4 style="margin: 0 0 8px 0; color: var(--aws-text);">Ankush Panday</h4>
+          <p style="margin: 0; font-size: 14px; color: var(--aws-text-light);">Specializing in highly scalable AWS
+            infrastructure and automated quality engineering.</p>
+          <a href="https://www.linkedin.com/in/ankush-panday-39b97824/" target="_blank"
+            style="display: inline-block; margin-top: 10px; color: var(--aws-blue); text-decoration: none; font-size: 13px; font-weight: 600;">Connect
+            on LinkedIn <i class="fa-solid fa-external-link" style="font-size: 10px;"></i></a>
+        </div>
+      </div>
+
+    </article>
+
+    <!-- NAVIGATION LINKS -->
+    <div class="nav-links">
+      <a href="terraform-at-scale-enterprise-aws.html" class="nav-link">
+        <i class="fa-solid fa-arrow-left"></i> Previous: Terraform at Scale — Enterprise AWS
+      </a>
+    </div>
+
+  </main>
+
+  <footer class="aws-footer">
+    Built for Performance. Architected for the Cloud. &bull; &copy; 2026 <span>Ankush Panday</span>
+  </footer>
+
+  <script>hljs.highlightAll();</script>
+</body>
+
+</html>

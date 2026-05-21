@@ -643,66 +643,66 @@ def lambda_handler(event, context):
 
         <h2>The Step Function — Terraform</h2>
 
-        <pre><code class="language-hcl"># step_function.tf
-resource "aws_sfn_state_machine" "sfn_state_machine" {
-  name     = "frs-eks-lambda-check-instances-sf"
-  role_arn = module.autoshut_sfn_role.arn
+        <pre><code class="nohighlight"><span style="color:#6a9955"># step_function.tf</span>
+<span style="color:#569cd6">resource</span> <span style="color:#ce9178">"aws_sfn_state_machine"</span> <span style="color:#ce9178">"sfn_state_machine"</span> {
+  <span style="color:#9cdcfe">name</span>     = <span style="color:#ce9178">"frs-eks-lambda-check-instances-sf"</span>
+  <span style="color:#9cdcfe">role_arn</span> = module.autoshut_sfn_role.arn
 
-  definition = jsonencode({
-    Comment = "Wait for MNG node termination, then terminate Karpenter instances"
-    StartAt = "CheckNodeStatus"
+  <span style="color:#9cdcfe">definition</span> = jsonencode({
+    <span style="color:#9cdcfe">Comment</span> = <span style="color:#ce9178">"Wait for MNG node termination, then terminate Karpenter instances"</span>
+    <span style="color:#9cdcfe">StartAt</span> = <span style="color:#ce9178">"CheckNodeStatus"</span>
 
-    States = {
-      # Step 1: Check how many MNG instances are still running
-      CheckNodeStatus = {
-        Type     = "Task"
-        Resource = "arn:aws:states:::lambda:invoke"
-        Parameters = {
-          FunctionName = var.eks_lambda_function_name
-          Payload      = { action = "node_status" }
+    <span style="color:#9cdcfe">States</span> = {
+      <span style="color:#6a9955"># Step 1: Check how many MNG instances are still running</span>
+      <span style="color:#9cdcfe">CheckNodeStatus</span> = {
+        <span style="color:#9cdcfe">Type</span>     = <span style="color:#ce9178">"Task"</span>
+        <span style="color:#9cdcfe">Resource</span> = <span style="color:#ce9178">"arn:aws:states:::lambda:invoke"</span>
+        <span style="color:#9cdcfe">Parameters</span> = {
+          <span style="color:#9cdcfe">FunctionName</span> = var.eks_lambda_function_name
+          <span style="color:#9cdcfe">Payload</span>      = { <span style="color:#9cdcfe">action</span> = <span style="color:#ce9178">"node_status"</span> }
         }
-        Next = "ProcessResponse"
+        <span style="color:#9cdcfe">Next</span> = <span style="color:#ce9178">"ProcessResponse"</span>
       }
 
-      # Step 2: Extract totalInstances from the Lambda response
-      ProcessResponse = {
-        Type = "Pass"
-        Parameters = {
-          "totalInstances.$" = "$.Payload.totalInstances"
-          "instanceCount.$"  = "$.Payload.instanceCount"
+      <span style="color:#6a9955"># Step 2: Extract totalInstances from the Lambda response</span>
+      <span style="color:#9cdcfe">ProcessResponse</span> = {
+        <span style="color:#9cdcfe">Type</span> = <span style="color:#ce9178">"Pass"</span>
+        <span style="color:#9cdcfe">Parameters</span> = {
+          <span style="color:#ce9178">"totalInstances.$"</span> = <span style="color:#ce9178">"$.Payload.totalInstances"</span>
+          <span style="color:#ce9178">"instanceCount.$"</span>  = <span style="color:#ce9178">"$.Payload.instanceCount"</span>
         }
-        Next = "IsNodeStopped"
+        <span style="color:#9cdcfe">Next</span> = <span style="color:#ce9178">"IsNodeStopped"</span>
       }
 
-      # Step 3: Branch — are MNG nodes gone?
-      IsNodeStopped = {
-        Type = "Choice"
-        Choices = [
+      <span style="color:#6a9955"># Step 3: Branch — are MNG nodes gone?</span>
+      <span style="color:#9cdcfe">IsNodeStopped</span> = {
+        <span style="color:#9cdcfe">Type</span> = <span style="color:#ce9178">"Choice"</span>
+        <span style="color:#9cdcfe">Choices</span> = [
           {
-            Variable      = "$.totalInstances"
-            NumericEquals = 0
-            Next          = "CheckKarpenterInstances"   # MNG is clean — kill Karpenter nodes
+            <span style="color:#9cdcfe">Variable</span>      = <span style="color:#ce9178">"$.totalInstances"</span>
+            <span style="color:#9cdcfe">NumericEquals</span> = <span style="color:#b5cea8">0</span>
+            <span style="color:#9cdcfe">Next</span>          = <span style="color:#ce9178">"CheckKarpenterInstances"</span>   <span style="color:#6a9955"># MNG is clean — kill Karpenter nodes</span>
           }
         ]
-        Default = "WaitAndRetry"   # Still running — wait and check again
+        <span style="color:#9cdcfe">Default</span> = <span style="color:#ce9178">"WaitAndRetry"</span>   <span style="color:#6a9955"># Still running — wait and check again</span>
       }
 
-      # Step 4a: MNG still running — wait 5 minutes and check again
-      WaitAndRetry = {
-        Type    = "Wait"
-        Seconds = 300
-        Next    = "CheckNodeStatus"
+      <span style="color:#6a9955"># Step 4a: MNG still running — wait 5 minutes and check again</span>
+      <span style="color:#9cdcfe">WaitAndRetry</span> = {
+        <span style="color:#9cdcfe">Type</span>    = <span style="color:#ce9178">"Wait"</span>
+        <span style="color:#9cdcfe">Seconds</span> = <span style="color:#b5cea8">300</span>
+        <span style="color:#9cdcfe">Next</span>    = <span style="color:#ce9178">"CheckNodeStatus"</span>
       }
 
-      # Step 4b: MNG is clean — terminate Karpenter-provisioned nodes
-      CheckKarpenterInstances = {
-        Type     = "Task"
-        Resource = "arn:aws:states:::lambda:invoke"
-        Parameters = {
-          FunctionName = var.eks_lambda_function_name
-          Payload      = { action = "check" }
+      <span style="color:#6a9955"># Step 4b: MNG is clean — terminate Karpenter-provisioned nodes</span>
+      <span style="color:#9cdcfe">CheckKarpenterInstances</span> = {
+        <span style="color:#9cdcfe">Type</span>     = <span style="color:#ce9178">"Task"</span>
+        <span style="color:#9cdcfe">Resource</span> = <span style="color:#ce9178">"arn:aws:states:::lambda:invoke"</span>
+        <span style="color:#9cdcfe">Parameters</span> = {
+          <span style="color:#9cdcfe">FunctionName</span> = var.eks_lambda_function_name
+          <span style="color:#9cdcfe">Payload</span>      = { <span style="color:#9cdcfe">action</span> = <span style="color:#ce9178">"check"</span> }
         }
-        End = true
+        <span style="color:#9cdcfe">End</span> = <span style="color:#b5cea8">true</span>
       }
     }
   })
@@ -710,69 +710,69 @@ resource "aws_sfn_state_machine" "sfn_state_machine" {
 
         <h3>Lambda Terraform</h3>
 
-        <pre><code class="language-hcl"># lambdaeks.tf
-data "archive_file" "lambda_zip" {
-  type             = "zip"
-  source_file      = "${path.cwd}/lambda_functions/autoshut_eks.py"
-  output_file_mode = "0666"
-  output_path      = "autoshut_eks.zip"
+        <pre><code class="nohighlight"><span style="color:#6a9955"># lambdaeks.tf</span>
+<span style="color:#569cd6">data</span> <span style="color:#ce9178">"archive_file"</span> <span style="color:#ce9178">"lambda_zip"</span> {
+  <span style="color:#9cdcfe">type</span>             = <span style="color:#ce9178">"zip"</span>
+  <span style="color:#9cdcfe">source_file</span>      = <span style="color:#ce9178">"${path.cwd}/lambda_functions/autoshut_eks.py"</span>
+  <span style="color:#9cdcfe">output_file_mode</span> = <span style="color:#ce9178">"0666"</span>
+  <span style="color:#9cdcfe">output_path</span>      = <span style="color:#ce9178">"autoshut_eks.zip"</span>
 }
 
-resource "aws_lambda_function" "eks_autoshut" {
-  filename         = data.archive_file.lambda_zip.output_path
-  function_name    = var.eks_lambda_function_name
-  description      = "Auto-shutdown and startup of EKS cluster nodes via tag-based discovery"
-  role             = var.autoshut_eks_role_arn
-  handler          = "autoshut_eks.lambda_handler"
-  source_code_hash = data.archive_file.lambda_zip.output_base64sha256
-  runtime          = "python3.13"
-  timeout          = 30
+<span style="color:#569cd6">resource</span> <span style="color:#ce9178">"aws_lambda_function"</span> <span style="color:#ce9178">"eks_autoshut"</span> {
+  <span style="color:#9cdcfe">filename</span>         = data.archive_file.lambda_zip.output_path
+  <span style="color:#9cdcfe">function_name</span>    = var.eks_lambda_function_name
+  <span style="color:#9cdcfe">description</span>      = <span style="color:#ce9178">"Auto-shutdown and startup of EKS cluster nodes via tag-based discovery"</span>
+  <span style="color:#9cdcfe">role</span>             = var.autoshut_eks_role_arn
+  <span style="color:#9cdcfe">handler</span>          = <span style="color:#ce9178">"autoshut_eks.lambda_handler"</span>
+  <span style="color:#9cdcfe">source_code_hash</span> = data.archive_file.lambda_zip.output_base64sha256
+  <span style="color:#9cdcfe">runtime</span>          = <span style="color:#ce9178">"python3.13"</span>
+  <span style="color:#9cdcfe">timeout</span>          = <span style="color:#b5cea8">30</span>
 
-  environment {
-    variables = {
-      AUTOSHUT_TAG      = var.autoshut_tag       # e.g. "autoshut"
-      AUTOSHUT_VAL      = var.autoshut_val       # e.g. "true"
-      PROJECT_TAG       = var.project_tag        # e.g. "project"
-      PROJECT_VAL       = var.project_val        # e.g. "eks-platform-test"
-      DESIRED_CAPACITY  = var.desired_capacity   # e.g. "2"
-      MIN_SIZE          = var.min_size           # e.g. "1"
-      STEP_FUNCTION_ARN = aws_sfn_state_machine.sfn_state_machine.arn
+  <span style="color:#9cdcfe">environment</span> {
+    <span style="color:#9cdcfe">variables</span> = {
+      <span style="color:#9cdcfe">AUTOSHUT_TAG</span>      = var.autoshut_tag       <span style="color:#6a9955"># e.g. "autoshut"</span>
+      <span style="color:#9cdcfe">AUTOSHUT_VAL</span>      = var.autoshut_val       <span style="color:#6a9955"># e.g. "true"</span>
+      <span style="color:#9cdcfe">PROJECT_TAG</span>       = var.project_tag        <span style="color:#6a9955"># e.g. "project"</span>
+      <span style="color:#9cdcfe">PROJECT_VAL</span>       = var.project_val        <span style="color:#6a9955"># e.g. "eks-platform-test"</span>
+      <span style="color:#9cdcfe">DESIRED_CAPACITY</span>  = var.desired_capacity   <span style="color:#6a9955"># e.g. "2"</span>
+      <span style="color:#9cdcfe">MIN_SIZE</span>          = var.min_size           <span style="color:#6a9955"># e.g. "1"</span>
+      <span style="color:#9cdcfe">STEP_FUNCTION_ARN</span> = aws_sfn_state_machine.sfn_state_machine.arn
     }
   }
 }
 
-resource "aws_cloudwatch_log_group" "eks_cw_lg" {
-  name              = "/aws/lambda/${var.eks_lambda_function_name}"
-  retention_in_days = 14
+<span style="color:#569cd6">resource</span> <span style="color:#ce9178">"aws_cloudwatch_log_group"</span> <span style="color:#ce9178">"eks_cw_lg"</span> {
+  <span style="color:#9cdcfe">name</span>              = <span style="color:#ce9178">"/aws/lambda/${var.eks_lambda_function_name}"</span>
+  <span style="color:#9cdcfe">retention_in_days</span> = <span style="color:#b5cea8">14</span>
 }
 
-# EventBridge schedule — trigger shutdown at 8pm weekdays
-resource "aws_scheduler_schedule" "eks_shutdown" {
-  name = "eks-test-shutdown"
+<span style="color:#6a9955"># EventBridge schedule — trigger shutdown at 8pm weekdays</span>
+<span style="color:#569cd6">resource</span> <span style="color:#ce9178">"aws_scheduler_schedule"</span> <span style="color:#ce9178">"eks_shutdown"</span> {
+  <span style="color:#9cdcfe">name</span> = <span style="color:#ce9178">"eks-test-shutdown"</span>
 
-  flexible_time_window { mode = "OFF" }
-  schedule_expression          = "cron(0 20 ? * MON-FRI *)"
-  schedule_expression_timezone = "Europe/Amsterdam"
+  <span style="color:#9cdcfe">flexible_time_window</span> { <span style="color:#9cdcfe">mode</span> = <span style="color:#ce9178">"OFF"</span> }
+  <span style="color:#9cdcfe">schedule_expression</span>          = <span style="color:#ce9178">"cron(0 20 ? * MON-FRI *)"</span>
+  <span style="color:#9cdcfe">schedule_expression_timezone</span> = <span style="color:#ce9178">"Europe/Amsterdam"</span>
 
-  target {
-    arn      = aws_lambda_function.eks_autoshut.arn
-    role_arn = aws_iam_role.scheduler.arn
-    input    = jsonencode({ action = "stop" })
+  <span style="color:#9cdcfe">target</span> {
+    <span style="color:#9cdcfe">arn</span>      = aws_lambda_function.eks_autoshut.arn
+    <span style="color:#9cdcfe">role_arn</span> = aws_iam_role.scheduler.arn
+    <span style="color:#9cdcfe">input</span>    = jsonencode({ <span style="color:#9cdcfe">action</span> = <span style="color:#ce9178">"stop"</span> })
   }
 }
 
-# EventBridge schedule — trigger startup at 7am weekdays
-resource "aws_scheduler_schedule" "eks_startup" {
-  name = "eks-test-startup"
+<span style="color:#6a9955"># EventBridge schedule — trigger startup at 7am weekdays</span>
+<span style="color:#569cd6">resource</span> <span style="color:#ce9178">"aws_scheduler_schedule"</span> <span style="color:#ce9178">"eks_startup"</span> {
+  <span style="color:#9cdcfe">name</span> = <span style="color:#ce9178">"eks-test-startup"</span>
 
-  flexible_time_window { mode = "OFF" }
-  schedule_expression          = "cron(0 7 ? * MON-FRI *)"
-  schedule_expression_timezone = "Europe/Amsterdam"
+  <span style="color:#9cdcfe">flexible_time_window</span> { <span style="color:#9cdcfe">mode</span> = <span style="color:#ce9178">"OFF"</span> }
+  <span style="color:#9cdcfe">schedule_expression</span>          = <span style="color:#ce9178">"cron(0 7 ? * MON-FRI *)"</span>
+  <span style="color:#9cdcfe">schedule_expression_timezone</span> = <span style="color:#ce9178">"Europe/Amsterdam"</span>
 
-  target {
-    arn      = aws_lambda_function.eks_autoshut.arn
-    role_arn = aws_iam_role.scheduler.arn
-    input    = jsonencode({ action = "start" })
+  <span style="color:#9cdcfe">target</span> {
+    <span style="color:#9cdcfe">arn</span>      = aws_lambda_function.eks_autoshut.arn
+    <span style="color:#9cdcfe">role_arn</span> = aws_iam_role.scheduler.arn
+    <span style="color:#9cdcfe">input</span>    = jsonencode({ <span style="color:#9cdcfe">action</span> = <span style="color:#ce9178">"start"</span> })
   }
 }</code></pre>
 
@@ -782,56 +782,56 @@ resource "aws_scheduler_schedule" "eks_startup" {
 
         <p>The Lambda execution role needs permissions across four AWS services:</p>
 
-        <pre><code class="language-hcl">resource "aws_iam_role_policy" "eks_autoshut" {
-  role = var.autoshut_eks_role_name
+        <pre><code class="nohighlight"><span style="color:#569cd6">resource</span> <span style="color:#ce9178">"aws_iam_role_policy"</span> <span style="color:#ce9178">"eks_autoshut"</span> {
+  <span style="color:#9cdcfe">role</span> = var.autoshut_eks_role_name
 
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
+  <span style="color:#9cdcfe">policy</span> = jsonencode({
+    <span style="color:#9cdcfe">Version</span> = <span style="color:#ce9178">"2012-10-17"</span>
+    <span style="color:#9cdcfe">Statement</span> = [
       {
-        # EKS — list clusters, node groups, describe node groups
-        Sid    = "EKSAccess"
-        Effect = "Allow"
-        Action = [
-          "eks:ListClusters",
-          "eks:ListNodegroups",
-          "eks:DescribeNodegroup"
+        <span style="color:#6a9955"># EKS — list clusters, node groups, describe node groups</span>
+        <span style="color:#9cdcfe">Sid</span>    = <span style="color:#ce9178">"EKSAccess"</span>
+        <span style="color:#9cdcfe">Effect</span> = <span style="color:#ce9178">"Allow"</span>
+        <span style="color:#9cdcfe">Action</span> = [
+          <span style="color:#ce9178">"eks:ListClusters"</span>,
+          <span style="color:#ce9178">"eks:ListNodegroups"</span>,
+          <span style="color:#ce9178">"eks:DescribeNodegroup"</span>
         ]
-        Resource = "*"
+        <span style="color:#9cdcfe">Resource</span> = <span style="color:#ce9178">"*"</span>
       },
       {
-        # ASG — scale node groups up and down
-        Sid    = "AutoScalingAccess"
-        Effect = "Allow"
-        Action = [
-          "autoscaling:UpdateAutoScalingGroup",
-          "autoscaling:DescribeAutoScalingGroups"
+        <span style="color:#6a9955"># ASG — scale node groups up and down</span>
+        <span style="color:#9cdcfe">Sid</span>    = <span style="color:#ce9178">"AutoScalingAccess"</span>
+        <span style="color:#9cdcfe">Effect</span> = <span style="color:#ce9178">"Allow"</span>
+        <span style="color:#9cdcfe">Action</span> = [
+          <span style="color:#ce9178">"autoscaling:UpdateAutoScalingGroup"</span>,
+          <span style="color:#ce9178">"autoscaling:DescribeAutoScalingGroups"</span>
         ]
-        Resource = "*"
+        <span style="color:#9cdcfe">Resource</span> = <span style="color:#ce9178">"*"</span>
       },
       {
-        # EC2 — find and terminate Karpenter instances by tag
-        Sid    = "EC2Access"
-        Effect = "Allow"
-        Action = [
-          "ec2:DescribeInstances",
-          "ec2:TerminateInstances"
+        <span style="color:#6a9955"># EC2 — find and terminate Karpenter instances by tag</span>
+        <span style="color:#9cdcfe">Sid</span>    = <span style="color:#ce9178">"EC2Access"</span>
+        <span style="color:#9cdcfe">Effect</span> = <span style="color:#ce9178">"Allow"</span>
+        <span style="color:#9cdcfe">Action</span> = [
+          <span style="color:#ce9178">"ec2:DescribeInstances"</span>,
+          <span style="color:#ce9178">"ec2:TerminateInstances"</span>
         ]
-        Resource = "*"
-        Condition = {
-          # Restrict termination to tagged instances only
-          StringEquals = {
-            "ec2:ResourceTag/autoshut" = "true"
-            "ec2:ResourceTag/project"  = var.project_val
+        <span style="color:#9cdcfe">Resource</span> = <span style="color:#ce9178">"*"</span>
+        <span style="color:#9cdcfe">Condition</span> = {
+          <span style="color:#6a9955"># Restrict termination to tagged instances only</span>
+          <span style="color:#9cdcfe">StringEquals</span> = {
+            <span style="color:#ce9178">"ec2:ResourceTag/autoshut"</span> = <span style="color:#ce9178">"true"</span>
+            <span style="color:#ce9178">"ec2:ResourceTag/project"</span>  = var.project_val
           }
         }
       },
       {
-        # Step Functions — start the wait-and-retry state machine
-        Sid    = "StepFunctionsAccess"
-        Effect = "Allow"
-        Action = ["states:StartExecution"]
-        Resource = aws_sfn_state_machine.sfn_state_machine.arn
+        <span style="color:#6a9955"># Step Functions — start the wait-and-retry state machine</span>
+        <span style="color:#9cdcfe">Sid</span>    = <span style="color:#ce9178">"StepFunctionsAccess"</span>
+        <span style="color:#9cdcfe">Effect</span> = <span style="color:#ce9178">"Allow"</span>
+        <span style="color:#9cdcfe">Action</span> = [<span style="color:#ce9178">"states:StartExecution"</span>]
+        <span style="color:#9cdcfe">Resource</span> = aws_sfn_state_machine.sfn_state_machine.arn
       }
     ]
   })

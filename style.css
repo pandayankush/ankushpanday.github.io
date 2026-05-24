@@ -613,6 +613,27 @@ body {
   .hero-proof-strip { grid-template-columns: repeat(2, 1fr); gap: 16px; }
   .proof-stat + .proof-stat::before { display: none; }
   .hero-subline { max-width: 100%; }
+  .nav-search-container { display: none; }
+  .nav-service-label { display: none; }
+  .cert-grid { grid-template-columns: 1fr; }
+  .tools-grid { grid-template-columns: repeat(2, 1fr); }
+  .page-header { flex-direction: column; }
+  .breadcrumb-bar { padding: 8px 16px; overflow-x: auto; white-space: nowrap; }
+}
+
+@media (max-width: 600px) {
+  .nav-btn-region { display: none; }
+  .aws-topnav { padding: 0 12px; }
+  .hero-card { padding: 20px 16px; }
+  .hero-name { font-size: 20px; }
+  .hero-headline { font-size: 17px; }
+  .hero-proof-strip { grid-template-columns: repeat(2, 1fr); }
+  .stats-row { grid-template-columns: 1fr 1fr; }
+  .section-card-header { flex-wrap: wrap; gap: 8px; }
+  .tools-grid { grid-template-columns: 1fr; }
+  .hero-actions { flex-direction: column; width: 100%; }
+  .hero-actions .btn-primary,
+  .hero-actions .btn-secondary { width: 100%; justify-content: center; }
 }
 
 /* ===== EXPANDING ROWS ===== */
@@ -641,6 +662,12 @@ body {
   color: var(--aws-text);
   font-style: normal;
 }
+
+/* ===== TABLE SCROLL WRAPPER ===== */
+.table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+/* ===== NAV SECONDARY BUTTONS ===== */
+.nav-btn-region { display: flex; align-items: center; gap: 4px; }
 
 /* ===== SCROLLBAR ===== */
 ::-webkit-scrollbar { width: 6px; }

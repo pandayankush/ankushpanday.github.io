@@ -21,7 +21,7 @@
   <meta property="og:description"
     content="The complete AWS observability stack — CloudWatch Container Insights, X-Ray distributed tracing, ADOT/OpenTelemetry, Synthetics, and the honest gaps. With production Terraform.">
   <meta property="og:image"
-    content="https://www.ankushpanday.com/images/Blog17.png">
+    content="https://www.ankushpanday.com/images/aws-cloudwatch-xray-opentelemetry-observability.png">
 
   <link rel="stylesheet" href="../../style.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -170,7 +170,7 @@
         </p>
 
         <!-- Main Image -->
-        <img src="../../images/Blog17.png"
+        <img src="../../images/aws-cloudwatch-xray-opentelemetry-observability.png"
           alt="AWS Observability Stack: CloudWatch, X-Ray, OpenTelemetry"
           style="display: block; width: 100%; border-radius: 8px; border: 1px solid var(--aws-border); margin-bottom: 40px;">
 
@@ -1334,11 +1334,24 @@ def process_request(request_id: str):
           </tbody>
         </table>
 
-        <h2>The Golden Rule</h2>
-
-        <blockquote>
-          <p><em>Observability is not a tool you deploy — it is a property you build in from the start. Instrument before you deploy, not after the first incident. Use metric-based alarms over log-based alarms for pod failures — metrics cover new services automatically, log groups do not. Correlate metrics, logs, and traces so you can follow the evidence from alarm to root cause without guessing. And treat every alarm as a contract: if it fires, there must be a runbook, a responsible team, and a defined response time. An alarm nobody acts on is noise. Noise trains engineers to ignore alarms. Ignored alarms mean incidents go undetected. The goal is not more alarms — it is the right alarms, routing to the right people, with the context to act immediately.</em></p>
-        </blockquote>
+        <!-- Golden Rule Callout -->
+        <div style="background: var(--aws-highlight); padding: 32px; border-radius: 8px; border: 1px solid var(--aws-border); margin: 40px 0; text-align: center; border-left: 4px solid var(--aws-orange);">
+          <!-- Eye icon: the eye = observability ("the ability to observe"); iris ring + pupil = depth of insight -->
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 360"
+            style="width: 70px; height: 70px; fill: var(--aws-orange); display: block; margin: 0 auto 16px;">
+            <!-- Eye almond shape with iris cutout (evenodd) -->
+            <path fill-rule="evenodd" d="
+              M30 180 Q130 40 256 30 Q382 40 482 180 Q382 320 256 330 Q130 320 30 180 Z
+              M156 180 A100 100 0 1 0 356 180 A100 100 0 1 0 156 180 Z
+            "/>
+            <!-- Pupil (solid) -->
+            <circle cx="256" cy="180" r="48"/>
+          </svg>
+          <h3 style="font-size: 18px; color: var(--aws-text); margin-top: 0; margin-bottom: 12px;">The Golden Rule</h3>
+          <p style="font-size: 15px; color: var(--aws-text-light); font-style: italic; margin-bottom: 0;">
+            "Observability is not a tool you deploy — it is a property you build in from the start. Instrument before you deploy, not after the first incident. Use metric-based alarms over log-based alarms for pod failures — metrics cover new services automatically, log groups do not. Correlate metrics, logs, and traces so you can follow the evidence from alarm to root cause without guessing. And treat every alarm as a contract: if it fires, there must be a runbook, a responsible team, and a defined response time. An alarm nobody acts on is noise. Noise trains engineers to ignore alarms. Ignored alarms mean incidents go undetected. The goal is not more alarms — it is the right alarms, routing to the right people, with the context to act immediately."
+          </p>
+        </div>
 
         <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--aws-border);">
           <span style="color: var(--aws-text-light); font-size: 13px;">Tags: </span>

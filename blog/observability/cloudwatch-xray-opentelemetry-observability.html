@@ -1,0 +1,1416 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- SEO PRIMARY -->
+  <title>AWS Observability Stack: CloudWatch, X-Ray, OpenTelemetry & What's Still Missing | Ankush Panday</title>
+  <meta name="description"
+    content="The complete AWS observability stack — CloudWatch Container Insights, X-Ray distributed tracing, ADOT/OpenTelemetry, Synthetics, and the honest gaps. With production Terraform and the incident that made this post necessary.">
+  <meta name="keywords"
+    content="AWS, CloudWatch, Observability, X-Ray, OpenTelemetry, EKS, Kubernetes, DevSecOps, SRE, ContainerInsights, ADOT, Monitoring, Fluent Bit, CloudWatch Synthetics">
+  <link rel="canonical" href="https://www.ankushpanday.com/blog/observability/cloudwatch-xray-opentelemetry-observability.html">
+
+  <!-- OPEN GRAPH -->
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://www.ankushpanday.com/blog/observability/cloudwatch-xray-opentelemetry-observability.html">
+  <meta property="og:title"
+    content="AWS Observability Stack: CloudWatch, X-Ray, OpenTelemetry & What's Still Missing">
+  <meta property="og:description"
+    content="The complete AWS observability stack — CloudWatch Container Insights, X-Ray distributed tracing, ADOT/OpenTelemetry, Synthetics, and the honest gaps. With production Terraform.">
+  <meta property="og:image"
+    content="https://www.ankushpanday.com/images/Blog17.png">
+
+  <link rel="stylesheet" href="../../style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    .blog-page-container { max-width: 900px; margin: 100px auto 40px auto; padding: 0 20px; min-height: calc(100vh - 200px); }
+    .back-btn { display: inline-flex; align-items: center; gap: 8px; color: var(--aws-blue); text-decoration: none; font-weight: 500; margin-bottom: 24px; }
+    .blog-content-card { background: var(--aws-white); border: 1px solid var(--aws-border); border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+    .blog-header { background: #f8f9fa; padding: 40px; border-bottom: 1px solid var(--aws-border); }
+    .blog-body { padding: 40px; line-height: 1.8; font-size: 16px; color: var(--aws-text); }
+    .blog-body h2 { margin-top: 48px; font-size: 26px; color: var(--aws-text); border-bottom: 2px solid var(--aws-orange); display: inline-block; padding-bottom: 4px; margin-bottom: 24px; }
+    .blog-body h3 { margin-top: 32px; font-size: 22px; color: var(--aws-blue); margin-bottom: 16px; }
+    .blog-body h4 { margin-top: 24px; font-size: 18px; color: var(--aws-text); font-weight: 700; }
+    .blog-body p { margin-bottom: 20px; }
+    .blog-body ul, .blog-body ol { margin-bottom: 24px; padding-left: 24px; }
+    .blog-body li { margin-bottom: 12px; }
+    .blog-body strong { color: var(--aws-text); }
+    .blog-body blockquote { font-style: italic; color: var(--aws-text-light); margin: 30px 0; border-left: 4px solid var(--aws-orange); background: #fcfcfc; padding: 20px; }
+    .compare-table { width: 100%; border-collapse: collapse; text-align: left; margin-bottom: 30px; font-size: 14px; }
+    .compare-table th { background: var(--aws-blue); color: white; padding: 12px; border: 1px solid var(--aws-border); }
+    .compare-table td { padding: 12px; border: 1px solid var(--aws-border); }
+    .compare-table tr:nth-child(even) { background: #f9f9f9; }
+    pre { background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; margin: 24px 0; font-size: 13px; line-height: 1.5; border-left: 4px solid var(--aws-orange); }
+    code { font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; background: #f1f3f5; color: #232f3e; padding: 2px 4px; border-radius: 4px; border: 1px solid #dee2e6; font-size: 0.9em; }
+    pre code { background: none; color: inherit; padding: 0; border: none; font-size: inherit; }
+    .author-card {
+      display: flex;
+      gap: 20px;
+      align-items: center;
+      padding: 30px;
+      background: #fcfcfc;
+      border-top: 1px solid var(--aws-border);
+    }
+    .author-img {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background: var(--aws-highlight);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 30px;
+      color: var(--aws-orange);
+      border: 2px solid var(--aws-border);
+    }
+    .nav-links {
+      display: flex;
+      justify-content: space-between;
+      margin: 40px 0;
+      padding: 20px 0;
+      border-top: 1px solid var(--aws-border);
+    }
+    .nav-link {
+      text-decoration: none;
+      color: var(--aws-blue);
+      font-weight: 600;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .tag {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-right: 8px;
+      margin-bottom: 8px;
+    }
+    .tag.blue { background: #e7f2fa; color: #0073bb; }
+    .tag.purple { background: #f2e7fa; color: #6b3fa0; }
+    .share-section {
+      padding: 20px 40px;
+      border-top: 1px solid var(--aws-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #fff;
+    }
+    .share-btn {
+      padding: 8px 16px;
+      border: 1px solid var(--aws-border);
+      border-radius: 4px;
+      background: #fff;
+      color: var(--aws-text);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .share-btn:hover { background: #f8f9fa; }
+    .linkedin-btn { background: #0077b5; color: white; border: none; }
+    .linkedin-btn:hover { background: #005f8d; color: white; }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <style>
+    .hljs { background: transparent; padding: 0; color: #f8f8f2; }
+    .hljs-comment, .hljs-quote { color: #6a9955; }
+    .hljs-keyword, .hljs-built_in, .hljs-type { color: #569cd6; }
+    .hljs-string, .hljs-title { color: #ce9178; }
+    .hljs-attr, .hljs-variable, .hljs-selector-id { color: #9cdcfe; }
+    .hljs-number, .hljs-literal { color: #b5cea8; }
+    .hljs-meta, .hljs-tag { color: #f8f8f2; }
+  </style>
+</head>
+
+<body>
+
+  <nav class="aws-topnav">
+    <a href="../../index.html" class="logo">
+      <i class="fa-solid fa-cloud" style="color: var(--aws-orange); font-size: 20px;"></i>
+      <span>Ankush Panday</span>
+    </a>
+    <div class="nav-spacer"></div>
+    <div class="nav-icons">
+      <a href="../../index.html" class="nav-icon-btn" style="text-decoration: none;">Portfolio Home</a>
+      <a href="../index.html" class="nav-icon-btn orange" style="text-decoration: none; font-weight: 600;">Blog Hub</a>
+      <button class="nav-icon-btn"><i class="fa-solid fa-earth-europe"
+          style="margin-right: 6px; font-size: 12px; color: var(--aws-orange);"></i> Europe (nl-ams-1)</button>
+      <button class="nav-icon-btn">ankushpandey@hotmail.com <i class="fa-solid fa-caret-down"
+          style="margin-left: 4px;"></i></button>
+    </div>
+  </nav>
+
+  <main class="blog-page-container">
+    <a href="../index.html" class="back-btn"><i class="fa-solid fa-arrow-left"></i> Back to Blog Hub</a>
+
+    <article class="blog-content-card">
+      <header class="blog-header">
+        <h1 style="font-size: 32px; color: var(--aws-text); margin-bottom: 16px; line-height: 1.2;">AWS Observability Stack: CloudWatch, X-Ray, OpenTelemetry &amp; What's Still Missing</h1>
+        <div style="display: flex; gap: 12px; align-items: center; color: var(--aws-text-light); font-size: 14px; flex-wrap: wrap;">
+          <span>May 24, 2026</span>
+          <span>•</span>
+          <span>20 min read</span>
+          <span class="tag blue">Observability</span>
+          <span class="tag purple">SRE</span>
+        </div>
+      </header>
+
+      <div class="blog-body">
+        <p style="font-style: italic; color: var(--aws-text-light); margin-bottom: 30px; border-left: 4px solid var(--aws-orange); padding-left: 15px;">
+          <strong>AWS Series | Part 17</strong> — Building secure, cost-optimised, cloud-native infrastructure on AWS.
+        </p>
+
+        <!-- Main Image -->
+        <img src="../../images/Blog17.png"
+          alt="AWS Observability Stack: CloudWatch, X-Ray, OpenTelemetry"
+          style="display: block; width: 100%; border-radius: 8px; border: 1px solid var(--aws-border); margin-bottom: 40px;">
+
+        <h2>TL;DR</h2>
+
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th>Tool</th>
+              <th>What It Does</th>
+              <th>Layer</th>
+              <th>When You Need It</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>CloudWatch Metrics</strong></td>
+              <td>Time-series metrics from AWS services + custom</td>
+              <td>Infrastructure</td>
+              <td>Always — Day 1</td>
+            </tr>
+            <tr>
+              <td><strong>CloudWatch Logs</strong></td>
+              <td>Log ingestion, query, alerting</td>
+              <td>Application</td>
+              <td>Always — Day 1</td>
+            </tr>
+            <tr>
+              <td><strong>CloudWatch Container Insights</strong></td>
+              <td>Pod/node/cluster metrics for EKS/ECS</td>
+              <td>Container</td>
+              <td>EKS/ECS workloads</td>
+            </tr>
+            <tr>
+              <td><strong>CloudWatch Alarms</strong></td>
+              <td>Threshold-based alerting on metrics</td>
+              <td>Infrastructure</td>
+              <td>Always</td>
+            </tr>
+            <tr>
+              <td><strong>AWS X-Ray</strong></td>
+              <td>Distributed tracing across services</td>
+              <td>Application</td>
+              <td>Microservices, latency debugging</td>
+            </tr>
+            <tr>
+              <td><strong>AWS Distro for OpenTelemetry (ADOT)</strong></td>
+              <td>Vendor-neutral instrumentation + collection</td>
+              <td>Application</td>
+              <td>When you want portability</td>
+            </tr>
+            <tr>
+              <td><strong>Prometheus + Grafana</strong></td>
+              <td>Kubernetes-native metrics + dashboards</td>
+              <td>Container</td>
+              <td>EKS at scale</td>
+            </tr>
+            <tr>
+              <td><strong>CloudWatch Synthetics</strong></td>
+              <td>Canary tests — simulate user traffic</td>
+              <td>Endpoint</td>
+              <td>Public-facing APIs</td>
+            </tr>
+            <tr>
+              <td><strong>CloudWatch RUM</strong></td>
+              <td>Real User Monitoring — actual browser sessions</td>
+              <td>Frontend</td>
+              <td>Web applications</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h2>Introduction — The Incident That Made This Blog Necessary</h2>
+
+        <p>A newly onboarded microservice entered a crash loop. The pod was failing. No alarm fired. No alert reached the team. The service sat degraded in silence for longer than it should have.</p>
+
+        <p>The root cause was simple in hindsight: the CloudWatch log group for that service had not been added to the alarm configuration. The observability stack was monitoring the log groups that existed when it was built — this service was added after. The monitoring had not been extended to cover it.</p>
+
+        <p>This is the observability failure mode that nobody talks about: not the absence of tooling, but the <strong>gap between what the tools cover and what's actually running</strong>. You can have CloudWatch, X-Ray, and OpenTelemetry all deployed and still miss a degraded service because the alarm was never wired up to the new log group.</p>
+
+        <p>This post covers the complete AWS observability stack — metrics, logs, traces, alarms, and synthetic monitoring — and more importantly, how to build it so that gaps like this are structurally impossible. Every new service that is deployed automatically gets observability coverage. No manual wiring. No forgotten log groups.</p>
+
+        <p>The immediate fix: move from log-based alarms to <strong>Container Insights metric alarms</strong> on <code>pod_number_of_container_restarts</code>. A metric that exists for every pod in the cluster automatically, without any log group configuration.</p>
+
+        <p>The complete stack covered in this post — CloudWatch Container Insights, structured logging with Fluent Bit, distributed tracing with ADOT and X-Ray, CloudWatch Synthetics, and SLO tracking — is the production-grade observability model for any EKS platform. Not all of it needs to be in place on Day 1. The maturity model in Section 9 gives you the right adoption order.</p>
+
+        <h2>1. The Three Pillars of Observability</h2>
+
+        <p>Before any tool selection, understand the three distinct signals you need:</p>
+
+        <pre><code class="nohighlight">Metrics  — What is happening? (CPU 87%, error rate 2.3%, latency p99 340ms)
+Logs     — Why is it happening? (stack trace, config error, null pointer)
+Traces   — Where is it happening? (which service, which downstream call, which database query)</code></pre>
+
+        <p>Each pillar answers a different question. An alarm fires (metric). You open the logs to find the error (logs). You trace the request path to find the bottleneck (traces). You need all three — and they need to be correlated so you can move between them without losing context.</p>
+
+        <pre><code class="nohighlight">CloudWatch Alarm fires: pod_number_of_container_restarts > 3
+    ↓
+Open Container Insights: which pod, which node, which namespace
+    ↓
+Open CloudWatch Logs: what error is the pod throwing
+    ↓
+Open X-Ray trace: which downstream call is causing the error
+    ↓
+Root cause: RDS connection pool exhausted — traced to a specific query</code></pre>
+
+        <p>Without this chain, you debug by guessing. With it, you debug by following the evidence.</p>
+
+        <h2>2. CloudWatch Container Insights — The Observability Foundation for EKS</h2>
+
+        <h3>Why Container Insights, Not Log-Based Alarms</h3>
+
+        <p>The incident described in the introduction happened because alarms were watching CloudWatch log groups — which must be explicitly configured per service. Container Insights metrics are different: they are emitted automatically for <strong>every pod, every node, and every cluster</strong> once the CloudWatch agent DaemonSet is deployed. No per-service configuration. No forgotten log groups.</p>
+
+        <pre><code class="nohighlight">Log-based alarm:
+  CloudWatch Logs → Metric Filter → Alarm
+  Problem: new service = new log group = new metric filter = new alarm = manual step
+
+Container Insights metric alarm:
+  CloudWatch Agent DaemonSet → Container Insights → Alarm on pod_container_restarts
+  New service = new pod = automatically covered by existing alarm</code></pre>
+
+        <h3>Deploying the CloudWatch Agent via Helm</h3>
+
+        <pre><code class="nohighlight"><span style="color:#6a9955"># Terraform — CloudWatch agent via Helm</span>
+<span style="color:#569cd6">resource</span> <span style="color:#ce9178">"helm_release"</span> <span style="color:#ce9178">"cloudwatch_agent"</span> {
+  <span style="color:#9cdcfe">name</span>             = <span style="color:#ce9178">"amazon-cloudwatch-observability"</span>
+  <span style="color:#9cdcfe">repository</span>       = <span style="color:#ce9178">"https://aws.github.io/eks-charts"</span>
+  <span style="color:#9cdcfe">chart</span>            = <span style="color:#ce9178">"amazon-cloudwatch-observability"</span>
+  <span style="color:#9cdcfe">version</span>          = <span style="color:#ce9178">"1.5.0"</span>
+  <span style="color:#9cdcfe">namespace</span>        = <span style="color:#ce9178">"amazon-cloudwatch"</span>
+  <span style="color:#9cdcfe">create_namespace</span> = <span style="color:#b5cea8">true</span>
+
+  <span style="color:#569cd6">set</span> {
+    <span style="color:#9cdcfe">name</span>  = <span style="color:#ce9178">"clusterName"</span>
+    <span style="color:#9cdcfe">value</span> = aws_eks_cluster.main.name
+  }
+
+  <span style="color:#569cd6">set</span> {
+    <span style="color:#9cdcfe">name</span>  = <span style="color:#ce9178">"region"</span>
+    <span style="color:#9cdcfe">value</span> = var.region
+  }
+
+  <span style="color:#6a9955">  # Run on every node — DaemonSet, not Deployment
+  # No node selector needed — DaemonSet handles this automatically</span>
+
+  <span style="color:#569cd6">set</span> {
+    <span style="color:#9cdcfe">name</span>  = <span style="color:#ce9178">"containerInsights.enabled"</span>
+    <span style="color:#9cdcfe">value</span> = <span style="color:#ce9178">"true"</span>
+  }
+
+  <span style="color:#569cd6">set</span> {
+    <span style="color:#9cdcfe">name</span>  = <span style="color:#ce9178">"fluentBit.enabled"</span>
+    <span style="color:#9cdcfe">value</span> = <span style="color:#ce9178">"true"</span>
+  }
+
+  <span style="color:#9cdcfe">depends_on</span> = [aws_eks_addon.vpc_cni]
+}</code></pre>
+
+        <h3>Key Container Insights Metrics</h3>
+
+        <p>Once deployed, these metrics are available in CloudWatch under the <code>ContainerInsights</code> namespace — automatically, for every pod:</p>
+
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th>Metric</th>
+              <th>What It Measures</th>
+              <th>Alarm Threshold</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>pod_number_of_container_restarts</code></td>
+              <td>Container restart count</td>
+              <td>&gt; 3 in 5 minutes</td>
+            </tr>
+            <tr>
+              <td><code>pod_cpu_utilization</code></td>
+              <td>Pod CPU % of request</td>
+              <td>&gt; 80% for 10 min</td>
+            </tr>
+            <tr>
+              <td><code>pod_memory_utilization</code></td>
+              <td>Pod memory % of limit</td>
+              <td>&gt; 85% for 10 min</td>
+            </tr>
+            <tr>
+              <td><code>pod_network_rx_bytes</code></td>
+              <td>Inbound network bytes</td>
+              <td>Baseline + 3σ</td>
+            </tr>
+            <tr>
+              <td><code>node_cpu_utilization</code></td>
+              <td>Node CPU %</td>
+              <td>&gt; 80% for 15 min</td>
+            </tr>
+            <tr>
+              <td><code>node_memory_utilization</code></td>
+              <td>Node memory %</td>
+              <td>&gt; 85% for 15 min</td>
+            </tr>
+            <tr>
+              <td><code>node_disk_iops</code></td>
+              <td>Node disk I/O</td>
+              <td>Baseline deviation</td>
+            </tr>
+            <tr>
+              <td><code>cluster_node_count</code></td>
+              <td>Total nodes in cluster</td>
+              <td>&lt; minimum threshold</td>
+            </tr>
+            <tr>
+              <td><code>cluster_failed_node_count</code></td>
+              <td>Failed nodes</td>
+              <td>&gt; 0</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>The Alarm That Prevents Silent Pod Failures</h3>
+
+        <p>This is the alarm that would have caught the incident. It monitors container restarts across the <strong>entire cluster</strong> — every namespace, every pod, every service — with no per-service configuration:</p>
+
+        <pre><code class="nohighlight"><span style="color:#6a9955"># Alarm on pod restarts — covers ALL pods automatically
+# New services are covered immediately when they deploy</span>
+<span style="color:#569cd6">resource</span> <span style="color:#ce9178">"aws_cloudwatch_metric_alarm"</span> <span style="color:#ce9178">"pod_restarts"</span> {
+  <span style="color:#9cdcfe">alarm_name</span>          = <span style="color:#ce9178">"eks-pod-container-restarts-high"</span>
+  <span style="color:#9cdcfe">alarm_description</span>   = <span style="color:#ce9178">"Pod restarting repeatedly — likely crash loop. Check CloudWatch Container Insights."</span>
+  <span style="color:#9cdcfe">comparison_operator</span> = <span style="color:#ce9178">"GreaterThanThreshold"</span>
+  <span style="color:#9cdcfe">evaluation_periods</span>  = <span style="color:#b5cea8">2</span>
+  <span style="color:#9cdcfe">metric_name</span>         = <span style="color:#ce9178">"pod_number_of_container_restarts"</span>
+  <span style="color:#9cdcfe">namespace</span>           = <span style="color:#ce9178">"ContainerInsights"</span>
+  <span style="color:#9cdcfe">period</span>              = <span style="color:#b5cea8">300</span>   <span style="color:#6a9955"># 5 minutes</span>
+  <span style="color:#9cdcfe">statistic</span>           = <span style="color:#ce9178">"Sum"</span>
+  <span style="color:#9cdcfe">threshold</span>           = <span style="color:#b5cea8">5</span>     <span style="color:#6a9955"># More than 5 restarts in 5 minutes</span>
+
+  <span style="color:#9cdcfe">dimensions</span> = {
+    <span style="color:#9cdcfe">ClusterName</span> = aws_eks_cluster.main.name
+    <span style="color:#6a9955">    # No Namespace or PodName dimension — covers ALL pods cluster-wide</span>
+  }
+
+  <span style="color:#9cdcfe">alarm_actions</span> = [
+    aws_sns_topic.platform_alerts.arn,
+    aws_sns_topic.pagerduty.arn        <span style="color:#6a9955"># Page on-call immediately</span>
+  ]
+  <span style="color:#9cdcfe">ok_actions</span> = [aws_sns_topic.platform_alerts.arn]
+
+  <span style="color:#9cdcfe">treat_missing_data</span> = <span style="color:#ce9178">"notBreaching"</span>
+  <span style="color:#9cdcfe">tags</span>               = { <span style="color:#9cdcfe">Name</span> = <span style="color:#ce9178">"pod-restart-alarm"</span> }
+}
+
+<span style="color:#6a9955"># Per-namespace alarm — more granular, for teams that own their namespace</span>
+<span style="color:#569cd6">resource</span> <span style="color:#ce9178">"aws_cloudwatch_metric_alarm"</span> <span style="color:#ce9178">"pod_restarts_namespace"</span> {
+  <span style="color:#9cdcfe">for_each</span> = toset([<span style="color:#ce9178">"fraud-detection"</span>, <span style="color:#ce9178">"payments"</span>, <span style="color:#ce9178">"identity"</span>, <span style="color:#ce9178">"data-pipeline"</span>])
+
+  <span style="color:#9cdcfe">alarm_name</span>          = <span style="color:#ce9178">"eks-pod-restarts-${each.key}"</span>
+  <span style="color:#9cdcfe">alarm_description</span>   = <span style="color:#ce9178">"Pod crash loop in ${each.key} namespace"</span>
+  <span style="color:#9cdcfe">comparison_operator</span> = <span style="color:#ce9178">"GreaterThanThreshold"</span>
+  <span style="color:#9cdcfe">evaluation_periods</span>  = <span style="color:#b5cea8">1</span>
+  <span style="color:#9cdcfe">metric_name</span>         = <span style="color:#ce9178">"pod_number_of_container_restarts"</span>
+  <span style="color:#9cdcfe">namespace</span>           = <span style="color:#ce9178">"ContainerInsights"</span>
+  <span style="color:#9cdcfe">period</span>              = <span style="color:#b5cea8">300</span>
+  <span style="color:#9cdcfe">statistic</span>           = <span style="color:#ce9178">"Sum"</span>
+  <span style="color:#9cdcfe">threshold</span>           = <span style="color:#b5cea8">3</span>
+
+  <span style="color:#9cdcfe">dimensions</span> = {
+    <span style="color:#9cdcfe">ClusterName</span> = aws_eks_cluster.main.name
+    <span style="color:#9cdcfe">Namespace</span>   = each.key   <span style="color:#6a9955"># Scoped to namespace — team-level alert</span>
+  }
+
+  <span style="color:#9cdcfe">alarm_actions</span> = [aws_sns_topic.team_alerts[each.key].arn]
+  <span style="color:#9cdcfe">tags</span>          = { <span style="color:#9cdcfe">Name</span> = <span style="color:#ce9178">"pod-restarts-${each.key}"</span> }
+}</code></pre>
+
+        <blockquote><strong>Why this matters in production:</strong> The cluster-wide alarm fires regardless of which namespace or service is restarting. A new service deployed yesterday — with no individual alarm configured — is automatically covered. This is the architectural fix for the incident described in the introduction: move from per-log-group alarms to cluster-level metric alarms.</blockquote>
+
+        <h2>3. CloudWatch Alarms — The Complete Production Set</h2>
+
+        <h3>Alarm Architecture — SNS → Multi-Channel</h3>
+
+        <pre><code class="nohighlight"><span style="color:#6a9955"># SNS topic — routes alerts to multiple destinations simultaneously</span>
+<span style="color:#569cd6">resource</span> <span style="color:#ce9178">"aws_sns_topic"</span> <span style="color:#ce9178">"platform_alerts"</span> {
+  <span style="color:#9cdcfe">name</span>              = <span style="color:#ce9178">"platform-alerts"</span>
+  <span style="color:#9cdcfe">kms_master_key_id</span> = aws_kms_key.sns.arn
+}
+
+<span style="color:#6a9955"># Slack notification via Lambda</span>
+<span style="color:#569cd6">resource</span> <span style="color:#ce9178">"aws_sns_topic_subscription"</span> <span style="color:#ce9178">"slack"</span> {
+  <span style="color:#9cdcfe">topic_arn</span> = aws_sns_topic.platform_alerts.arn
+  <span style="color:#9cdcfe">protocol</span>  = <span style="color:#ce9178">"lambda"</span>
+  <span style="color:#9cdcfe">endpoint</span>  = aws_lambda_function.slack_notifier.arn
+}
+
+<span style="color:#6a9955"># PagerDuty via HTTPS endpoint (critical alerts only)</span>
+<span style="color:#569cd6">resource</span> <span style="color:#ce9178">"aws_sns_topic_subscription"</span> <span style="color:#ce9178">"pagerduty"</span> {
+  <span style="color:#9cdcfe">topic_arn</span> = aws_sns_topic.platform_alerts.arn
+  <span style="color:#9cdcfe">protocol</span>  = <span style="color:#ce9178">"https"</span>
+  <span style="color:#9cdcfe">endpoint</span>  = var.pagerduty_integration_url
+}
+
+<span style="color:#6a9955"># Email — for audit trail</span>
+<span style="color:#569cd6">resource</span> <span style="color:#ce9178">"aws_sns_topic_subscription"</span> <span style="color:#ce9178">"email"</span> {
+  <span style="color:#9cdcfe">topic_arn</span> = aws_sns_topic.platform_alerts.arn
+  <span style="color:#9cdcfe">protocol</span>  = <span style="color:#ce9178">"email"</span>
+  <span style="color:#9cdcfe">endpoint</span>  = var.platform_team_email
+}</code></pre>
+
+        <h3>The Minimum Production Alarm Set</h3>
+
+        <pre><code class="nohighlight"><span style="color:#569cd6">locals</span> {
+  <span style="color:#6a9955">  # Every alarm in this map is created automatically
+  # Adding a new alarm = adding an entry here + terraform apply</span>
+  <span style="color:#9cdcfe">cluster_alarms</span> = {
+    <span style="color:#9cdcfe">pod_restarts</span> = {
+      <span style="color:#9cdcfe">metric</span>     = <span style="color:#ce9178">"pod_number_of_container_restarts"</span>
+      <span style="color:#9cdcfe">threshold</span>  = <span style="color:#b5cea8">5</span>
+      <span style="color:#9cdcfe">period</span>     = <span style="color:#b5cea8">300</span>
+      <span style="color:#9cdcfe">stat</span>       = <span style="color:#ce9178">"Sum"</span>
+      <span style="color:#9cdcfe">comparison</span> = <span style="color:#ce9178">"GreaterThanThreshold"</span>
+      <span style="color:#9cdcfe">desc</span>       = <span style="color:#ce9178">"Pod crash loop detected cluster-wide"</span>
+    }
+    <span style="color:#9cdcfe">node_cpu</span> = {
+      <span style="color:#9cdcfe">metric</span>     = <span style="color:#ce9178">"node_cpu_utilization"</span>
+      <span style="color:#9cdcfe">threshold</span>  = <span style="color:#b5cea8">80</span>
+      <span style="color:#9cdcfe">period</span>     = <span style="color:#b5cea8">900</span>
+      <span style="color:#9cdcfe">stat</span>       = <span style="color:#ce9178">"Average"</span>
+      <span style="color:#9cdcfe">comparison</span> = <span style="color:#ce9178">"GreaterThanThreshold"</span>
+      <span style="color:#9cdcfe">desc</span>       = <span style="color:#ce9178">"Node CPU above 80% for 15 minutes"</span>
+    }
+    <span style="color:#9cdcfe">node_memory</span> = {
+      <span style="color:#9cdcfe">metric</span>     = <span style="color:#ce9178">"node_memory_utilization"</span>
+      <span style="color:#9cdcfe">threshold</span>  = <span style="color:#b5cea8">85</span>
+      <span style="color:#9cdcfe">period</span>     = <span style="color:#b5cea8">900</span>
+      <span style="color:#9cdcfe">stat</span>       = <span style="color:#ce9178">"Average"</span>
+      <span style="color:#9cdcfe">comparison</span> = <span style="color:#ce9178">"GreaterThanThreshold"</span>
+      <span style="color:#9cdcfe">desc</span>       = <span style="color:#ce9178">"Node memory above 85% for 15 minutes"</span>
+    }
+    <span style="color:#9cdcfe">cluster_failed_nodes</span> = {
+      <span style="color:#9cdcfe">metric</span>     = <span style="color:#ce9178">"cluster_failed_node_count"</span>
+      <span style="color:#9cdcfe">threshold</span>  = <span style="color:#b5cea8">0</span>
+      <span style="color:#9cdcfe">period</span>     = <span style="color:#b5cea8">60</span>
+      <span style="color:#9cdcfe">stat</span>       = <span style="color:#ce9178">"Maximum"</span>
+      <span style="color:#9cdcfe">comparison</span> = <span style="color:#ce9178">"GreaterThanThreshold"</span>
+      <span style="color:#9cdcfe">desc</span>       = <span style="color:#ce9178">"One or more cluster nodes in failed state"</span>
+    }
+    <span style="color:#9cdcfe">node_count_low</span> = {
+      <span style="color:#9cdcfe">metric</span>     = <span style="color:#ce9178">"cluster_node_count"</span>
+      <span style="color:#9cdcfe">threshold</span>  = <span style="color:#b5cea8">2</span>
+      <span style="color:#9cdcfe">period</span>     = <span style="color:#b5cea8">300</span>
+      <span style="color:#9cdcfe">stat</span>       = <span style="color:#ce9178">"Minimum"</span>
+      <span style="color:#9cdcfe">comparison</span> = <span style="color:#ce9178">"LessThanThreshold"</span>
+      <span style="color:#9cdcfe">desc</span>       = <span style="color:#ce9178">"Cluster node count below minimum — Karpenter may not be provisioning"</span>
+    }
+  }
+}
+
+<span style="color:#569cd6">resource</span> <span style="color:#ce9178">"aws_cloudwatch_metric_alarm"</span> <span style="color:#ce9178">"cluster"</span> {
+  <span style="color:#9cdcfe">for_each</span> = local.cluster_alarms
+
+  <span style="color:#9cdcfe">alarm_name</span>          = <span style="color:#ce9178">"eks-${each.key}"</span>
+  <span style="color:#9cdcfe">alarm_description</span>   = each.value.desc
+  <span style="color:#9cdcfe">comparison_operator</span> = each.value.comparison
+  <span style="color:#9cdcfe">evaluation_periods</span>  = <span style="color:#b5cea8">2</span>
+  <span style="color:#9cdcfe">metric_name</span>         = each.value.metric
+  <span style="color:#9cdcfe">namespace</span>           = <span style="color:#ce9178">"ContainerInsights"</span>
+  <span style="color:#9cdcfe">period</span>              = each.value.period
+  <span style="color:#9cdcfe">statistic</span>           = each.value.stat
+  <span style="color:#9cdcfe">threshold</span>           = each.value.threshold
+
+  <span style="color:#9cdcfe">dimensions</span> = {
+    <span style="color:#9cdcfe">ClusterName</span> = aws_eks_cluster.main.name
+  }
+
+  <span style="color:#9cdcfe">alarm_actions</span>      = [aws_sns_topic.platform_alerts.arn]
+  <span style="color:#9cdcfe">treat_missing_data</span> = <span style="color:#ce9178">"notBreaching"</span>
+
+  <span style="color:#9cdcfe">tags</span> = { <span style="color:#9cdcfe">Name</span> = <span style="color:#ce9178">"cluster-alarm-${each.key}"</span> }
+}</code></pre>
+
+        <h3>ALB Alarms — Application Layer Health</h3>
+
+        <pre><code class="nohighlight"><span style="color:#569cd6">resource</span> <span style="color:#ce9178">"aws_cloudwatch_metric_alarm"</span> <span style="color:#ce9178">"alb_5xx"</span> {
+  <span style="color:#9cdcfe">alarm_name</span>          = <span style="color:#ce9178">"alb-5xx-errors-high"</span>
+  <span style="color:#9cdcfe">alarm_description</span>   = <span style="color:#ce9178">"ALB 5xx error rate above 1% — application errors"</span>
+  <span style="color:#9cdcfe">comparison_operator</span> = <span style="color:#ce9178">"GreaterThanThreshold"</span>
+  <span style="color:#9cdcfe">evaluation_periods</span>  = <span style="color:#b5cea8">3</span>
+  <span style="color:#9cdcfe">threshold</span>           = <span style="color:#b5cea8">1</span>
+
+  <span style="color:#569cd6">metric_query</span> {
+    <span style="color:#9cdcfe">id</span>          = <span style="color:#ce9178">"error_rate"</span>
+    <span style="color:#9cdcfe">expression</span>  = <span style="color:#ce9178">"errors / requests * 100"</span>
+    <span style="color:#9cdcfe">label</span>       = <span style="color:#ce9178">"5xx Error Rate %"</span>
+    <span style="color:#9cdcfe">return_data</span> = <span style="color:#b5cea8">true</span>
+  }
+
+  <span style="color:#569cd6">metric_query</span> {
+    <span style="color:#9cdcfe">id</span> = <span style="color:#ce9178">"errors"</span>
+    <span style="color:#569cd6">metric</span> {
+      <span style="color:#9cdcfe">namespace</span>   = <span style="color:#ce9178">"AWS/ApplicationELB"</span>
+      <span style="color:#9cdcfe">metric_name</span> = <span style="color:#ce9178">"HTTPCode_Target_5XX_Count"</span>
+      <span style="color:#9cdcfe">period</span>      = <span style="color:#b5cea8">60</span>
+      <span style="color:#9cdcfe">stat</span>        = <span style="color:#ce9178">"Sum"</span>
+      <span style="color:#9cdcfe">dimensions</span> = { <span style="color:#9cdcfe">LoadBalancer</span> = aws_lb.main.arn_suffix }
+    }
+  }
+
+  <span style="color:#569cd6">metric_query</span> {
+    <span style="color:#9cdcfe">id</span> = <span style="color:#ce9178">"requests"</span>
+    <span style="color:#569cd6">metric</span> {
+      <span style="color:#9cdcfe">namespace</span>   = <span style="color:#ce9178">"AWS/ApplicationELB"</span>
+      <span style="color:#9cdcfe">metric_name</span> = <span style="color:#ce9178">"RequestCount"</span>
+      <span style="color:#9cdcfe">period</span>      = <span style="color:#b5cea8">60</span>
+      <span style="color:#9cdcfe">stat</span>        = <span style="color:#ce9178">"Sum"</span>
+      <span style="color:#9cdcfe">dimensions</span> = { <span style="color:#9cdcfe">LoadBalancer</span> = aws_lb.main.arn_suffix }
+    }
+  }
+
+  <span style="color:#9cdcfe">alarm_actions</span> = [aws_sns_topic.platform_alerts.arn]
+}
+
+<span style="color:#569cd6">resource</span> <span style="color:#ce9178">"aws_cloudwatch_metric_alarm"</span> <span style="color:#ce9178">"alb_latency_p99"</span> {
+  <span style="color:#9cdcfe">alarm_name</span>          = <span style="color:#ce9178">"alb-p99-latency-high"</span>
+  <span style="color:#9cdcfe">alarm_description</span>   = <span style="color:#ce9178">"ALB P99 latency above 500ms — performance degradation"</span>
+  <span style="color:#9cdcfe">comparison_operator</span> = <span style="color:#ce9178">"GreaterThanThreshold"</span>
+  <span style="color:#9cdcfe">evaluation_periods</span>  = <span style="color:#b5cea8">3</span>
+  <span style="color:#9cdcfe">metric_name</span>         = <span style="color:#ce9178">"TargetResponseTime"</span>
+  <span style="color:#9cdcfe">namespace</span>           = <span style="color:#ce9178">"AWS/ApplicationELB"</span>
+  <span style="color:#9cdcfe">period</span>              = <span style="color:#b5cea8">60</span>
+  <span style="color:#9cdcfe">extended_statistic</span>  = <span style="color:#ce9178">"p99"</span>
+  <span style="color:#9cdcfe">threshold</span>           = <span style="color:#b5cea8">0.5</span>   <span style="color:#6a9955"># 500ms</span>
+
+  <span style="color:#9cdcfe">dimensions</span> = {
+    <span style="color:#9cdcfe">LoadBalancer</span> = aws_lb.main.arn_suffix
+  }
+
+  <span style="color:#9cdcfe">alarm_actions</span> = [aws_sns_topic.platform_alerts.arn]
+}</code></pre>
+
+        <h3>CI Check — Enforce Alarm Coverage for New Services</h3>
+
+        <p>This is the CI gate that prevents the "new service, no alarm" gap structurally:</p>
+
+        <pre><code class="language-yaml"># .github/workflows/observability-gate.yaml
+name: Observability Coverage Check
+
+on:
+  pull_request:
+    paths:
+      - 'gitops-config/apps/services/**'
+
+jobs:
+  check-alarm-coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Detect new services
+        id: new_services
+        run: |
+          new_dirs=$(git diff --name-only origin/main HEAD | \
+            grep "gitops-config/apps/services/" | \
+            awk -F/ '{print $3}' | sort -u)
+          echo "new_services=$new_dirs" >> $GITHUB_OUTPUT
+
+      - name: Check alarm coverage
+        run: |
+          for service in ${{ steps.new_services.outputs.new_services }}; do
+            alarm_count=$(grep -r "$service" terraform/monitoring/ | \
+              grep "aws_cloudwatch_metric_alarm" | wc -l)
+            if [ "$alarm_count" -eq 0 ]; then
+              echo "❌ ERROR: No CloudWatch alarm found for service: $service"
+              echo "Add alarm coverage in terraform/monitoring/ before merging."
+              exit 1
+            fi
+            echo "✅ Alarm coverage confirmed for: $service"
+          done</code></pre>
+
+        <blockquote><strong>Why this matters in production:</strong> The CI check makes alarm coverage a deployment gate, not a post-deployment task. A PR that adds a new service to the ArgoCD ApplicationSet without a corresponding alarm definition in Terraform fails the pipeline. The gap that caused the incident is now structurally impossible.</blockquote>
+
+        <h2>4. CloudWatch Logs — Structured Logging at Scale</h2>
+
+        <h3>Fluent Bit — Log Routing in EKS</h3>
+
+        <p>The CloudWatch agent Helm chart deploys Fluent Bit as a DaemonSet. It collects logs from every container on every node and routes them to CloudWatch Logs — one log group per namespace, one log stream per pod.</p>
+
+        <pre><code class="language-yaml"># Fluent Bit configuration — routes logs to CloudWatch with structured metadata
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fluent-bit-config
+  namespace: amazon-cloudwatch
+data:
+  fluent-bit.conf: |
+    [SERVICE]
+        Flush         5
+        Log_Level     info
+        Parsers_File  parsers.conf
+
+    [INPUT]
+        Name              tail
+        Tag               kube.*
+        Path              /var/log/containers/*.log
+        Parser            docker
+        DB                /var/log/flb_kube.db
+        Mem_Buf_Limit     50MB
+        Skip_Long_Lines   On
+        Refresh_Interval  10
+
+    [FILTER]
+        Name                kubernetes
+        Match               kube.*
+        Kube_URL            https://kubernetes.default.svc:443
+        Kube_CA_File        /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        Kube_Token_File     /var/run/secrets/kubernetes.io/serviceaccount/token
+        Merge_Log           On
+        Keep_Log            Off
+        K8S-Logging.Parser  On
+        K8S-Logging.Exclude On
+
+    [OUTPUT]
+        Name              cloudwatch_logs
+        Match             kube.*
+        region            eu-west-1
+        log_group_name    /eks/$(kubernetes['namespace_name'])
+        log_stream_name   $(kubernetes['pod_name'])/$(kubernetes['container_name'])
+        auto_create_group true
+        retry_limit       2</code></pre>
+
+        <p><code>auto_create_group true</code> — this single setting means new services get their log group created automatically on first log output. No manual log group creation, no missing log groups.</p>
+
+        <h3>CloudWatch Log Insights — Useful Queries</h3>
+
+        <pre><code class="language-sql">-- Error rate by service over the last hour
+fields @timestamp, @message, kubernetes.namespace_name, kubernetes.pod_name
+| filter @message like /ERROR|Exception|FATAL/
+| stats count(*) as error_count by kubernetes.namespace_name
+| sort error_count desc
+
+-- Slow requests — find responses over 500ms
+fields @timestamp, method, path, duration_ms, status_code
+| filter duration_ms > 500
+| stats avg(duration_ms) as avg_ms, max(duration_ms) as max_ms, count() as count
+  by path
+| sort avg_ms desc
+| limit 20
+
+-- Pod restart events in last 30 minutes
+fields @timestamp, @message, kubernetes.pod_name, kubernetes.namespace_name
+| filter @message like /Back-off restarting failed container/
+| sort @timestamp desc
+| limit 50
+
+-- Memory OOM kills
+fields @timestamp, @message, kubernetes.pod_name
+| filter @message like /OOMKilled|out of memory/
+| sort @timestamp desc</code></pre>
+
+        <h3>Log Retention — Environment-Driven</h3>
+
+        <pre><code class="nohighlight"><span style="color:#6a9955"># Log retention — defined once, applied consistently</span>
+<span style="color:#569cd6">locals</span> {
+  <span style="color:#9cdcfe">log_retention</span> = {
+    <span style="color:#9cdcfe">prod</span>    = <span style="color:#b5cea8">90</span>
+    <span style="color:#9cdcfe">staging</span> = <span style="color:#b5cea8">30</span>
+    <span style="color:#9cdcfe">dev</span>     = <span style="color:#b5cea8">7</span>
+  }
+}
+
+<span style="color:#569cd6">resource</span> <span style="color:#ce9178">"aws_cloudwatch_log_group"</span> <span style="color:#ce9178">"eks_namespace"</span> {
+  <span style="color:#9cdcfe">for_each</span> = toset(var.namespaces)
+
+  <span style="color:#9cdcfe">name</span>              = <span style="color:#ce9178">"/eks/${each.key}"</span>
+  <span style="color:#9cdcfe">retention_in_days</span> = local.log_retention[var.environment]
+  <span style="color:#9cdcfe">kms_key_id</span>        = aws_kms_key.logs.arn
+
+  <span style="color:#9cdcfe">tags</span> = { <span style="color:#9cdcfe">Name</span> = <span style="color:#ce9178">"eks-logs-${each.key}"</span>, <span style="color:#9cdcfe">Environment</span> = var.environment }
+}</code></pre>
+
+        <h2>5. AWS X-Ray — Distributed Tracing</h2>
+
+        <h3>What X-Ray Solves</h3>
+
+        <p>In a microservices architecture, a single user request touches multiple services before returning a response. CloudWatch metrics tell you something is slow. CloudWatch logs tell you what happened inside one service. Neither tells you which service in the chain is the problem.</p>
+
+        <p>That is what distributed tracing solves. When latency spikes or an error occurs, you need to answer:</p>
+
+        <ul>
+          <li>Which service in the request path is slow?</li>
+          <li>Which downstream call is blocking?</li>
+          <li>Which external dependency — database, queue, third-party API — is the bottleneck?</li>
+        </ul>
+
+        <p>X-Ray traces the complete request path across all services — with timing at each hop — so you can follow the evidence rather than guess.</p>
+
+        <pre><code class="nohighlight">User request → API Gateway → Scoring Service → Enrichment Service → S3 / RDS
+                             [230ms]           [180ms]              [45ms]
+                                                ↑ This is your bottleneck</code></pre>
+
+        <h3>X-Ray with the AWS Distro for OpenTelemetry (ADOT)</h3>
+
+        <p>The modern approach is not X-Ray SDK instrumentation — it is <strong>OpenTelemetry instrumentation</strong> with ADOT as the collector. Your application emits standard OpenTelemetry traces. ADOT receives them and forwards to X-Ray. This gives you vendor portability — switch to Jaeger or Datadog later without re-instrumenting your applications.</p>
+
+        <pre><code class="nohighlight"><span style="color:#6a9955"># ADOT Collector via Helm — receives OTLP traces, forwards to X-Ray</span>
+<span style="color:#569cd6">resource</span> <span style="color:#ce9178">"helm_release"</span> <span style="color:#ce9178">"adot_collector"</span> {
+  <span style="color:#9cdcfe">name</span>             = <span style="color:#ce9178">"adot-collector"</span>
+  <span style="color:#9cdcfe">repository</span>       = <span style="color:#ce9178">"https://aws.github.io/eks-charts"</span>
+  <span style="color:#9cdcfe">chart</span>            = <span style="color:#ce9178">"aws-otel-collector"</span>
+  <span style="color:#9cdcfe">version</span>          = <span style="color:#ce9178">"0.33.0"</span>
+  <span style="color:#9cdcfe">namespace</span>        = <span style="color:#ce9178">"amazon-cloudwatch"</span>
+  <span style="color:#9cdcfe">create_namespace</span> = <span style="color:#b5cea8">true</span>
+
+  <span style="color:#9cdcfe">values</span> = [yamlencode({
+    <span style="color:#9cdcfe">mode</span> = <span style="color:#ce9178">"deployment"</span>   <span style="color:#6a9955"># Centralised collector — not DaemonSet</span>
+
+    <span style="color:#9cdcfe">config</span> = {
+      <span style="color:#9cdcfe">receivers</span> = {
+        <span style="color:#9cdcfe">otlp</span> = {
+          <span style="color:#9cdcfe">protocols</span> = {
+            <span style="color:#9cdcfe">grpc</span> = { <span style="color:#9cdcfe">endpoint</span> = <span style="color:#ce9178">"0.0.0.0:4317"</span> }
+            <span style="color:#9cdcfe">http</span> = { <span style="color:#9cdcfe">endpoint</span> = <span style="color:#ce9178">"0.0.0.0:4318"</span> }
+          }
+        }
+      }
+      <span style="color:#9cdcfe">processors</span> = {
+        <span style="color:#9cdcfe">batch</span> = {
+          <span style="color:#9cdcfe">timeout</span>         = <span style="color:#ce9178">"1s"</span>
+          <span style="color:#9cdcfe">send_batch_size</span> = <span style="color:#b5cea8">50</span>
+        }
+        <span style="color:#9cdcfe">memory_limiter</span> = {
+          <span style="color:#9cdcfe">limit_mib</span>       = <span style="color:#b5cea8">400</span>
+          <span style="color:#9cdcfe">spike_limit_mib</span> = <span style="color:#b5cea8">100</span>
+          <span style="color:#9cdcfe">check_interval</span>  = <span style="color:#ce9178">"5s"</span>
+        }
+      }
+      <span style="color:#9cdcfe">exporters</span> = {
+        <span style="color:#9cdcfe">awsxray</span> = { <span style="color:#9cdcfe">region</span> = var.region }
+        <span style="color:#9cdcfe">awsemf</span>  = {
+          <span style="color:#9cdcfe">region</span>                  = var.region
+          <span style="color:#9cdcfe">namespace</span>               = <span style="color:#ce9178">"EKS/Application"</span>
+          <span style="color:#9cdcfe">log_group_name</span>          = <span style="color:#ce9178">"/aws/eks/application-metrics"</span>
+          <span style="color:#9cdcfe">dimension_rollup_option</span> = <span style="color:#ce9178">"NoDimensionRollup"</span>
+        }
+      }
+      <span style="color:#9cdcfe">service</span> = {
+        <span style="color:#9cdcfe">pipelines</span> = {
+          <span style="color:#9cdcfe">traces</span>  = { <span style="color:#9cdcfe">receivers</span> = [<span style="color:#ce9178">"otlp"</span>], <span style="color:#9cdcfe">processors</span> = [<span style="color:#ce9178">"memory_limiter"</span>, <span style="color:#ce9178">"batch"</span>], <span style="color:#9cdcfe">exporters</span> = [<span style="color:#ce9178">"awsxray"</span>] }
+          <span style="color:#9cdcfe">metrics</span> = { <span style="color:#9cdcfe">receivers</span> = [<span style="color:#ce9178">"otlp"</span>], <span style="color:#9cdcfe">processors</span> = [<span style="color:#ce9178">"memory_limiter"</span>, <span style="color:#ce9178">"batch"</span>], <span style="color:#9cdcfe">exporters</span> = [<span style="color:#ce9178">"awsemf"</span>] }
+        }
+      }
+    }
+  })]
+}</code></pre>
+
+        <h3>Application Instrumentation — Python Example</h3>
+
+        <pre><code class="language-python"># requirements.txt:
+# opentelemetry-api, opentelemetry-sdk, opentelemetry-exporter-otlp-proto-grpc
+# opentelemetry-instrumentation-fastapi, opentelemetry-instrumentation-requests
+
+from opentelemetry import trace
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+from opentelemetry.instrumentation.requests import RequestsInstrumentor
+import fastapi
+
+otlp_exporter = OTLPSpanExporter(
+    endpoint="http://adot-collector.amazon-cloudwatch.svc.cluster.local:4317",
+    insecure=True
+)
+
+provider = TracerProvider()
+provider.add_span_processor(BatchSpanProcessor(otlp_exporter))
+trace.set_tracer_provider(provider)
+
+app = fastapi.FastAPI()
+
+# Auto-instrument FastAPI — all routes traced automatically
+FastAPIInstrumentor.instrument_app(app)
+# Auto-instrument outbound HTTP — all requests calls traced
+RequestsInstrumentor().instrument()
+
+tracer = trace.get_tracer(__name__)
+
+@app.post("/api/v1/score")
+async def score_transaction(transaction: dict):
+    with tracer.start_as_current_span("score-transaction") as span:
+        span.set_attribute("transaction.id", transaction["id"])
+        span.set_attribute("transaction.amount", transaction["amount"])
+        span.set_attribute("transaction.currency", transaction["currency"])
+
+        result = await call_enrichment_service(transaction)
+
+        span.set_attribute("risk.score", result["score"])
+        span.set_attribute("risk.decision", result["decision"])
+
+        return result</code></pre>
+
+        <h3>Kubernetes — ADOT Annotations</h3>
+
+        <pre><code class="language-yaml"># Add to any pod spec to enable tracing — no code changes needed
+spec:
+  template:
+    metadata:
+      annotations:
+        instrumentation.opentelemetry.io/inject-java: "true"
+        instrumentation.opentelemetry.io/inject-python: "true"</code></pre>
+
+        <h2>6. CloudWatch Dashboards — Operational Visibility</h2>
+
+        <h3>The Platform Dashboard</h3>
+
+        <pre><code class="nohighlight"><span style="color:#569cd6">resource</span> <span style="color:#ce9178">"aws_cloudwatch_dashboard"</span> <span style="color:#ce9178">"platform"</span> {
+  <span style="color:#9cdcfe">dashboard_name</span> = <span style="color:#ce9178">"eks-platform-overview"</span>
+
+  <span style="color:#9cdcfe">dashboard_body</span> = jsonencode({
+    <span style="color:#9cdcfe">widgets</span> = [
+      <span style="color:#6a9955">      # Row 1 — Cluster Health</span>
+      {
+        <span style="color:#9cdcfe">type</span> = <span style="color:#ce9178">"metric"</span>
+        <span style="color:#9cdcfe">properties</span> = {
+          <span style="color:#9cdcfe">title</span>   = <span style="color:#ce9178">"Pod Restarts (All Namespaces)"</span>
+          <span style="color:#9cdcfe">region</span>  = var.region
+          <span style="color:#9cdcfe">metrics</span> = [[<span style="color:#ce9178">"ContainerInsights"</span>, <span style="color:#ce9178">"pod_number_of_container_restarts"</span>, <span style="color:#ce9178">"ClusterName"</span>, aws_eks_cluster.main.name]]
+          <span style="color:#9cdcfe">view</span>    = <span style="color:#ce9178">"timeSeries"</span>
+          <span style="color:#9cdcfe">period</span>  = <span style="color:#b5cea8">300</span>
+          <span style="color:#9cdcfe">stat</span>    = <span style="color:#ce9178">"Sum"</span>
+          <span style="color:#9cdcfe">annotations</span> = {
+            <span style="color:#9cdcfe">horizontal</span> = [{ <span style="color:#9cdcfe">value</span> = <span style="color:#b5cea8">5</span>, <span style="color:#9cdcfe">label</span> = <span style="color:#ce9178">"Alert threshold"</span>, <span style="color:#9cdcfe">color</span> = <span style="color:#ce9178">"#d62728"</span> }]
+          }
+        }
+      },
+      {
+        <span style="color:#9cdcfe">type</span> = <span style="color:#ce9178">"metric"</span>
+        <span style="color:#9cdcfe">properties</span> = {
+          <span style="color:#9cdcfe">title</span>   = <span style="color:#ce9178">"Node CPU Utilisation"</span>
+          <span style="color:#9cdcfe">region</span>  = var.region
+          <span style="color:#9cdcfe">metrics</span> = [[<span style="color:#ce9178">"ContainerInsights"</span>, <span style="color:#ce9178">"node_cpu_utilization"</span>, <span style="color:#ce9178">"ClusterName"</span>, aws_eks_cluster.main.name]]
+          <span style="color:#9cdcfe">view</span>    = <span style="color:#ce9178">"timeSeries"</span>
+          <span style="color:#9cdcfe">period</span>  = <span style="color:#b5cea8">60</span>
+          <span style="color:#9cdcfe">stat</span>    = <span style="color:#ce9178">"Average"</span>
+        }
+      },
+      <span style="color:#6a9955">      # Row 2 — Application Health</span>
+      {
+        <span style="color:#9cdcfe">type</span> = <span style="color:#ce9178">"metric"</span>
+        <span style="color:#9cdcfe">properties</span> = {
+          <span style="color:#9cdcfe">title</span>   = <span style="color:#ce9178">"ALB P99 Latency (ms)"</span>
+          <span style="color:#9cdcfe">region</span>  = var.region
+          <span style="color:#9cdcfe">metrics</span> = [
+            [<span style="color:#ce9178">"AWS/ApplicationELB"</span>, <span style="color:#ce9178">"TargetResponseTime"</span>, <span style="color:#ce9178">"LoadBalancer"</span>, aws_lb.main.arn_suffix, { <span style="color:#9cdcfe">stat</span> = <span style="color:#ce9178">"p99"</span>, <span style="color:#9cdcfe">period</span> = <span style="color:#b5cea8">60</span>, <span style="color:#9cdcfe">label</span> = <span style="color:#ce9178">"P99"</span> }],
+            [<span style="color:#ce9178">"AWS/ApplicationELB"</span>, <span style="color:#ce9178">"TargetResponseTime"</span>, <span style="color:#ce9178">"LoadBalancer"</span>, aws_lb.main.arn_suffix, { <span style="color:#9cdcfe">stat</span> = <span style="color:#ce9178">"p50"</span>, <span style="color:#9cdcfe">period</span> = <span style="color:#b5cea8">60</span>, <span style="color:#9cdcfe">label</span> = <span style="color:#ce9178">"P50"</span> }]
+          ]
+          <span style="color:#9cdcfe">view</span> = <span style="color:#ce9178">"timeSeries"</span>
+        }
+      },
+      {
+        <span style="color:#9cdcfe">type</span> = <span style="color:#ce9178">"metric"</span>
+        <span style="color:#9cdcfe">properties</span> = {
+          <span style="color:#9cdcfe">title</span>   = <span style="color:#ce9178">"ALB 5xx Error Rate"</span>
+          <span style="color:#9cdcfe">region</span>  = var.region
+          <span style="color:#9cdcfe">metrics</span> = [
+            [{ <span style="color:#9cdcfe">expression</span> = <span style="color:#ce9178">"errors/requests*100"</span>, <span style="color:#9cdcfe">label</span> = <span style="color:#ce9178">"Error Rate %"</span>, <span style="color:#9cdcfe">id</span> = <span style="color:#ce9178">"rate"</span> }],
+            [<span style="color:#ce9178">"AWS/ApplicationELB"</span>, <span style="color:#ce9178">"HTTPCode_Target_5XX_Count"</span>, <span style="color:#ce9178">"LoadBalancer"</span>, aws_lb.main.arn_suffix, { <span style="color:#9cdcfe">id</span> = <span style="color:#ce9178">"errors"</span>, <span style="color:#9cdcfe">visible</span> = <span style="color:#b5cea8">false</span> }],
+            [<span style="color:#ce9178">"AWS/ApplicationELB"</span>, <span style="color:#ce9178">"RequestCount"</span>, <span style="color:#ce9178">"LoadBalancer"</span>, aws_lb.main.arn_suffix, { <span style="color:#9cdcfe">id</span> = <span style="color:#ce9178">"requests"</span>, <span style="color:#9cdcfe">visible</span> = <span style="color:#b5cea8">false</span> }]
+          ]
+          <span style="color:#9cdcfe">view</span>   = <span style="color:#ce9178">"timeSeries"</span>
+          <span style="color:#9cdcfe">period</span> = <span style="color:#b5cea8">60</span>
+        }
+      },
+      <span style="color:#6a9955">      # Row 3 — Cost</span>
+      {
+        <span style="color:#9cdcfe">type</span> = <span style="color:#ce9178">"metric"</span>
+        <span style="color:#9cdcfe">properties</span> = {
+          <span style="color:#9cdcfe">title</span>   = <span style="color:#ce9178">"Karpenter Nodes Launched"</span>
+          <span style="color:#9cdcfe">region</span>  = var.region
+          <span style="color:#9cdcfe">metrics</span> = [[<span style="color:#ce9178">"Karpenter"</span>, <span style="color:#ce9178">"nodes_created_total"</span>, <span style="color:#ce9178">"NodePool"</span>, <span style="color:#ce9178">"spot-general"</span>]]
+          <span style="color:#9cdcfe">view</span>    = <span style="color:#ce9178">"timeSeries"</span>
+          <span style="color:#9cdcfe">period</span>  = <span style="color:#b5cea8">300</span>
+          <span style="color:#9cdcfe">stat</span>    = <span style="color:#ce9178">"Sum"</span>
+        }
+      }
+    ]
+  })
+}</code></pre>
+
+        <h2>7. CloudWatch Synthetics — Proactive Endpoint Monitoring</h2>
+
+        <p>Synthetics runs canary scripts on a schedule — simulating user requests to your endpoints from outside the cluster. If the canary fails, the alarm fires before any real user is affected.</p>
+
+        <pre><code class="nohighlight"><span style="color:#6a9955"># S3 bucket for canary scripts</span>
+<span style="color:#569cd6">resource</span> <span style="color:#ce9178">"aws_s3_bucket"</span> <span style="color:#ce9178">"canary_scripts"</span> {
+  <span style="color:#9cdcfe">bucket</span> = <span style="color:#ce9178">"platform-canary-scripts-${var.account_id}"</span>
+}
+
+<span style="color:#6a9955"># Canary — checks the scoring API every 5 minutes</span>
+<span style="color:#569cd6">resource</span> <span style="color:#ce9178">"aws_synthetics_canary"</span> <span style="color:#ce9178">"scoring_api"</span> {
+  <span style="color:#9cdcfe">name</span>                 = <span style="color:#ce9178">"scoring-api-health"</span>
+  <span style="color:#9cdcfe">artifact_s3_location</span> = <span style="color:#ce9178">"s3://${aws_s3_bucket.canary_scripts.bucket}/canary-results/"</span>
+  <span style="color:#9cdcfe">execution_role_arn</span>   = aws_iam_role.canary.arn
+  <span style="color:#9cdcfe">handler</span>              = <span style="color:#ce9178">"apiCanary.handler"</span>
+  <span style="color:#9cdcfe">runtime_version</span>      = <span style="color:#ce9178">"syn-nodejs-puppeteer-7.0"</span>
+  <span style="color:#9cdcfe">start_canary</span>         = <span style="color:#b5cea8">true</span>
+
+  <span style="color:#569cd6">schedule</span> {
+    <span style="color:#9cdcfe">expression</span> = <span style="color:#ce9178">"rate(5 minutes)"</span>
+  }
+
+  <span style="color:#569cd6">run_config</span> {
+    <span style="color:#9cdcfe">timeout_in_seconds</span> = <span style="color:#b5cea8">30</span>
+    <span style="color:#9cdcfe">memory_in_mb</span>       = <span style="color:#b5cea8">960</span>
+    <span style="color:#9cdcfe">active_tracing</span>     = <span style="color:#b5cea8">true</span>   <span style="color:#6a9955"># Enable X-Ray tracing for canary runs</span>
+  }
+
+  <span style="color:#9cdcfe">zip_file</span> = data.archive_file.canary_script.output_base64sha256
+}</code></pre>
+
+        <pre><code class="language-javascript">// canary/apiCanary.js — runs every 5 minutes from CloudWatch
+const synthetics = require('Synthetics');
+const log        = require('SyntheticsLogger');
+
+const apiCanary = async function () {
+  const healthUrl = 'https://api.internal.company.com/health';
+
+  const response = await synthetics.executeHttpStep(
+    'Check health endpoint',
+    healthUrl,
+    { method: 'GET', headers: { 'x-canary': 'true' } }
+  );
+
+  if (response.statusCode !== 200) {
+    throw new Error(`Health check failed: ${response.statusCode}`);
+  }
+
+  const scoreUrl  = 'https://api.internal.company.com/api/v1/score';
+  const scoreBody = JSON.stringify({
+    transaction_id: 'canary-test-001',
+    amount:          1.00,
+    currency:        'EUR'
+  });
+
+  const scoreResponse = await synthetics.executeHttpStep(
+    'Check scoring endpoint',
+    scoreUrl,
+    {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', 'x-canary': 'true' },
+      body:    scoreBody
+    }
+  );
+
+  if (scoreResponse.statusCode !== 200) {
+    throw new Error(`Scoring endpoint failed: ${scoreResponse.statusCode}`);
+  }
+
+  const body = JSON.parse(scoreResponse.body);
+  if (!body.decision) {
+    throw new Error('Scoring response missing decision field');
+  }
+
+  log.info('Canary passed — API healthy');
+};
+
+exports.handler = async () => { await apiCanary(); };</code></pre>
+
+        <pre><code class="nohighlight"><span style="color:#6a9955"># Alarm on canary failures</span>
+<span style="color:#569cd6">resource</span> <span style="color:#ce9178">"aws_cloudwatch_metric_alarm"</span> <span style="color:#ce9178">"canary_failure"</span> {
+  <span style="color:#9cdcfe">alarm_name</span>          = <span style="color:#ce9178">"scoring-api-canary-failed"</span>
+  <span style="color:#9cdcfe">alarm_description</span>   = <span style="color:#ce9178">"Scoring API canary check failed — endpoint may be down"</span>
+  <span style="color:#9cdcfe">comparison_operator</span> = <span style="color:#ce9178">"GreaterThanThreshold"</span>
+  <span style="color:#9cdcfe">evaluation_periods</span>  = <span style="color:#b5cea8">2</span>
+  <span style="color:#9cdcfe">metric_name</span>         = <span style="color:#ce9178">"Failed"</span>
+  <span style="color:#9cdcfe">namespace</span>           = <span style="color:#ce9178">"CloudWatchSynthetics"</span>
+  <span style="color:#9cdcfe">period</span>              = <span style="color:#b5cea8">300</span>
+  <span style="color:#9cdcfe">statistic</span>           = <span style="color:#ce9178">"Sum"</span>
+  <span style="color:#9cdcfe">threshold</span>           = <span style="color:#b5cea8">0</span>
+
+  <span style="color:#9cdcfe">dimensions</span> = {
+    <span style="color:#9cdcfe">CanaryName</span> = aws_synthetics_canary.scoring_api.name
+  }
+
+  <span style="color:#9cdcfe">alarm_actions</span> = [
+    aws_sns_topic.platform_alerts.arn,
+    aws_sns_topic.pagerduty.arn
+  ]
+}</code></pre>
+
+        <h2>8. What's Still Missing — The Honest Gaps</h2>
+
+        <p>Every observability stack has gaps. Being honest about them is what separates operational maturity from a checkbox exercise.</p>
+
+        <h3>Gap 1 — No Alerting on What You Don't Know About</h3>
+
+        <p>Container Insights covers pod restarts, CPU, and memory. It does not cover:</p>
+
+        <ul>
+          <li><strong>Business metrics</strong> — transaction throughput, fraud detection rate, payment success rate. These require custom CloudWatch metrics emitted by your application.</li>
+          <li><strong>Queue depth</strong> — SQS queue depth, Kafka consumer lag. These require separate alarms on <code>AWS/SQS</code> and custom metrics from your consumers.</li>
+          <li><strong>Database connection pool exhaustion</strong> — RDS connection count approaching max_connections is invisible until queries start failing.</li>
+        </ul>
+
+        <pre><code class="nohighlight"><span style="color:#6a9955"># Custom metric — application-level business signal</span>
+<span style="color:#569cd6">resource</span> <span style="color:#ce9178">"aws_cloudwatch_metric_alarm"</span> <span style="color:#ce9178">"sqs_queue_depth"</span> {
+  <span style="color:#9cdcfe">alarm_name</span>          = <span style="color:#ce9178">"enrichment-queue-depth-high"</span>
+  <span style="color:#9cdcfe">alarm_description</span>   = <span style="color:#ce9178">"SQS queue depth high — enrichment service may be falling behind"</span>
+  <span style="color:#9cdcfe">comparison_operator</span> = <span style="color:#ce9178">"GreaterThanThreshold"</span>
+  <span style="color:#9cdcfe">evaluation_periods</span>  = <span style="color:#b5cea8">3</span>
+  <span style="color:#9cdcfe">metric_name</span>         = <span style="color:#ce9178">"ApproximateNumberOfMessagesVisible"</span>
+  <span style="color:#9cdcfe">namespace</span>           = <span style="color:#ce9178">"AWS/SQS"</span>
+  <span style="color:#9cdcfe">period</span>              = <span style="color:#b5cea8">300</span>
+  <span style="color:#9cdcfe">statistic</span>           = <span style="color:#ce9178">"Average"</span>
+  <span style="color:#9cdcfe">threshold</span>           = <span style="color:#b5cea8">1000</span>
+
+  <span style="color:#9cdcfe">dimensions</span> = {
+    <span style="color:#9cdcfe">QueueName</span> = aws_sqs_queue.enrichment_input.name
+  }
+
+  <span style="color:#9cdcfe">alarm_actions</span> = [aws_sns_topic.platform_alerts.arn]
+}</code></pre>
+
+        <h3>Gap 2 — No Correlation Between Logs and Traces</h3>
+
+        <p>CloudWatch Logs and X-Ray traces are separate consoles. You cannot click from a log line to the trace that produced it — unless you embed the trace ID in your log output:</p>
+
+        <pre><code class="language-python">import logging
+import json
+from opentelemetry import trace
+
+logger = logging.getLogger(__name__)
+
+class TraceIdFilter(logging.Filter):
+    """Injects the current OpenTelemetry trace ID into every log record."""
+    def filter(self, record):
+        span = trace.get_current_span()
+        if span and span.is_recording():
+            ctx = span.get_span_context()
+            trace_id = format(ctx.trace_id, '032x')
+            record.trace_id = f"1-{trace_id[:8]}-{trace_id[8:]}"
+            record.span_id  = format(ctx.span_id, '016x')
+        else:
+            record.trace_id = "no-trace"
+            record.span_id  = "no-span"
+        return True
+
+# Apply filter to root logger — every log line gets trace context
+logging.getLogger().addFilter(TraceIdFilter())
+
+# Structured JSON logging — makes log correlation queryable in CloudWatch Insights
+logging.basicConfig(
+    format=json.dumps({
+        "timestamp": "%(asctime)s",
+        "level":     "%(levelname)s",
+        "message":   "%(message)s",
+        "trace_id":  "%(trace_id)s",
+        "span_id":   "%(span_id)s",
+        "service":   "scoring-service",
+        "namespace": "fraud-detection"
+    })
+)
+
+def process_request(request_id: str):
+    # trace_id is automatically injected into this log line
+    logger.info(f"Processing request {request_id}")</code></pre>
+
+        <h3>Gap 3 — Alert Fatigue Without Runbooks</h3>
+
+        <p>Alarms without runbooks create alert fatigue — engineers see the alarm, don't know what to do, and start ignoring alerts. Every alarm should link to a runbook:</p>
+
+        <pre><code class="nohighlight"><span style="color:#569cd6">resource</span> <span style="color:#ce9178">"aws_cloudwatch_metric_alarm"</span> <span style="color:#ce9178">"pod_restarts"</span> {
+  <span style="color:#9cdcfe">alarm_description</span> = <span style="color:#ce9178">&lt;&lt;-EOT</span>
+    Pod restarting repeatedly — likely crash loop.
+    Runbook: https://wiki.internal.company.com/runbooks/pod-crash-loop
+    1. Check Container Insights for the specific pod
+    2. Open CloudWatch Logs for the namespace
+    3. Look for OOMKilled or configuration errors
+    4. If config change, revert the last ArgoCD sync
+  <span style="color:#ce9178">EOT</span>
+  <span style="color:#6a9955">  # ... rest of alarm config</span>
+}</code></pre>
+
+        <h3>Gap 4 — No SLO Tracking</h3>
+
+        <p>Alarms tell you when something is broken right now. SLOs (Service Level Objectives) tell you how often things were broken over time — and whether you're within your error budget. CloudWatch does not have native SLO tracking. Options:</p>
+
+        <ul>
+          <li><strong>AWS Application Signals</strong> — AWS-managed SLO framework, released 2024</li>
+          <li><strong>Prometheus + Grafana</strong> — <code>sloth</code> or manual recording rules for SLO burn rate</li>
+          <li><strong>Datadog / New Relic</strong> — if you have budget for a third-party observability platform</li>
+        </ul>
+
+        <pre><code class="nohighlight"><span style="color:#6a9955"># AWS Application Signals — enables SLO tracking natively</span>
+<span style="color:#569cd6">resource</span> <span style="color:#ce9178">"aws_applicationsignals_service_level_objective"</span> <span style="color:#ce9178">"scoring_latency"</span> {
+  <span style="color:#9cdcfe">name</span>        = <span style="color:#ce9178">"scoring-api-p99-latency"</span>
+  <span style="color:#9cdcfe">description</span> = <span style="color:#ce9178">"P99 latency below 200ms — 99.5% of the time"</span>
+
+  <span style="color:#9cdcfe">sli</span> = {
+    <span style="color:#9cdcfe">sli_metric</span> = {
+      <span style="color:#9cdcfe">metric_data_queries</span> = [{
+        <span style="color:#9cdcfe">id</span>          = <span style="color:#ce9178">"latency"</span>
+        <span style="color:#9cdcfe">metric_stat</span> = {
+          <span style="color:#9cdcfe">metric</span> = {
+            <span style="color:#9cdcfe">namespace</span>   = <span style="color:#ce9178">"AWS/ApplicationELB"</span>
+            <span style="color:#9cdcfe">metric_name</span> = <span style="color:#ce9178">"TargetResponseTime"</span>
+            <span style="color:#9cdcfe">dimensions</span>  = [{ <span style="color:#9cdcfe">name</span> = <span style="color:#ce9178">"LoadBalancer"</span>, <span style="color:#9cdcfe">value</span> = aws_lb.main.arn_suffix }]
+          }
+          <span style="color:#9cdcfe">period</span> = <span style="color:#b5cea8">60</span>
+          <span style="color:#9cdcfe">stat</span>   = <span style="color:#ce9178">"p99"</span>
+        }
+      }]
+    }
+    <span style="color:#9cdcfe">comparison_operator</span> = <span style="color:#ce9178">"LessThan"</span>
+    <span style="color:#9cdcfe">metric_threshold</span>    = <span style="color:#b5cea8">0.2</span>   <span style="color:#6a9955"># 200ms</span>
+  }
+
+  <span style="color:#9cdcfe">goal</span> = {
+    <span style="color:#9cdcfe">attainment_goal</span>   = <span style="color:#b5cea8">99.5</span>
+    <span style="color:#9cdcfe">warning_threshold</span> = <span style="color:#b5cea8">99.0</span>
+    <span style="color:#9cdcfe">interval</span> = {
+      <span style="color:#9cdcfe">rolling_interval</span> = { <span style="color:#9cdcfe">duration</span> = <span style="color:#b5cea8">7</span>, <span style="color:#9cdcfe">duration_unit</span> = <span style="color:#ce9178">"DAY"</span> }
+    }
+  }
+}</code></pre>
+
+        <h2>9. The Observability Maturity Model</h2>
+
+        <p>Not every team needs every tool on day one. Here's the progression:</p>
+
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th>Level</th>
+              <th>What You Have</th>
+              <th>What You're Flying Blind On</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Level 1</strong></td>
+              <td>CloudWatch Logs, basic EC2 alarms</td>
+              <td>Pod-level failures, latency distribution</td>
+            </tr>
+            <tr>
+              <td><strong>Level 2</strong></td>
+              <td>+ Container Insights, ALB metrics, pod restart alarms</td>
+              <td>Request traces, business metrics</td>
+            </tr>
+            <tr>
+              <td><strong>Level 3</strong></td>
+              <td>+ X-Ray / ADOT tracing, log correlation</td>
+              <td>SLO tracking, user-facing quality</td>
+            </tr>
+            <tr>
+              <td><strong>Level 4</strong></td>
+              <td>+ Synthetics, custom business metrics, SLOs</td>
+              <td>Prediction, anomaly detection</td>
+            </tr>
+            <tr>
+              <td><strong>Level 5</strong></td>
+              <td>+ Anomaly detection, AIOps, full SLO budget tracking</td>
+              <td>Nothing — this is operational maturity</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <p><strong>Start at Level 2 on Day 1.</strong> Container Insights + pod restart alarms + ALB metrics cover the majority of production incidents. Add tracing when you have more than 5 services and start seeing latency issues you cannot localise to one service. Add Synthetics when you have a public-facing API that must be monitored from the outside.</p>
+
+        <h2>10. Common Mistakes &amp; Anti-Patterns</h2>
+
+        <h3>Mistake 1: Log-Based Alarms for Pod Failures</h3>
+        <p>Log-based alarms require a metric filter per log group per service. Every new service needs manual wiring. Use Container Insights <code>pod_number_of_container_restarts</code> — automatic coverage for every pod from the moment it starts.</p>
+
+        <h3>Mistake 2: Alarms Without Multi-Channel Notification</h3>
+        <p>A single SNS email subscription means the alarm fires at 2am and nobody sees it until morning. Always route critical alarms to at least two channels: Slack for visibility and PagerDuty/OpsGenie for on-call paging.</p>
+
+        <h3>Mistake 3: No <code>treat_missing_data</code> Configuration</h3>
+        <p>By default, an alarm with no data reports <code>INSUFFICIENT_DATA</code> — which does not trigger alarm actions. Set <code>treat_missing_data = "breaching"</code> for availability alarms (missing data = service is down) and <code>"notBreaching"</code> for load alarms (missing data = service is idle).</p>
+
+        <h3>Mistake 4: Tracing Without Log Correlation</h3>
+        <p>X-Ray traces and CloudWatch logs are in separate consoles. Without the trace ID embedded in log output, correlating a slow trace to the log lines that explain it requires manual timestamp matching. Embed the trace ID in structured log output from Day 1.</p>
+
+        <h3>Mistake 5: Dashboard Without Annotations</h3>
+        <p>A CloudWatch dashboard showing a metric spike is useful. A dashboard showing a metric spike with an annotation that says "Deployed v1.4.2 at 14:32" is invaluable. Automate deployment annotations via EventBridge → CloudWatch dashboard annotations.</p>
+
+        <h3>Mistake 6: Alarms Without Runbooks</h3>
+        <p>An alarm that fires at 2am and contains no guidance creates panic and delay. Every alarm description should contain: what it means, the immediate diagnostic steps, and a runbook link. This is free — it's a text field on the alarm resource.</p>
+
+        <h2>Architecture Decision Matrix</h2>
+
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th>Requirement</th>
+              <th>CloudWatch</th>
+              <th>X-Ray / ADOT</th>
+              <th>Prometheus + Grafana</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Infrastructure metrics</td>
+              <td>✅ Native</td>
+              <td>❌ N/A</td>
+              <td>⚠️ Requires exporters</td>
+            </tr>
+            <tr>
+              <td>Pod / container metrics</td>
+              <td>✅ Container Insights</td>
+              <td>❌ N/A</td>
+              <td>✅ kube-state-metrics</td>
+            </tr>
+            <tr>
+              <td>Application logs</td>
+              <td>✅ Native</td>
+              <td>❌ N/A</td>
+              <td>❌ N/A</td>
+            </tr>
+            <tr>
+              <td>Distributed tracing</td>
+              <td>❌ N/A</td>
+              <td>✅ Native</td>
+              <td>⚠️ Jaeger / Tempo</td>
+            </tr>
+            <tr>
+              <td>Custom dashboards</td>
+              <td>⚠️ Limited</td>
+              <td>❌ N/A</td>
+              <td>✅ Best in class</td>
+            </tr>
+            <tr>
+              <td>Alerting</td>
+              <td>✅ Alarms</td>
+              <td>❌ N/A</td>
+              <td>✅ Alertmanager</td>
+            </tr>
+            <tr>
+              <td>AWS-native integration</td>
+              <td>✅ Deepest</td>
+              <td>✅ Deep</td>
+              <td>⚠️ Via exporters</td>
+            </tr>
+            <tr>
+              <td>Cost</td>
+              <td>✅ Pay per use</td>
+              <td>✅ Pay per trace</td>
+              <td>⚠️ EC2/node cost</td>
+            </tr>
+            <tr>
+              <td>SLO tracking</td>
+              <td>✅ App Signals</td>
+              <td>❌ N/A</td>
+              <td>✅ With sloth/recording rules</td>
+            </tr>
+            <tr>
+              <td>No infrastructure to manage</td>
+              <td>✅ Fully managed</td>
+              <td>✅ Fully managed</td>
+              <td>❌ You manage it</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h2>The Golden Rule</h2>
+
+        <blockquote>
+          <p><em>Observability is not a tool you deploy — it is a property you build in from the start. Instrument before you deploy, not after the first incident. Use metric-based alarms over log-based alarms for pod failures — metrics cover new services automatically, log groups do not. Correlate metrics, logs, and traces so you can follow the evidence from alarm to root cause without guessing. And treat every alarm as a contract: if it fires, there must be a runbook, a responsible team, and a defined response time. An alarm nobody acts on is noise. Noise trains engineers to ignore alarms. Ignored alarms mean incidents go undetected. The goal is not more alarms — it is the right alarms, routing to the right people, with the context to act immediately.</em></p>
+        </blockquote>
+
+        <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--aws-border);">
+          <span style="color: var(--aws-text-light); font-size: 13px;">Tags: </span>
+          <span class="tag blue">#AWS</span>
+          <span class="tag blue">#CloudWatch</span>
+          <span class="tag blue">#Observability</span>
+          <span class="tag blue">#XRay</span>
+          <span class="tag blue">#OpenTelemetry</span>
+          <span class="tag blue">#EKS</span>
+          <span class="tag blue">#Kubernetes</span>
+          <span class="tag purple">#DevSecOps</span>
+          <span class="tag purple">#SRE</span>
+          <span class="tag blue">#ContainerInsights</span>
+          <span class="tag blue">#ADOT</span>
+          <span class="tag purple">#Monitoring</span>
+        </div>
+
+      </div> <!-- End Blog Body -->
+
+      <div class="share-section">
+        <span style="font-weight: 700; color: var(--aws-text-light);">Share this article:</span>
+        <a href="https://www.linkedin.com/sharing/share-offsite/?url=https://www.ankushpanday.com/blog/observability/cloudwatch-xray-opentelemetry-observability.html"
+          target="_blank" class="share-btn linkedin-btn">
+          <i class="fa-brands fa-linkedin"></i> Share on LinkedIn
+        </a>
+      </div>
+
+      <div class="author-card">
+        <div class="author-img"><i class="fa-solid fa-user-tie"></i></div>
+        <div>
+          <h4 style="margin: 0 0 8px 0; color: var(--aws-text);">Ankush Panday</h4>
+          <p style="margin: 0; font-size: 14px; color: var(--aws-text-light);">Specializing in highly scalable AWS
+            infrastructure and automated quality engineering.</p>
+          <a href="https://www.linkedin.com/in/ankush-panday-39b97824/" target="_blank"
+            style="display: inline-block; margin-top: 10px; color: var(--aws-blue); text-decoration: none; font-size: 13px; font-weight: 600;">Connect
+            on LinkedIn <i class="fa-solid fa-external-link" style="font-size: 10px;"></i></a>
+        </div>
+      </div>
+
+    </article>
+
+    <!-- NAVIGATION LINKS -->
+    <div class="nav-links">
+      <a href="../deep-dives/eks-karpenter-shutdown.html" class="nav-link">
+        <i class="fa-solid fa-arrow-left"></i> Previous: Stopping EKS Test Environments
+      </a>
+      <span></span>
+    </div>
+
+  </main>
+
+  <footer class="aws-footer">
+    Built for Performance. Architected for the Cloud. &bull; &copy; 2026 <span>Ankush Panday</span>
+  </footer>
+
+  <script>
+    if (window.location.protocol === 'file:') {
+      document.querySelectorAll('a').forEach(link => {
+        let href = link.getAttribute('href');
+        if (href && !href.startsWith('http') && !href.startsWith('#')) {
+          let path = href.split('#')[0];
+          let anchor = href.split('#')[1] ? '#' + href.split('#')[1] : '';
+          if (path && !path.endsWith('.html') && !path.endsWith('/')) {
+            link.setAttribute('href', path + '/index.html' + anchor);
+          } else if (path && path.endsWith('/')) {
+            link.setAttribute('href', path + 'index.html' + anchor);
+          }
+        }
+      });
+    }
+  </script>
+  <script>hljs.highlightAll();</script>
+</body>
+
+</html>

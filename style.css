@@ -66,6 +66,8 @@ body {
   border-right: 1px solid #3a4a5c;
   padding-right: 16px;
   margin-right: 8px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .aws-topnav .logo .aws-smile {
@@ -122,6 +124,8 @@ body {
   display: flex;
   align-items: center;
   gap: 4px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 .nav-icon-btn:hover { background: rgba(255,255,255,0.1); color: var(--aws-white); }
 .nav-icon-btn.orange { color: var(--aws-orange); font-weight: 600; }

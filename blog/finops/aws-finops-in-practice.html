@@ -1,0 +1,985 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- SEO PRIMARY -->
+  <title>AWS FinOps in Practice: Cost Optimisation Strategies from a Certified Practitioner | Ankush Panday</title>
+  <meta name="description"
+    content="Real-world AWS cost optimisation strategies from a FinOps Certified Practitioner — Karpenter Spot, Fargate Spot, Savings Plans, Gateway Endpoints, S3 tiering, and the operating model that makes savings stick.">
+  <meta name="keywords"
+    content="AWS, FinOps, CostOptimisation, Karpenter, Spot, EKS, Fargate, SavingsPlans, Terraform, S3, VPC, CloudArchitecture">
+  <link rel="canonical" href="https://www.ankushpanday.com/blog/finops/aws-finops-in-practice.html">
+
+  <!-- OPEN GRAPH -->
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://www.ankushpanday.com/blog/finops/aws-finops-in-practice.html">
+  <meta property="og:title"
+    content="AWS FinOps in Practice: Cost Optimisation Strategies from a Certified Practitioner">
+  <meta property="og:description"
+    content="Real-world AWS cost optimisation strategies from a FinOps Certified Practitioner — Karpenter Spot, Fargate Spot, Savings Plans, Gateway Endpoints, S3 tiering, and the operating model that makes savings stick.">
+  <meta property="og:image"
+    content="https://www.ankushpanday.com/images/aws-finops-cost-optimisation-practitioner.png">
+
+  <link rel="stylesheet" href="../../style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    .blog-page-container { max-width: 900px; margin: 100px auto 40px auto; padding: 0 20px; min-height: calc(100vh - 200px); }
+    .back-btn { display: inline-flex; align-items: center; gap: 8px; color: var(--aws-blue); text-decoration: none; font-weight: 500; margin-bottom: 24px; }
+    .blog-content-card { background: var(--aws-white); border: 1px solid var(--aws-border); border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+    .blog-header { background: #f8f9fa; padding: 40px; border-bottom: 1px solid var(--aws-border); }
+    .blog-body { padding: 40px; line-height: 1.8; font-size: 16px; color: var(--aws-text); }
+    .blog-body h2 { margin-top: 48px; font-size: 26px; color: var(--aws-text); border-bottom: 2px solid var(--aws-orange); display: inline-block; padding-bottom: 4px; margin-bottom: 24px; }
+    .blog-body h3 { margin-top: 32px; font-size: 22px; color: var(--aws-blue); margin-bottom: 16px; }
+    .blog-body h4 { margin-top: 24px; font-size: 18px; color: var(--aws-text); font-weight: 700; }
+    .blog-body p { margin-bottom: 20px; }
+    .blog-body ul, .blog-body ol { margin-bottom: 24px; padding-left: 24px; }
+    .blog-body li { margin-bottom: 12px; }
+    .blog-body strong { color: var(--aws-text); }
+    .blog-body blockquote { font-style: italic; color: var(--aws-text-light); margin: 30px 0; border-left: 4px solid var(--aws-orange); background: #fcfcfc; padding: 20px; }
+    pre { background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; margin: 24px 0; font-size: 13px; line-height: 1.5; border-left: 4px solid var(--aws-orange); }
+    code { font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; background: #f1f3f5; color: #232f3e; padding: 2px 4px; border-radius: 4px; border: 1px solid #dee2e6; font-size: 0.9em; }
+    pre code { background: none; color: inherit; padding: 0; border: none; font-size: inherit; }
+    .blog-body table { width: 100%; border-collapse: collapse; margin: 24px 0; font-size: 14px; }
+    .blog-body table th { background: #232f3e; color: #f8f8f2; padding: 10px 14px; text-align: left; font-weight: 600; }
+    .blog-body table td { padding: 10px 14px; border-bottom: 1px solid var(--aws-border); vertical-align: top; }
+    .blog-body table tr:nth-child(even) td { background: #f8f9fa; }
+    .author-card {
+      display: flex;
+      gap: 20px;
+      align-items: center;
+      padding: 30px;
+      background: #fcfcfc;
+      border-top: 1px solid var(--aws-border);
+    }
+    .author-img {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background: var(--aws-highlight);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 30px;
+      color: var(--aws-orange);
+      border: 2px solid var(--aws-border);
+      flex-shrink: 0;
+    }
+    .nav-links {
+      display: flex;
+      justify-content: space-between;
+      margin: 40px 0;
+      padding: 20px 0;
+      border-top: 1px solid var(--aws-border);
+    }
+    .nav-link {
+      text-decoration: none;
+      color: var(--aws-blue);
+      font-weight: 600;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .tag {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-right: 8px;
+      margin-bottom: 8px;
+    }
+    .tag.blue { background: #e7f2fa; color: #0073bb; }
+    .tag.purple { background: #f2e7fa; color: #6b3fa0; }
+    .tag.green { background: #e7faf0; color: #1a7f4e; }
+    .share-section {
+      padding: 20px 40px;
+      border-top: 1px solid var(--aws-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #fff;
+    }
+    .share-btn {
+      padding: 8px 16px;
+      border: 1px solid var(--aws-border);
+      border-radius: 4px;
+      background: #fff;
+      color: var(--aws-text);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .share-btn:hover { background: #f8f9fa; }
+    .linkedin-btn { background: #0077b5; color: white; border: none; }
+    .linkedin-btn:hover { background: #005f8d; color: white; }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <style>
+    .hljs { background: transparent; padding: 0; color: #f8f8f2; }
+    .hljs-comment, .hljs-quote { color: #6a9955; }
+    .hljs-keyword, .hljs-built_in, .hljs-type { color: #569cd6; }
+    .hljs-string, .hljs-title { color: #ce9178; }
+    .hljs-attr, .hljs-variable, .hljs-selector-id { color: #9cdcfe; }
+    .hljs-number, .hljs-literal { color: #b5cea8; }
+    .hljs-meta, .hljs-tag { color: #f8f8f2; }
+  </style>
+</head>
+
+<body>
+
+  <nav class="aws-topnav">
+    <a href="../../index.html" class="logo">
+      <i class="fa-solid fa-cloud" style="color: var(--aws-orange); font-size: 20px;"></i>
+      <span>Ankush Panday</span>
+    </a>
+    <div class="nav-spacer"></div>
+    <div class="nav-icons">
+      <a href="../../index.html" class="nav-icon-btn" style="text-decoration: none;">Portfolio Home</a>
+      <a href="../index.html" class="nav-icon-btn orange" style="text-decoration: none; font-weight: 600;">Blog Hub</a>
+      <button class="nav-icon-btn"><i class="fa-solid fa-earth-europe"
+          style="margin-right: 6px; font-size: 12px; color: var(--aws-orange);"></i> Europe (nl-ams-1)</button>
+      <button class="nav-icon-btn">ankushpandey@hotmail.com <i class="fa-solid fa-caret-down"
+          style="margin-left: 4px;"></i></button>
+    </div>
+  </nav>
+
+  <main class="blog-page-container">
+    <a href="../index.html" class="back-btn"><i class="fa-solid fa-arrow-left"></i> Back to Blog Hub</a>
+
+    <article class="blog-content-card">
+      <header class="blog-header">
+        <div style="font-size: 12px; color: var(--aws-text-light); font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px;">
+          AWS Series &mdash; Part 18
+        </div>
+        <h1 style="font-size: 32px; color: var(--aws-text); margin-bottom: 16px; line-height: 1.2;">AWS FinOps in Practice: Cost Optimisation Strategies from a Certified Practitioner</h1>
+        <div style="display: flex; gap: 12px; align-items: center; color: var(--aws-text-light); font-size: 14px; flex-wrap: wrap;">
+          <span>May 26, 2026</span>
+          <span>&bull;</span>
+          <span>20 min read</span>
+          <span class="tag blue">FinOps</span>
+          <span class="tag green">CostOptimisation</span>
+          <span class="tag purple">EKS</span>
+        </div>
+      </header>
+
+      <div class="blog-body">
+        <p style="font-style: italic; color: var(--aws-text-light); margin-bottom: 30px; border-left: 4px solid var(--aws-orange); padding-left: 15px;">
+          <strong>AWS Series | Part 18</strong> — Building secure, cost-optimised, cloud-native infrastructure on AWS.
+        </p>
+
+        <!-- Main Image -->
+        <img src="../../images/aws-finops-cost-optimisation-practitioner.png"
+          alt="AWS FinOps cost optimisation strategies — Karpenter, Spot, Savings Plans, Gateway Endpoints"
+          style="display: block; width: 100%; border-radius: 8px; border: 1px solid var(--aws-border); margin-bottom: 40px;">
+
+        <h2>TL;DR</h2>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Strategy</th>
+              <th>Where It Applies</th>
+              <th>Effort</th>
+              <th>Impact</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td><strong>Spot instances + Karpenter</strong></td><td>EKS compute</td><td>Medium</td><td>High — 60-70% node cost reduction</td></tr>
+            <tr><td><strong>Gateway Endpoints</strong></td><td>S3 + DynamoDB access</td><td>Low</td><td>Free — eliminates NAT data processing</td></tr>
+            <tr><td><strong>Fargate Spot</strong></td><td>ECS batch workloads</td><td>Low</td><td>Up to 70% compute saving</td></tr>
+            <tr><td><strong>Right-sizing</strong></td><td>EC2, ECS, EKS nodes</td><td>Medium</td><td>20-40% immediate reduction</td></tr>
+            <tr><td><strong>Scheduled scaling</strong></td><td>Non-prod environments</td><td>Low</td><td>Eliminates idle overnight spend</td></tr>
+            <tr><td><strong>Savings Plans</strong></td><td>Stable compute baseline</td><td>Low</td><td>30-60% vs On-Demand</td></tr>
+            <tr><td><strong>S3 storage tiering</strong></td><td>S3 data lakes and archives</td><td>Low</td><td>40-90% storage cost reduction</td></tr>
+            <tr><td><strong>NAT Gateway optimisation</strong></td><td>VPC egress traffic</td><td>Medium</td><td>Significant at data-heavy workloads</td></tr>
+            <tr><td><strong>Cost allocation tags</strong></td><td>All resources</td><td>Low</td><td>Visibility — prerequisite for everything</td></tr>
+            <tr><td><strong>Budgets + anomaly detection</strong></td><td>Account-wide</td><td>Low</td><td>Prevents surprise bills</td></tr>
+          </tbody>
+        </table>
+
+        <hr style="border-top: 1px solid var(--aws-border); margin: 40px 0;">
+
+        <h2>Introduction — FinOps Is Not Cost Cutting. It Is Cost Ownership.</h2>
+
+        <p>The most common misunderstanding about FinOps is that it is a finance team's job. It is not. FinOps is an engineering discipline — the practice of making cloud costs visible, understandable, and actionable at the team level so that every engineer makes cost-aware decisions without waiting for a monthly bill to reveal what went wrong.</p>
+
+        <p>The FinOps Foundation defines three phases: Inform, Optimise, Operate. Most organisations get stuck in Inform — they can see the bill but cannot act on it because costs are not allocated to teams, workloads, or features. The engineering changes in this post address all three phases: how to tag and allocate costs accurately, how to optimise at the infrastructure layer, and how to build the operational habits that prevent cost regression.</p>
+
+        <p>This is not a theoretical overview. Every pattern here is grounded in the infrastructure patterns built across this series — EKS with Karpenter, ECS Fargate, VPC networking, S3 data layers, and multi-account AWS. The FinOps cert gave the framework. Production gave the context.</p>
+
+        <hr style="border-top: 1px solid var(--aws-border); margin: 40px 0;">
+
+        <h2>1. Cost Visibility — You Cannot Optimise What You Cannot See</h2>
+
+        <h3>Tagging Strategy — The Foundation of Everything</h3>
+
+        <p>Before any optimisation, costs must be attributable to teams, services, and environments. Without tags, Cost Explorer shows you a total — not a breakdown. With tags, every engineer can see what their service costs.</p>
+
+<pre><code class="language-hcl"># locals.tf — organisational tagging standard
+# Applied to every resource via merge(local.common_tags, var.tags)
+locals {
+  common_tags = {
+    # Required tags — Cost Explorer dimensions
+    Environment  = var.environment           # prod, staging, dev
+    Team         = var.team                  # platform, fraud, payments
+    Service      = var.service_name          # scoring-service, enrichment
+    CostCentre   = var.cost_centre           # RISK-001, PLATFORM-001
+    ManagedBy    = "terraform"               # Drift detection signal
+    Project      = var.project               # eks-platform, data-pipeline
+
+    # Optional but useful
+    Owner        = var.owner_email           # who to contact for cost questions
+    CreatedDate  = formatdate("YYYY-MM", timestamp())
+  }
+}
+
+# Enforce tags via AWS Config rule
+resource "aws_config_config_rule" "required_tags" {
+  name = "required-tags-enforcement"
+
+  source {
+    owner             = "AWS"
+    source_identifier = "REQUIRED_TAGS"
+  }
+
+  input_parameters = jsonencode({
+    tag1Key   = "Environment"
+    tag2Key   = "Team"
+    tag3Key   = "CostCentre"
+    tag4Key   = "Service"
+  })
+}</code></pre>
+
+        <h3>Cost Allocation Tags — Activate in AWS Console</h3>
+
+        <p>Tagging resources is step one. Activating those tags as Cost Allocation Tags in the Billing console is step two — without activation, tags do not appear in Cost Explorer reports.</p>
+
+<pre><code class="language-bash"># Terraform cannot manage cost allocation tag activation directly
+# One-time manual step per account — document it in your runbook:
+#
+# AWS Console → Billing → Cost Allocation Tags → User-Defined Tags
+# Activate: Environment, Team, CostCentre, Service, Project
+#
+# Or via AWS CLI:
+aws ce update-cost-allocation-tags-status \
+  --cost-allocation-tags-status \
+    TagKey=Environment,Status=Active \
+    TagKey=Team,Status=Active \
+    TagKey=CostCentre,Status=Active \
+    TagKey=Service,Status=Active</code></pre>
+
+        <h3>AWS Budgets — Proactive Cost Guardrails</h3>
+
+<pre><code class="language-hcl"># Budget per team — alerts when spend exceeds threshold
+resource "aws_budgets_budget" "team_budget" {
+  for_each = {
+    platform = { amount = "2000", email = "platform-team@company.com" }
+    fraud    = { amount = "1500", email = "fraud-team@company.com"    }
+    payments = { amount = "1000", email = "payments-team@company.com" }
+  }
+
+  name         = "monthly-budget-${each.key}"
+  budget_type  = "COST"
+  limit_amount = each.value.amount
+  limit_unit   = "USD"
+  time_unit    = "MONTHLY"
+
+  # Filter by team tag — each team sees only their costs
+  cost_filters = {
+    TagKeyValue = ["user:Team$${each.key}"]
+  }
+
+  notification {
+    comparison_operator        = "GREATER_THAN"
+    threshold                  = 80
+    threshold_type             = "PERCENTAGE"
+    notification_type          = "ACTUAL"
+    subscriber_email_addresses = [each.value.email]
+  }
+
+  notification {
+    comparison_operator        = "GREATER_THAN"
+    threshold                  = 100
+    threshold_type             = "PERCENTAGE"
+    notification_type          = "FORECASTED"
+    subscriber_email_addresses = [each.value.email]
+  }
+}
+
+# Anomaly detection — catches unexpected spikes
+resource "aws_ce_anomaly_monitor" "platform" {
+  name              = "platform-anomaly-monitor"
+  monitor_type      = "DIMENSIONAL"
+  monitor_dimension = "SERVICE"
+}
+
+resource "aws_ce_anomaly_subscription" "platform_alert" {
+  name      = "platform-anomaly-alert"
+  frequency = "DAILY"
+
+  monitor_arn_list = [aws_ce_anomaly_monitor.platform.arn]
+
+  subscriber {
+    type    = "EMAIL"
+    address = "platform-team@company.com"
+  }
+
+  # Alert when anomalous spend exceeds $100 in a day
+  threshold_expression {
+    dimension {
+      key           = "ANOMALY_TOTAL_IMPACT_ABSOLUTE"
+      values        = ["100"]
+      match_options = ["GREATER_THAN_OR_EQUAL"]
+    }
+  }
+}</code></pre>
+
+        <blockquote>
+          <strong>Why this matters in production:</strong> Anomaly detection caught a misconfigured NAT Gateway routing all S3 traffic via the internet instead of the Gateway Endpoint — a configuration regression after a Terraform change. The $340 single-day spike triggered an alert within 24 hours. Without anomaly detection, it would have appeared as a line item on the monthly bill three weeks later.
+        </blockquote>
+
+        <hr style="border-top: 1px solid var(--aws-border); margin: 40px 0;">
+
+        <h2>2. Compute Cost Optimisation — The Biggest Lever</h2>
+
+        <p>Compute is typically 60-70% of an AWS bill for platform-heavy workloads. It is also the highest-impact optimisation target.</p>
+
+        <h3>Karpenter + Spot — The EKS Cost Engine</h3>
+
+        <p>Blog 13 covered the Karpenter architecture in detail. From a FinOps perspective, the three saving mechanisms are:</p>
+
+        <p><strong>Spot discount:</strong> 60-70% vs On-Demand for equivalent instance types. Karpenter diversifies across instance families and sizes to maintain Spot availability — a wider diversification pool means lower interruption probability and more consistent Spot access.</p>
+
+        <p><strong>Right-sizing:</strong> Karpenter provisions exactly the instance type that satisfies the pending pod's resource requests — not a pre-configured node group size. A pod requesting 1 vCPU and 2 GB gets a node sized for that, not a 4 vCPU node running at 25% utilisation.</p>
+
+        <p><strong>Consolidation:</strong> Karpenter continuously evaluates whether pods from two underutilised nodes can fit on one. When they can, it evicts and terminates the spare node. Cluster Autoscaler removes underutilised nodes but does not consolidate. This is the mechanism that improves utilisation from a typical 20-30% (Cluster Autoscaler) to 60-70% (Karpenter with consolidation).</p>
+
+<pre><code class="language-yaml"># NodePool — FinOps-optimised configuration
+apiVersion: karpenter.sh/v1
+kind: NodePool
+metadata:
+  name: spot-general
+spec:
+  template:
+    spec:
+      requirements:
+        # Spot with On-Demand fallback — never leave pods unscheduled
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values: ["spot", "on-demand"]
+
+        # Wide instance family selection — improves Spot availability
+        # Narrow selection = fewer pools = higher interruption rate
+        - key: karpenter.k8s.aws/instance-category
+          operator: In
+          values: ["c", "m", "r"]   # Compute, General, Memory
+
+        # Wide CPU range — Karpenter picks the cheapest available
+        - key: karpenter.k8s.aws/instance-cpu
+          operator: In
+          values: ["2", "4", "8", "16", "32"]
+
+        # Include Graviton (arm64) — typically 10-20% cheaper than x86
+        - key: kubernetes.io/arch
+          operator: In
+          values: ["amd64", "arm64"]
+
+        # Exclude older generations — worse price/performance ratio
+        - key: karpenter.k8s.aws/instance-generation
+          operator: Gt
+          values: ["4"]
+
+  disruption:
+    # Aggressive consolidation — continuously right-size the cluster
+    consolidationPolicy: WhenEmptyOrUnderutilized
+    consolidateAfter: 30s   # Fast consolidation = lower idle spend
+
+  limits:
+    cpu: 500
+    memory: 2000Gi</code></pre>
+
+        <h3>Fargate Spot — ECS Batch Workload Saving</h3>
+
+        <p>For ECS Fargate workloads, the equivalent of Spot instances is Fargate Spot. Up to 70% cheaper than standard Fargate for workloads that can tolerate a 2-minute interruption notice.</p>
+
+<pre><code class="language-hcl"># ECS Cluster — Fargate Spot capacity provider
+resource "aws_ecs_cluster_capacity_providers" "main" {
+  cluster_name       = aws_ecs_cluster.main.name
+  capacity_providers = ["FARGATE", "FARGATE_SPOT"]
+
+  default_capacity_provider_strategy {
+    base              = 1      # At least 1 task on standard Fargate
+    weight            = 20     # 20% on standard Fargate (critical path)
+    capacity_provider = "FARGATE"
+  }
+
+  default_capacity_provider_strategy {
+    weight            = 80     # 80% on Fargate Spot (batch/background)
+    capacity_provider = "FARGATE_SPOT"
+  }
+}
+
+# Service-level override — critical services always on standard Fargate
+resource "aws_ecs_service" "scoring_critical" {
+  capacity_provider_strategy {
+    capacity_provider = "FARGATE"
+    weight            = 100   # No Spot for latency-sensitive path
+    base              = 2
+  }
+}
+
+# Batch service — Spot-first
+resource "aws_ecs_service" "enrichment_batch" {
+  capacity_provider_strategy {
+    capacity_provider = "FARGATE_SPOT"
+    weight            = 100   # All Spot — stateless, retry-capable
+  }
+}</code></pre>
+
+        <h3>Savings Plans — Committing to a Baseline</h3>
+
+        <p>Spot and Fargate Spot handle variable workloads. Savings Plans handle the stable baseline — the compute that runs 24/7 regardless of demand.</p>
+
+        <table>
+          <thead>
+            <tr><th>Savings Plan Type</th><th>Discount</th><th>Flexibility</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><strong>Compute Savings Plan</strong></td><td>Up to 66%</td><td>Any EC2, Fargate, Lambda — any region, any size</td></tr>
+            <tr><td><strong>EC2 Instance Savings Plan</strong></td><td>Up to 72%</td><td>Specific instance family + region — less flexible</td></tr>
+            <tr><td><strong>SageMaker Savings Plan</strong></td><td>Up to 64%</td><td>SageMaker only</td></tr>
+          </tbody>
+        </table>
+
+<pre><code class="language-hcl"># Savings Plan purchase — 1-year Compute Savings Plan
+# Covers EC2 + ECS Fargate + Lambda simultaneously
+resource "aws_savingsplans_savings_plan" "compute" {
+  savings_plan_type = "Compute"
+  commitment        = 50.00   # $50/hour commitment — based on your On-Demand baseline
+  term_duration_in_seconds = 31536000   # 1 year
+
+  payment_option = "NoUpfront"
+}</code></pre>
+
+        <h4>How to size a Savings Plan commitment correctly</h4>
+
+<pre><code class="language-text">1. Run On-Demand only for 30 days
+2. Export Cost Explorer hourly EC2/Fargate spend
+3. Find the minimum hourly spend — this is your guaranteed baseline
+4. Commit 70-80% of that minimum (leave buffer for legitimate scale-down)
+5. Let Spot and Fargate Spot handle everything above the baseline
+
+Example:
+  Minimum hourly On-Demand spend: $65/hour
+  Savings Plan commitment:         $50/hour (77% of minimum)
+  Discount at 1-year no-upfront:  ~42%
+  Annual saving vs full On-Demand: ~$18,396</code></pre>
+
+        <blockquote>
+          <strong>Architect's Rule:</strong> Never commit 100% of your baseline. A service migration, a feature shutdown, or an architectural change can legitimately reduce your compute baseline below the commitment. Buffer at 70-80% and let Spot handle the rest. An unused Savings Plan commitment still costs money.
+        </blockquote>
+
+        <h3>EC2 Right-Sizing — The Low-Hanging Fruit</h3>
+
+<pre><code class="language-hcl"># AWS Compute Optimizer — automatically analyses and recommends right-sized instances
+resource "aws_computeoptimizer_enrollment_status" "main" {
+  status = "Active"
+}
+
+resource "aws_computeoptimizer_recommendation_preferences" "enhanced" {
+  resource_type = "Ec2Instance"
+  scope {
+    name  = "AccountId"
+    value = var.account_id
+  }
+
+  enhanced_infrastructure_metrics = "Active"
+  # Collects 14 days of CloudWatch metrics before making recommendations
+  # Default is 3 days — enhanced gives more accurate sizing
+}</code></pre>
+
+        <p>Compute Optimizer recommendations arrive in Cost Explorer after 14 days. The typical finding is instances running at 8-15% average CPU utilisation — sized for peak that rarely occurs. Downsizing an <code>m5.2xlarge</code> (8 vCPU, 32 GB) to an <code>m5.xlarge</code> (4 vCPU, 16 GB) halves the compute cost for that instance with no application change.</p>
+
+        <hr style="border-top: 1px solid var(--aws-border); margin: 40px 0;">
+
+        <h2>3. Networking Cost Optimisation — The Hidden Bill</h2>
+
+        <p>Network costs are the most commonly overlooked line item until they appear as a shock on the monthly bill.</p>
+
+        <h3>VPC Endpoints — Eliminate NAT Gateway Data Processing</h3>
+
+        <p>This is covered in depth in Blog 3. From a pure FinOps perspective:</p>
+
+<pre><code class="language-text">Without Gateway Endpoint:
+  S3 traffic: Pod → NAT Gateway → Internet → S3
+  Cost: $0.045/GB data processing on NAT Gateway
+
+With Gateway Endpoint:
+  S3 traffic: Pod → Gateway Endpoint → S3 (AWS backbone)
+  Cost: $0.00
+
+Monthly saving example — 10 TB S3 reads:
+  Without: 10,000 GB × $0.045 = $450/month
+  With:    $0.00
+  Saving:  $450/month — permanent, with zero operational trade-off</code></pre>
+
+<pre><code class="language-hcl"># Always deploy these — they are free and eliminate NAT data processing
+resource "aws_vpc_endpoint" "s3" {
+  vpc_id            = aws_vpc.main.id
+  service_name      = "com.amazonaws.${var.region}.s3"
+  vpc_endpoint_type = "Gateway"
+  route_table_ids   = aws_route_table.private[*].id
+  tags              = { Name = "s3-gateway-endpoint" }
+}
+
+resource "aws_vpc_endpoint" "dynamodb" {
+  vpc_id            = aws_vpc.main.id
+  service_name      = "com.amazonaws.${var.region}.dynamodb"
+  vpc_endpoint_type = "Gateway"
+  route_table_ids   = aws_route_table.private[*].id
+  tags              = { Name = "dynamodb-gateway-endpoint" }
+}</code></pre>
+
+        <h3>NAT Gateway — Per-AZ vs Shared</h3>
+
+<pre><code class="language-text">Shared NAT Gateway (single AZ):
+  Fixed cost:   1 × $0.045/hr = $32.85/month
+  Cross-AZ fee: $0.01/GB each direction (easily exceeds NAT cost at scale)
+
+Per-AZ NAT Gateway (3 AZs):
+  Fixed cost:   3 × $0.045/hr = $98.55/month
+  Cross-AZ fee: $0.00 (traffic stays in AZ)
+
+Break-even: if cross-AZ traffic exceeds ~6.5 TB/month, per-AZ wins on cost
+At 10+ TB/month cross-AZ traffic: per-AZ saves money AND improves resilience</code></pre>
+
+        <h3>Cross-AZ Data Transfer — The Silent Cost</h3>
+
+        <p>Every time a pod in AZ-a calls a service in AZ-b, AWS charges $0.01/GB each direction. In a microservices architecture with frequent service-to-service calls, this accumulates quickly.</p>
+
+<pre><code class="language-yaml"># Topology spread constraints — keep service-to-service calls within the same AZ
+spec:
+  template:
+    spec:
+      topologySpreadConstraints:
+        - maxSkew:           1
+          topologyKey:       topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: scoring-service</code></pre>
+
+<pre><code class="language-hcl"># NLB — disable cross-zone load balancing when AZ affinity is preferred
+# Keeping traffic in the originating AZ is cheaper but less balanced
+resource "aws_lb" "nlb" {
+  load_balancer_type               = "network"
+  enable_cross_zone_load_balancing = false   # Default off for NLB — costs money per GB
+}</code></pre>
+
+        <hr style="border-top: 1px solid var(--aws-border); margin: 40px 0;">
+
+        <h2>4. Storage Cost Optimisation — S3 and EBS</h2>
+
+        <h3>S3 Intelligent-Tiering — Automatic Cost Optimisation</h3>
+
+        <p>For data with unpredictable access patterns — logs, audit trails, analytics data — S3 Intelligent-Tiering moves objects between access tiers automatically based on access frequency.</p>
+
+<pre><code class="language-hcl">resource "aws_s3_bucket_intelligent_tiering_configuration" "logs" {
+  bucket = aws_s3_bucket.platform_logs.bucket
+  name   = "platform-logs-tiering"
+
+  tiering {
+    access_tier = "DEEP_ARCHIVE_ACCESS"
+    days        = 180   # Move to Deep Archive after 180 days of no access
+  }
+
+  tiering {
+    access_tier = "ARCHIVE_ACCESS"
+    days        = 90    # Move to Archive after 90 days of no access
+  }
+}
+
+# Lifecycle policy — explicit rules for known access patterns
+resource "aws_s3_bucket_lifecycle_configuration" "logs" {
+  bucket = aws_s3_bucket.platform_logs.bucket
+
+  rule {
+    id     = "cloudtrail-logs"
+    status = "Enabled"
+
+    filter { prefix = "cloudtrail/" }
+
+    transition {
+      days          = 30
+      storage_class = "STANDARD_IA"   # Infrequent Access after 30 days
+    }
+
+    transition {
+      days          = 90
+      storage_class = "GLACIER_IR"    # Glacier Instant Retrieval after 90 days
+    }
+
+    transition {
+      days          = 365
+      storage_class = "DEEP_ARCHIVE"  # Deep Archive after 1 year
+    }
+
+    expiration {
+      days = 2555   # Delete after 7 years (compliance retention)
+    }
+  }
+
+  rule {
+    id     = "application-logs"
+    status = "Enabled"
+
+    filter { prefix = "application-logs/" }
+
+    transition {
+      days          = 7
+      storage_class = "STANDARD_IA"
+    }
+
+    expiration {
+      days = 90   # Delete after 90 days — operational logs, no long-term value
+    }
+  }
+}</code></pre>
+
+        <h4>Storage class cost comparison (eu-west-1)</h4>
+
+        <table>
+          <thead>
+            <tr><th>Storage Class</th><th>Cost per GB/month</th><th>Retrieval cost</th><th>Use case</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Standard</td><td>$0.023</td><td>Free</td><td>Frequently accessed</td></tr>
+            <tr><td>Standard-IA</td><td>$0.0125</td><td>$0.01/GB</td><td>&lt; 1x/month access</td></tr>
+            <tr><td>Glacier Instant</td><td>$0.004</td><td>$0.03/GB</td><td>&lt; 1x/quarter access</td></tr>
+            <tr><td>Glacier Flexible</td><td>$0.0036</td><td>$0.01/GB (hours)</td><td>Archives</td></tr>
+            <tr><td>Deep Archive</td><td>$0.00099</td><td>$0.02/GB</td><td>Compliance, 7yr+</td></tr>
+          </tbody>
+        </table>
+
+        <h3>EBS — gp3 Migration from gp2</h3>
+
+        <p>gp3 is cheaper than gp2 and delivers better performance. Every gp2 volume in your account that has not been migrated is an unnecessary cost.</p>
+
+<pre><code class="language-hcl"># Always use gp3 — not gp2
+resource "aws_ebs_volume" "data" {
+  availability_zone = var.az
+  size              = 100
+  type              = "gp3"   # gp3: $0.08/GB/month vs gp2: $0.10/GB/month
+  iops              = 3000
+  throughput        = 125     # gp3 includes configurable throughput; gp2 does not
+  tags              = local.common_tags
+}
+
+# Migrate existing gp2 volumes to gp3 — no downtime required
+# aws ec2 modify-volume --volume-id vol-xxx --volume-type gp3</code></pre>
+
+<pre><code class="language-yaml"># Karpenter — enforce gp3 for all Karpenter-provisioned nodes
+apiVersion: karpenter.k8s.aws/v1
+kind: EC2NodeClass
+metadata:
+  name: default
+spec:
+  blockDeviceMappings:
+    - deviceName: /dev/xvda
+      ebs:
+        volumeType: gp3       # Never gp2
+        volumeSize: 50Gi
+        iops:       3000
+        throughput: 125
+        encrypted:  true</code></pre>
+
+        <hr style="border-top: 1px solid var(--aws-border); margin: 40px 0;">
+
+        <h2>5. Non-Production Environment Cost Controls</h2>
+
+        <h3>Scheduled Shutdown — Eliminate Overnight Idle Spend</h3>
+
+        <p>Blog 16 covers the full Step Functions + Lambda pattern for EKS. For simpler cases — RDS, EC2, ECS — scheduled scaling achieves the same result:</p>
+
+<pre><code class="language-hcl"># RDS — stop non-prod databases overnight
+resource "aws_cloudwatch_event_rule" "rds_stop" {
+  name                = "stop-nonprod-rds"
+  schedule_expression = "cron(0 20 ? * MON-FRI *)"   # 8pm weekdays
+}
+
+# EC2 — stop non-prod Auto Scaling Groups
+resource "aws_autoscaling_schedule" "stop_nonprod" {
+  for_each = toset(var.nonprod_asg_names)
+
+  scheduled_action_name  = "stop-overnight"
+  autoscaling_group_name = each.value
+  recurrence            = "0 20 * * MON-FRI"
+  min_size              = 0
+  max_size              = 0
+  desired_capacity      = 0
+}
+
+resource "aws_autoscaling_schedule" "start_nonprod" {
+  for_each = toset(var.nonprod_asg_names)
+
+  scheduled_action_name  = "start-morning"
+  autoscaling_group_name = each.value
+  recurrence            = "0 7 * * MON-FRI"
+  min_size              = var.min_size
+  max_size              = var.max_size
+  desired_capacity      = var.desired_capacity
+}</code></pre>
+
+        <h4>Monthly saving from overnight shutdown (example)</h4>
+
+<pre><code class="language-text">EC2 non-prod environment: 4 × m5.xlarge On-Demand ($0.192/hr)
+  Running hours saved per month:
+    Weeknights: 12h × 22 days = 264h
+    Weekends:   48h × 4 wknds = 192h
+    Total:                      456h
+
+  Saving: 4 × $0.192 × 456h = $350/month per environment
+  For 3 non-prod environments: $1,050/month</code></pre>
+
+        <hr style="border-top: 1px solid var(--aws-border); margin: 40px 0;">
+
+        <h2>6. Multi-Account Cost Governance</h2>
+
+        <h3>AWS Organizations — Consolidated Billing Benefits</h3>
+
+<pre><code class="language-hcl"># Cost and Usage Report — granular billing data for FinOps tooling
+resource "aws_cur_report_definition" "main" {
+  report_name                = "org-cost-usage-report"
+  time_unit                  = "HOURLY"
+  format                     = "Parquet"
+  compression                = "Parquet"
+  additional_schema_elements = ["RESOURCES"]   # Line-item resource ARNs
+
+  s3_bucket = aws_s3_bucket.cur_reports.bucket
+  s3_region  = var.region
+  s3_prefix  = "cur/"
+
+  report_versioning       = "OVERWRITE_REPORT"
+  refresh_closed_reports  = true
+
+  additional_artifacts = ["ATHENA"]   # Pre-formatted for Athena querying
+}
+
+# Budget at Organisation level — catches account-level anomalies
+resource "aws_budgets_budget" "org_total" {
+  name         = "org-monthly-total"
+  budget_type  = "COST"
+  limit_amount = "10000"
+  limit_unit   = "USD"
+  time_unit    = "MONTHLY"
+
+  notification {
+    comparison_operator        = "GREATER_THAN"
+    threshold                  = 90
+    threshold_type             = "PERCENTAGE"
+    notification_type          = "ACTUAL"
+    subscriber_email_addresses = ["finops@company.com"]
+  }
+
+  notification {
+    comparison_operator        = "GREATER_THAN"
+    threshold                  = 100
+    threshold_type             = "PERCENTAGE"
+    notification_type          = "FORECASTED"
+    subscriber_email_addresses = ["finops@company.com", "cto@company.com"]
+  }
+}</code></pre>
+
+        <hr style="border-top: 1px solid var(--aws-border); margin: 40px 0;">
+
+        <h2>7. The FinOps Operating Model — Making It Stick</h2>
+
+        <p>Tooling and architecture changes produce one-time savings. The operating model produces ongoing savings.</p>
+
+        <h3>Weekly Cost Review — 15 Minutes</h3>
+
+<pre><code class="language-text">Every Monday morning:
+1. Cost Explorer: this week vs last week — any anomalies?
+2. Budgets: any team approaching threshold?
+3. Compute Optimizer: any new right-sizing recommendations?
+4. Trusted Advisor: any new cost optimisation findings?
+5. Action: one item per team to investigate before next review</code></pre>
+
+        <h3>FinOps Metrics to Track</h3>
+
+<pre><code class="language-hcl"># Custom CloudWatch metrics — FinOps KPIs
+# Publish weekly via Lambda from Cost Explorer API
+
+# Metric 1: Cost per microservice
+# Metric 2: Spot coverage % (target: >70% of compute)
+# Metric 3: Savings Plan utilisation % (target: >80%)
+# Metric 4: Untagged resource % (target: <5%)
+# Metric 5: Non-prod vs prod cost ratio (target: <30%)
+
+resource "aws_cloudwatch_dashboard" "finops" {
+  dashboard_name = "finops-weekly"
+
+  dashboard_body = jsonencode({
+    widgets = [
+      {
+        type = "metric"
+        properties = {
+          title  = "Spot Coverage % (target: >70%)"
+          metrics = [["Custom/FinOps", "SpotCoveragePercent"]]
+          annotations = {
+            horizontal = [{ value = 70, label = "Target", color = "#2ca02c" }]
+          }
+        }
+      },
+      {
+        type = "metric"
+        properties = {
+          title  = "Savings Plan Utilisation %"
+          metrics = [["Custom/FinOps", "SavingsPlanUtilisationPercent"]]
+          annotations = {
+            horizontal = [{ value = 80, label = "Minimum target", color = "#ff7f0e" }]
+          }
+        }
+      }
+    ]
+  })
+}</code></pre>
+
+        <h3>The FinOps Conversation — Bringing Teams Along</h3>
+
+        <p>The hardest part of FinOps is cultural, not technical. Engineers optimise for reliability and velocity by default — cost is a secondary concern until it becomes someone's OKR.</p>
+
+        <p><strong>Make costs visible at the team level.</strong> A team that sees their weekly spend, their Spot coverage, and their per-service cost breakdown will naturally start making cost-aware decisions. A team that receives a monthly report of aggregated costs will not.</p>
+
+        <p><strong>Reward cost-aware decisions.</strong> When an engineer adds a Gateway Endpoint or migrates a gp2 volume to gp3, make it visible in the team's FinOps metrics. Small wins accumulate.</p>
+
+        <p><strong>Connect cost to reliability.</strong> Over-provisioned, idle resources are not just expensive — they are hiding waste that could fund reliability improvements. The team that saves $500/month by right-sizing gets $500/month for additional observability tooling. Cost and quality are not in tension; they are funded from the same budget.</p>
+
+        <hr style="border-top: 1px solid var(--aws-border); margin: 40px 0;">
+
+        <h2>8. Common Mistakes &amp; Anti-Patterns</h2>
+
+        <h3>Mistake 1: Optimising Before Tagging</h3>
+        <p>You cannot attribute costs to teams without tags. You cannot measure the impact of an optimisation without baseline visibility. Tag first, optimise second. A cost optimisation programme that starts with rightsizing before establishing tagging produces savings nobody can attribute or validate.</p>
+
+        <h3>Mistake 2: Committing 100% of Baseline to Savings Plans</h3>
+        <p>A Savings Plan commitment that matches your current baseline exactly leaves no room for legitimate scale-down — a service retirement, a migration, or an architectural simplification. Commit 70-80% and let Spot handle the rest.</p>
+
+        <h3>Mistake 3: NAT Gateway Without Gateway Endpoints</h3>
+        <p>S3 and DynamoDB Gateway Endpoints are free. Every byte of S3 or DynamoDB traffic that routes through a NAT Gateway costs $0.045/GB for no reason. This is the most common and most avoidable networking cost mistake.</p>
+
+        <h3>Mistake 4: Treating Non-Prod Like Prod</h3>
+        <p>Non-production environments that run 24/7 On-Demand at full capacity cost nearly as much as production — without the justification. Scheduled shutdown, smaller instance types, Spot-only compute, and shared clusters are all appropriate for dev and staging.</p>
+
+        <h3>Mistake 5: No Anomaly Detection</h3>
+        <p>A misconfiguration, a forgotten test run, or an unexpected traffic spike can generate hundreds or thousands of dollars in unexpected spend before anyone notices. CloudWatch Anomaly Detection and Cost Explorer Anomaly Monitoring are low-cost, high-value guardrails that catch these events within 24 hours rather than at month-end billing.</p>
+
+        <h3>Mistake 6: Ignoring Data Transfer Costs</h3>
+        <p>Data transfer is the stealth cost category — it does not appear in compute budgets, it accumulates quietly, and it compounds as traffic grows. Cross-AZ traffic, NAT Gateway processing, CloudFront origin fetches, and inter-region replication all have per-GB charges. Architect to keep traffic within AZ boundaries where possible, and use Gateway Endpoints and PrivateLink to avoid internet-routed AWS service traffic.</p>
+
+        <hr style="border-top: 1px solid var(--aws-border); margin: 40px 0;">
+
+        <h2>Architecture Decision Matrix</h2>
+
+        <table>
+          <thead>
+            <tr><th>Optimisation</th><th>Cost Saving</th><th>Effort</th><th>Risk</th><th>When to Apply</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>S3 + DynamoDB Gateway Endpoints</td><td>High (eliminates NAT cost)</td><td>Low</td><td>None</td><td>Immediately — always</td></tr>
+            <tr><td>Karpenter Spot NodePool</td><td>High (60-70% node cost)</td><td>Medium</td><td>Low (with PDB)</td><td>EKS workloads</td></tr>
+            <tr><td>Fargate Spot</td><td>High (up to 70%)</td><td>Low</td><td>Low (stateless tasks)</td><td>ECS batch workloads</td></tr>
+            <tr><td>Compute Savings Plan</td><td>Medium (30-60%)</td><td>Low</td><td>Low (commitment)</td><td>After 30 days baseline</td></tr>
+            <tr><td>gp3 migration from gp2</td><td>Low-Medium (20%)</td><td>Low</td><td>None</td><td>All EBS volumes</td></tr>
+            <tr><td>S3 Intelligent-Tiering</td><td>Medium-High (50-90% archive)</td><td>Low</td><td>None</td><td>Infrequent access data</td></tr>
+            <tr><td>Non-prod scheduled shutdown</td><td>High (for idle environments)</td><td>Low</td><td>None</td><td>All non-prod environments</td></tr>
+            <tr><td>Karpenter consolidation</td><td>Medium (improved utilisation)</td><td>Low (config only)</td><td>Low</td><td>EKS with Karpenter</td></tr>
+            <tr><td>Right-sizing via Compute Optimizer</td><td>Medium (20-40%)</td><td>Medium</td><td>Low</td><td>After 14 days data</td></tr>
+            <tr><td>Per-AZ NAT Gateway</td><td>Neutral-Positive at scale</td><td>Low</td><td>None</td><td>&gt;6TB/month cross-AZ traffic</td></tr>
+          </tbody>
+        </table>
+
+        <h2>The Golden Rule</h2>
+
+        <blockquote>
+          FinOps is not a monthly cost review — it is an engineering practice. Tag everything before you optimise anything. Use Spot and Fargate Spot for workloads that can tolerate interruption, and commit a Savings Plan for the stable baseline that cannot. Eliminate NAT Gateway data processing charges with Gateway Endpoints — they are free. Stop non-production environments when nobody is using them. And make costs visible at the team level: engineers who see their weekly spend make cost-aware decisions without being told to. The cloud bill is not the CFO's problem. It is an engineering output, and it responds to engineering decisions.
+        </blockquote>
+
+        <div style="margin: 40px 0;">
+          <span style="font-weight: 700; color: var(--aws-text-light); margin-right: 12px; font-size: 13px;">Tags:</span>
+          <span class="tag">#AWS</span>
+          <span class="tag">#FinOps</span>
+          <span class="tag">#CostOptimisation</span>
+          <span class="tag">#Karpenter</span>
+          <span class="tag">#Spot</span>
+          <span class="tag">#EKS</span>
+          <span class="tag">#Terraform</span>
+          <span class="tag">#CloudArchitecture</span>
+          <span class="tag">#SavingsPlans</span>
+          <span class="tag">#DevSecOps</span>
+        </div>
+      </div> <!-- End Blog Body -->
+
+      <div class="share-section">
+        <span style="font-weight: 700; color: var(--aws-text-light);">Share this article:</span>
+        <a href="https://www.linkedin.com/sharing/share-offsite/?url=https://www.ankushpanday.com/blog/finops/aws-finops-in-practice.html"
+          target="_blank" class="share-btn linkedin-btn">
+          <i class="fa-brands fa-linkedin"></i> Share on LinkedIn
+        </a>
+      </div>
+
+      <div class="author-card">
+        <div class="author-img"><i class="fa-solid fa-user-tie"></i></div>
+        <div>
+          <h4 style="margin: 0 0 8px 0; color: var(--aws-text);">Ankush Panday</h4>
+          <p style="margin: 0; font-size: 14px; color: var(--aws-text-light);">Specializing in highly scalable AWS infrastructure and automated quality engineering.</p>
+          <a href="https://www.linkedin.com/in/ankush-panday-39b97824/" target="_blank"
+            style="display: inline-block; margin-top: 10px; color: var(--aws-blue); text-decoration: none; font-size: 13px; font-weight: 600;">Connect
+            on LinkedIn <i class="fa-solid fa-external-link" style="font-size: 10px;"></i></a>
+        </div>
+      </div>
+
+    </article>
+
+    <!-- NAVIGATION LINKS -->
+    <div class="nav-links">
+      <a href="../observability/cloudwatch-xray-opentelemetry-observability.html" class="nav-link">
+        <i class="fa-solid fa-arrow-left"></i> Previous: AWS Observability Stack
+      </a>
+      <span></span>
+    </div>
+
+  </main>
+
+  <footer class="aws-footer">
+    Built for Performance. Architected for the Cloud. &bull; &copy; 2026 <span>Ankush Panday</span>
+  </footer>
+
+  <script>
+    if (window.location.protocol === 'file:') {
+      document.querySelectorAll('a').forEach(link => {
+        let href = link.getAttribute('href');
+        if (href && !href.startsWith('http') && !href.startsWith('#')) {
+          let path = href.split('#')[0];
+          let anchor = href.split('#')[1] ? '#' + href.split('#')[1] : '';
+          if (path && !path.endsWith('.html') && !path.endsWith('/')) {
+            link.setAttribute('href', path + '/index.html' + anchor);
+          } else if (path && path.endsWith('/')) {
+            link.setAttribute('href', path + 'index.html' + anchor);
+          }
+        }
+      });
+    }
+  </script>
+  <script>hljs.highlightAll();</script>
+</body>
+
+</html>

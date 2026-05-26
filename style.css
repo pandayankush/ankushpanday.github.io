@@ -30,6 +30,8 @@
 html {
   scroll-behavior: smooth;
   scroll-padding-top: 100px;
+  width: 100%;
+  overflow-x: hidden;
 }
 
 body {
@@ -38,8 +40,8 @@ body {
   color: var(--aws-text);
   font-size: 14px;
   line-height: 1.5;
+  width: 100%;
   overflow-x: hidden;
-  max-width: 100vw;
 }
 
 /* ===== TOP NAV ===== */

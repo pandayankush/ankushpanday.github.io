@@ -73,8 +73,11 @@ body {
 }
 
 .nav-service-label {
+  background: none;
+  border: none;
   color: #c8cfd7;
   font-size: 13px;
+  font-family: inherit;
   display: flex;
   align-items: center;
   gap: 4px;

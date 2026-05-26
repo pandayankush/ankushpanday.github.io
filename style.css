@@ -210,6 +210,8 @@ body {
   padding: 24px;
   padding-bottom: 40px;
   min-height: calc(100vh - 80px);
+  min-width: 0;
+  overflow-x: hidden;
 }
 
 /* ===== PAGE HEADER ===== */

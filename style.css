@@ -599,18 +599,10 @@ body {
 }
 .aws-footer span { color: var(--aws-orange); }
 
-/* Apply sidebar offset only on main portfolio layout */
-.layout + .aws-footer {
-  margin-left: 240px;
-  width: calc(100% - 240px);
-}
-
 /* ===== RESPONSIVE ===== */
 @media (max-width: 900px) {
   .sidebar { display: none; }
   .main { margin-left: 0; padding: 16px; }
-  .aws-footer,
-  .layout + .aws-footer { margin-left: 0; width: 100%; max-width: 100vw; }
   .stats-row { grid-template-columns: repeat(2, 1fr); }
   .hero-card { flex-direction: column; text-align: center; }
   .hero-meta { justify-content: center; }

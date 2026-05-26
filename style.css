@@ -613,6 +613,8 @@ body {
   .hero-subline { max-width: 100%; }
   .nav-search-container { display: none; }
   .nav-service-label { display: none; }
+  .nav-btn-region { display: none; }
+  .aws-topnav { padding: 0 12px; }
   .cert-grid { grid-template-columns: 1fr; }
   .tools-grid { grid-template-columns: repeat(2, 1fr); }
   .page-header { flex-direction: column; }
@@ -620,8 +622,6 @@ body {
 }
 
 @media (max-width: 600px) {
-  .nav-btn-region { display: none; }
-  .aws-topnav { padding: 0 12px; }
   .hero-card { padding: 20px 16px; }
   .hero-name { font-size: 20px; }
   .hero-headline { font-size: 17px; }

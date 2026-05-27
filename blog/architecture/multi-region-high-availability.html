@@ -1,0 +1,1169 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Multi-Region High Availability on AWS: Active-Active vs Active-Passive Design | Ankush Panday</title>
+  <meta name="description"
+    content="Active-Active vs Active-Passive multi-region architecture on AWS — Route 53 failover, Aurora Global Database, DynamoDB Global Tables, Global Accelerator, TGW peering, and chaos engineering for HA validation.">
+  <meta name="keywords"
+    content="AWS, MultiRegion, HighAvailability, ActiveActive, ActivePassive, Route53, AuroraGlobal, GlobalAccelerator, DisasterRecovery, EKS, Terraform, TGW">
+  <link rel="canonical" href="https://www.ankushpanday.com/blog/architecture/multi-region-high-availability.html">
+
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://www.ankushpanday.com/blog/architecture/multi-region-high-availability.html">
+  <meta property="og:title" content="Multi-Region High Availability on AWS: Active-Active vs Active-Passive Design">
+  <meta property="og:description" content="Active-Active vs Active-Passive multi-region architecture on AWS — Route 53 failover, Aurora Global Database, DynamoDB Global Tables, Global Accelerator, TGW peering, and chaos engineering for HA validation.">
+  <meta property="og:image" content="https://www.ankushpanday.com/images/aws-multi-region-high-availability.png">
+
+  <link rel="stylesheet" href="../../style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    .blog-page-container { max-width: 900px; margin: 100px auto 40px auto; padding: 0 20px; min-height: calc(100vh - 200px); }
+    .back-btn { display: inline-flex; align-items: center; gap: 8px; color: var(--aws-blue); text-decoration: none; font-weight: 500; margin-bottom: 24px; }
+    .blog-content-card { background: var(--aws-white); border: 1px solid var(--aws-border); border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+    .blog-header { background: #f8f9fa; padding: 40px; border-bottom: 1px solid var(--aws-border); }
+    .blog-body { padding: 40px; line-height: 1.8; font-size: 16px; color: var(--aws-text); }
+    .blog-body h2 { margin-top: 48px; font-size: 26px; color: var(--aws-text); border-bottom: 2px solid var(--aws-orange); display: inline-block; padding-bottom: 4px; margin-bottom: 24px; }
+    .blog-body h3 { margin-top: 32px; font-size: 22px; color: var(--aws-blue); margin-bottom: 16px; }
+    .blog-body h4 { margin-top: 24px; font-size: 18px; color: var(--aws-text); font-weight: 700; }
+    .blog-body p { margin-bottom: 20px; }
+    .blog-body ul, .blog-body ol { margin-bottom: 24px; padding-left: 24px; }
+    .blog-body li { margin-bottom: 12px; }
+    .blog-body strong { color: var(--aws-text); }
+    .blog-body blockquote { font-style: italic; color: var(--aws-text-light); margin: 30px 0; border-left: 4px solid var(--aws-orange); background: #fcfcfc; padding: 20px; }
+    pre { background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; margin: 24px 0; font-size: 13px; line-height: 1.5; border-left: 4px solid var(--aws-orange); }
+    code { font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; background: #f1f3f5; color: #232f3e; padding: 2px 4px; border-radius: 4px; border: 1px solid #dee2e6; font-size: 0.9em; }
+    pre code { background: none; color: inherit; padding: 0; border: none; font-size: inherit; }
+    .compare-table { width: 100%; border-collapse: collapse; text-align: left; margin-bottom: 30px; font-size: 14px; }
+    .compare-table th { background: var(--aws-blue); color: white; padding: 12px; border: 1px solid var(--aws-border); }
+    .compare-table td { padding: 12px; border: 1px solid var(--aws-border); vertical-align: top; }
+    .compare-table tr:nth-child(even) { background: #f9f9f9; }
+    .pitfall-card { background: #fcfcfc; border: 1px solid var(--aws-border); border-left: 4px solid #d13212; border-radius: 6px; padding: 20px 24px; margin-bottom: 16px; }
+    .pitfall-card strong { color: #d13212; font-size: 15px; }
+    .pitfall-card p { margin: 8px 0 0 0; font-size: 15px; color: var(--aws-text-light); line-height: 1.7; }
+    .author-card { display: flex; gap: 20px; align-items: center; padding: 30px; background: #fcfcfc; border-top: 1px solid var(--aws-border); }
+    .author-img { width: 80px; height: 80px; border-radius: 50%; background: var(--aws-highlight); display: flex; align-items: center; justify-content: center; font-size: 30px; color: var(--aws-orange); border: 2px solid var(--aws-border); flex-shrink: 0; }
+    .nav-links { display: flex; justify-content: space-between; margin: 40px 0; padding: 20px 0; border-top: 1px solid var(--aws-border); }
+    .nav-link { text-decoration: none; color: var(--aws-blue); font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 8px; }
+    .tag { display: inline-block; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: 600; margin-right: 8px; margin-bottom: 8px; }
+    .tag.blue { background: #e7f2fa; color: #0073bb; }
+    .tag.purple { background: #f2e7fa; color: #6b3fa0; }
+    .tag.green { background: #e7faf0; color: #1a7f4e; }
+    .share-section { padding: 20px 40px; border-top: 1px solid var(--aws-border); display: flex; justify-content: space-between; align-items: center; background: #fff; }
+    .share-btn { padding: 8px 16px; border: 1px solid var(--aws-border); border-radius: 4px; background: #fff; color: var(--aws-text); text-decoration: none; font-size: 14px; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
+    .share-btn:hover { background: #f8f9fa; }
+    .linkedin-btn { background: #0077b5; color: white; border: none; }
+    .linkedin-btn:hover { background: #005f8d; color: white; }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <style>
+    .hljs { background: transparent; padding: 0; color: #f8f8f2; }
+    .hljs-comment, .hljs-quote { color: #6a9955; }
+    .hljs-keyword, .hljs-built_in, .hljs-type { color: #569cd6; }
+    .hljs-string, .hljs-title { color: #ce9178; }
+    .hljs-attr, .hljs-variable, .hljs-selector-id { color: #9cdcfe; }
+    .hljs-number, .hljs-literal { color: #b5cea8; }
+    .hljs-meta, .hljs-tag { color: #f8f8f2; }
+  </style>
+</head>
+
+<body>
+
+  <nav class="aws-topnav">
+    <a href="../../index.html" class="logo">
+      <i class="fa-solid fa-cloud" style="color: var(--aws-orange); font-size: 20px;"></i>
+      <span>Ankush Panday</span>
+    </a>
+    <div class="nav-spacer"></div>
+    <div class="nav-icons">
+      <a href="../../index.html" class="nav-icon-btn" style="text-decoration: none;">Portfolio Home</a>
+      <a href="../index.html" class="nav-icon-btn orange" style="text-decoration: none; font-weight: 600;">Blog Hub</a>
+      <button class="nav-icon-btn"><i class="fa-solid fa-earth-europe" style="margin-right: 6px; font-size: 12px; color: var(--aws-orange);"></i> Europe (nl-ams-1)</button>
+      <button class="nav-icon-btn">ankushpandey@hotmail.com <i class="fa-solid fa-caret-down" style="margin-left: 4px;"></i></button>
+    </div>
+  </nav>
+
+  <main class="blog-page-container">
+
+    <a href="../index.html" class="back-btn"><i class="fa-solid fa-arrow-left"></i> Back to Blog Hub</a>
+
+    <article class="blog-content-card">
+      <header class="blog-header">
+        <h1 style="font-size: 32px; color: var(--aws-text); margin-bottom: 16px; line-height: 1.2;">Multi-Region High Availability on AWS: Active-Active vs Active-Passive Design</h1>
+        <div style="display: flex; gap: 12px; align-items: center; color: var(--aws-text-light); font-size: 14px; flex-wrap: wrap;">
+          <span>May 27, 2026</span>
+          <span>&bull;</span>
+          <span>22 min read</span>
+          <span class="tag blue">Architecture</span>
+          <span class="tag purple">HighAvailability</span>
+          <span class="tag green">MultiRegion</span>
+        </div>
+      </header>
+
+      <div class="blog-body">
+        <p style="font-style: italic; color: var(--aws-text-light); margin-bottom: 30px; border-left: 4px solid var(--aws-orange); padding-left: 15px;">
+          <strong>AWS Series | Part 18</strong> — Building secure, cost-optimised, cloud-native infrastructure on AWS.
+        </p>
+
+        <img src="../../images/aws-multi-region-high-availability.png"
+          alt="Multi-Region High Availability on AWS — Active-Active vs Active-Passive Architecture"
+          style="width: 100%; border-radius: 8px; margin-bottom: 32px; border: 1px solid var(--aws-border);">
+
+        <!-- TL;DR -->
+        <h2 id="tldr">TL;DR Comparison</h2>
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th></th>
+              <th>Active-Passive</th>
+              <th>Active-Active</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Traffic distribution</strong></td>
+              <td>All traffic to primary region, standby secondary</td>
+              <td>Traffic split across both regions simultaneously</td>
+            </tr>
+            <tr>
+              <td><strong>RTO</strong></td>
+              <td>Minutes (DNS failover + warm standby)</td>
+              <td>Near-zero (traffic reroutes instantly)</td>
+            </tr>
+            <tr>
+              <td><strong>RPO</strong></td>
+              <td>Seconds to minutes (replication lag)</td>
+              <td>Near-zero (synchronous or near-sync replication)</td>
+            </tr>
+            <tr>
+              <td><strong>Cost</strong></td>
+              <td>~1.5× single-region (standby is scaled down)</td>
+              <td>~2× single-region (full capacity in both)</td>
+            </tr>
+            <tr>
+              <td><strong>Complexity</strong></td>
+              <td>Medium</td>
+              <td>High</td>
+            </tr>
+            <tr>
+              <td><strong>Data consistency</strong></td>
+              <td>Eventual (async replication)</td>
+              <td>Strong or eventual depending on pattern</td>
+            </tr>
+            <tr>
+              <td><strong>Best for</strong></td>
+              <td>DR, regulated workloads, cost-sensitive HA</td>
+              <td>Global platforms, zero-tolerance downtime, latency-sensitive</td>
+            </tr>
+            <tr>
+              <td><strong>Typical use case</strong></td>
+              <td>Enterprise applications, financial services DR</td>
+              <td>Global APIs, gaming, real-time platforms</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Introduction -->
+        <h2 id="intro">Introduction — When Single-Region Is No Longer Enough</h2>
+        <p>Every architecture in this series has been built within a single AWS region. Multi-AZ deployment, Karpenter across three availability zones, ALBs distributing traffic across zones — all of this protects against AZ-level failures. But an entire AWS region going down is not theoretical. It has happened. And when it does, a single-region architecture goes with it.</p>
+        <p>Multi-region is not just about disaster recovery. It is about latency, data residency, compliance, and the architecture decisions that determine whether your platform survives its worst day. A fraud detection platform processing transactions across Europe needs consistent sub-200ms response times regardless of where the transaction originates. A platform that fails for 40 minutes while DNS propagates during a region failover is not meeting its SLAs — even if it eventually recovers.</p>
+        <p>This post covers both patterns in depth — Active-Passive for controlled failover with lower cost, and Active-Active for zero-RPO, zero-RTO platforms — with the Terraform, Route 53 routing policies, database replication strategies, and operational considerations for each. Every pattern connects back to the infrastructure built across this series.</p>
+
+        <!-- Section 1 -->
+        <h2 id="building-blocks">1. The Multi-Region Building Blocks</h2>
+        <p>Before choosing Active-Passive or Active-Active, you need the same set of underlying components for both. These are the building blocks every multi-region architecture shares.</p>
+
+        <h3>Multi-Region VPC and Networking</h3>
+<pre><code class="nohighlight"><span style="color:#6a9955;"># Primary region — eu-west-1</span>
+<span style="color:#569cd6;">module</span> <span style="color:#ce9178;">"vpc_primary"</span> {
+  <span style="color:#9cdcfe;">source</span>  = <span style="color:#ce9178;">"../../modules/vpc"</span>
+
+  <span style="color:#9cdcfe;">vpc_cidr</span>    = <span style="color:#ce9178;">"10.0.0.0/16"</span>
+  <span style="color:#9cdcfe;">region</span>      = <span style="color:#ce9178;">"eu-west-1"</span>
+  <span style="color:#9cdcfe;">environment</span> = <span style="color:#9cdcfe;">var</span>.environment
+
+  <span style="color:#9cdcfe;">private_subnets</span> = [<span style="color:#ce9178;">"10.0.1.0/24"</span>, <span style="color:#ce9178;">"10.0.2.0/24"</span>, <span style="color:#ce9178;">"10.0.3.0/24"</span>]
+  <span style="color:#9cdcfe;">public_subnets</span>  = [<span style="color:#ce9178;">"10.0.101.0/24"</span>, <span style="color:#ce9178;">"10.0.102.0/24"</span>, <span style="color:#ce9178;">"10.0.103.0/24"</span>]
+
+  <span style="color:#9cdcfe;">tags</span> = <span style="color:#9cdcfe;">local</span>.common_tags
+}
+
+<span style="color:#6a9955;"># Secondary region — eu-central-1 (Frankfurt)</span>
+<span style="color:#6a9955;"># Non-overlapping CIDR — critical for Transit Gateway peering</span>
+<span style="color:#569cd6;">module</span> <span style="color:#ce9178;">"vpc_secondary"</span> {
+  <span style="color:#9cdcfe;">source</span>  = <span style="color:#ce9178;">"../../modules/vpc"</span>
+
+  <span style="color:#9cdcfe;">vpc_cidr</span>    = <span style="color:#ce9178;">"10.1.0.0/16"</span>
+  <span style="color:#9cdcfe;">region</span>      = <span style="color:#ce9178;">"eu-central-1"</span>
+  <span style="color:#9cdcfe;">environment</span> = <span style="color:#9cdcfe;">var</span>.environment
+
+  <span style="color:#9cdcfe;">private_subnets</span> = [<span style="color:#ce9178;">"10.1.1.0/24"</span>, <span style="color:#ce9178;">"10.1.2.0/24"</span>, <span style="color:#ce9178;">"10.1.3.0/24"</span>]
+  <span style="color:#9cdcfe;">public_subnets</span>  = [<span style="color:#ce9178;">"10.1.101.0/24"</span>, <span style="color:#ce9178;">"10.1.102.0/24"</span>, <span style="color:#ce9178;">"10.1.103.0/24"</span>]
+
+  <span style="color:#9cdcfe;">tags</span> = <span style="color:#9cdcfe;">local</span>.common_tags
+}</code></pre>
+
+        <h3>Inter-Region Connectivity — TGW Peering</h3>
+<pre><code class="nohighlight"><span style="color:#6a9955;"># Transit Gateway in primary region</span>
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_ec2_transit_gateway"</span> <span style="color:#ce9178;">"primary"</span> {
+  <span style="color:#9cdcfe;">provider</span>    = <span style="color:#9cdcfe;">aws</span>.eu_west_1
+  <span style="color:#9cdcfe;">description</span> = <span style="color:#ce9178;">"Primary region TGW — eu-west-1"</span>
+
+  <span style="color:#9cdcfe;">amazon_side_asn</span>                 = <span style="color:#b5cea8;">64512</span>
+  <span style="color:#9cdcfe;">default_route_table_association</span> = <span style="color:#ce9178;">"disable"</span>
+  <span style="color:#9cdcfe;">default_route_table_propagation</span> = <span style="color:#ce9178;">"disable"</span>
+
+  <span style="color:#9cdcfe;">tags</span> = { <span style="color:#9cdcfe;">Name</span> = <span style="color:#ce9178;">"tgw-primary-eu-west-1"</span> }
+}
+
+<span style="color:#6a9955;"># Transit Gateway in secondary region</span>
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_ec2_transit_gateway"</span> <span style="color:#ce9178;">"secondary"</span> {
+  <span style="color:#9cdcfe;">provider</span>    = <span style="color:#9cdcfe;">aws</span>.eu_central_1
+  <span style="color:#9cdcfe;">description</span> = <span style="color:#ce9178;">"Secondary region TGW — eu-central-1"</span>
+
+  <span style="color:#9cdcfe;">amazon_side_asn</span>                 = <span style="color:#b5cea8;">64513</span>
+  <span style="color:#9cdcfe;">default_route_table_association</span> = <span style="color:#ce9178;">"disable"</span>
+  <span style="color:#9cdcfe;">default_route_table_propagation</span> = <span style="color:#ce9178;">"disable"</span>
+
+  <span style="color:#9cdcfe;">tags</span> = { <span style="color:#9cdcfe;">Name</span> = <span style="color:#ce9178;">"tgw-secondary-eu-central-1"</span> }
+}
+
+<span style="color:#6a9955;"># TGW peering — cross-region private backbone</span>
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_ec2_transit_gateway_peering_attachment"</span> <span style="color:#ce9178;">"primary_to_secondary"</span> {
+  <span style="color:#9cdcfe;">provider</span> = <span style="color:#9cdcfe;">aws</span>.eu_west_1
+
+  <span style="color:#9cdcfe;">transit_gateway_id</span>      = <span style="color:#9cdcfe;">aws_ec2_transit_gateway</span>.primary.id
+  <span style="color:#9cdcfe;">peer_transit_gateway_id</span> = <span style="color:#9cdcfe;">aws_ec2_transit_gateway</span>.secondary.id
+  <span style="color:#9cdcfe;">peer_region</span>             = <span style="color:#ce9178;">"eu-central-1"</span>
+
+  <span style="color:#9cdcfe;">tags</span> = { <span style="color:#9cdcfe;">Name</span> = <span style="color:#ce9178;">"tgw-peering-eu-west-1-to-eu-central-1"</span> }
+}
+
+<span style="color:#6a9955;"># Accept the peering in the secondary region</span>
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_ec2_transit_gateway_peering_attachment_accepter"</span> <span style="color:#ce9178;">"secondary"</span> {
+  <span style="color:#9cdcfe;">provider</span> = <span style="color:#9cdcfe;">aws</span>.eu_central_1
+
+  <span style="color:#9cdcfe;">transit_gateway_attachment_id</span> = <span style="color:#9cdcfe;">aws_ec2_transit_gateway_peering_attachment</span>.primary_to_secondary.id
+
+  <span style="color:#9cdcfe;">tags</span> = { <span style="color:#9cdcfe;">Name</span> = <span style="color:#ce9178;">"tgw-peering-accepter-eu-central-1"</span> }
+}
+
+<span style="color:#6a9955;"># Static routes — propagation does not work across TGW peering</span>
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_ec2_transit_gateway_route"</span> <span style="color:#ce9178;">"primary_to_secondary_cidrs"</span> {
+  <span style="color:#9cdcfe;">provider</span> = <span style="color:#9cdcfe;">aws</span>.eu_west_1
+
+  <span style="color:#9cdcfe;">destination_cidr_block</span>         = <span style="color:#ce9178;">"10.1.0.0/16"</span>
+  <span style="color:#9cdcfe;">transit_gateway_attachment_id</span>  = <span style="color:#9cdcfe;">aws_ec2_transit_gateway_peering_attachment</span>.primary_to_secondary.id
+  <span style="color:#9cdcfe;">transit_gateway_route_table_id</span> = <span style="color:#9cdcfe;">aws_ec2_transit_gateway_route_table</span>.primary.id
+}
+
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_ec2_transit_gateway_route"</span> <span style="color:#ce9178;">"secondary_to_primary_cidrs"</span> {
+  <span style="color:#9cdcfe;">provider</span> = <span style="color:#9cdcfe;">aws</span>.eu_central_1
+
+  <span style="color:#9cdcfe;">destination_cidr_block</span>         = <span style="color:#ce9178;">"10.0.0.0/16"</span>
+  <span style="color:#9cdcfe;">transit_gateway_attachment_id</span>  = <span style="color:#9cdcfe;">aws_ec2_transit_gateway_peering_attachment</span>.primary_to_secondary.id
+  <span style="color:#9cdcfe;">transit_gateway_route_table_id</span> = <span style="color:#9cdcfe;">aws_ec2_transit_gateway_route_table</span>.secondary.id
+}</code></pre>
+
+        <h3>Terraform Provider Configuration — Multi-Region</h3>
+<pre><code class="nohighlight"><span style="color:#6a9955;"># providers.tf — multi-region provider setup</span>
+<span style="color:#569cd6;">terraform</span> {
+  <span style="color:#9cdcfe;">required_providers</span> {
+    <span style="color:#9cdcfe;">aws</span> = {
+      <span style="color:#9cdcfe;">source</span>  = <span style="color:#ce9178;">"hashicorp/aws"</span>
+      <span style="color:#9cdcfe;">version</span> = <span style="color:#ce9178;">"~&gt; 5.50"</span>
+    }
+  }
+}
+
+<span style="color:#569cd6;">provider</span> <span style="color:#ce9178;">"aws"</span> {
+  <span style="color:#9cdcfe;">alias</span>  = <span style="color:#ce9178;">"eu_west_1"</span>
+  <span style="color:#9cdcfe;">region</span> = <span style="color:#ce9178;">"eu-west-1"</span>
+
+  <span style="color:#9cdcfe;">assume_role</span> {
+    <span style="color:#9cdcfe;">role_arn</span> = <span style="color:#ce9178;">"arn:aws:iam::${var.account_id}:role/terraform-apply-role"</span>
+  }
+}
+
+<span style="color:#569cd6;">provider</span> <span style="color:#ce9178;">"aws"</span> {
+  <span style="color:#9cdcfe;">alias</span>  = <span style="color:#ce9178;">"eu_central_1"</span>
+  <span style="color:#9cdcfe;">region</span> = <span style="color:#ce9178;">"eu-central-1"</span>
+
+  <span style="color:#9cdcfe;">assume_role</span> {
+    <span style="color:#9cdcfe;">role_arn</span> = <span style="color:#ce9178;">"arn:aws:iam::${var.account_id}:role/terraform-apply-role"</span>
+  }
+}
+
+<span style="color:#6a9955;"># Route 53 and ACM validation always in us-east-1</span>
+<span style="color:#569cd6;">provider</span> <span style="color:#ce9178;">"aws"</span> {
+  <span style="color:#9cdcfe;">alias</span>  = <span style="color:#ce9178;">"us_east_1"</span>
+  <span style="color:#9cdcfe;">region</span> = <span style="color:#ce9178;">"us-east-1"</span>
+
+  <span style="color:#9cdcfe;">assume_role</span> {
+    <span style="color:#9cdcfe;">role_arn</span> = <span style="color:#ce9178;">"arn:aws:iam::${var.account_id}:role/terraform-apply-role"</span>
+  }
+}</code></pre>
+
+        <!-- Section 2 -->
+        <h2 id="active-passive">2. Active-Passive — Controlled Failover with Lower Cost</h2>
+
+        <h3>Architecture Overview</h3>
+<pre><code class="language-plaintext">Normal operation:
+  Users → Route 53 → Primary ALB (eu-west-1) → EKS Cluster Primary
+  Secondary region: warm standby — scaled down, receives no traffic
+
+Failover:
+  Route 53 health check detects primary unhealthy
+  → DNS fails over to Secondary ALB (eu-central-1)
+  → EKS Cluster Secondary scales up (if not already warm)
+  → Traffic flows to secondary region</code></pre>
+
+        <p>The secondary region is always running — but at reduced capacity. The minimum configuration that allows fast failover (within minutes, not hours) is:</p>
+        <ul>
+          <li>EKS cluster with system node group running (control plane warm)</li>
+          <li>Minimum 1 On-Demand node per AZ (avoids cold bootstrap time)</li>
+          <li>Application deployments present but scaled to minimum replicas</li>
+          <li>Database in standby or read replica mode with promotion capability</li>
+          <li>Route 53 health checks monitoring the primary ALB</li>
+        </ul>
+
+        <h3>Route 53 Failover Routing</h3>
+<pre><code class="nohighlight"><span style="color:#6a9955;"># Health check — monitors the primary region ALB</span>
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_route53_health_check"</span> <span style="color:#ce9178;">"primary"</span> {
+  <span style="color:#9cdcfe;">fqdn</span>              = <span style="color:#9cdcfe;">aws_lb</span>.primary.dns_name
+  <span style="color:#9cdcfe;">port</span>              = <span style="color:#b5cea8;">443</span>
+  <span style="color:#9cdcfe;">type</span>              = <span style="color:#ce9178;">"HTTPS"</span>
+  <span style="color:#9cdcfe;">resource_path</span>     = <span style="color:#ce9178;">"/health"</span>
+  <span style="color:#9cdcfe;">failure_threshold</span> = <span style="color:#b5cea8;">3</span>
+  <span style="color:#9cdcfe;">request_interval</span>  = <span style="color:#b5cea8;">10</span>
+
+  <span style="color:#9cdcfe;">regions</span> = [
+    <span style="color:#ce9178;">"eu-west-1"</span>,
+    <span style="color:#ce9178;">"eu-central-1"</span>,
+    <span style="color:#ce9178;">"us-east-1"</span>
+  ]
+
+  <span style="color:#9cdcfe;">tags</span> = { <span style="color:#9cdcfe;">Name</span> = <span style="color:#ce9178;">"primary-region-health-check"</span> }
+}
+
+<span style="color:#6a9955;"># Primary DNS record — eu-west-1</span>
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_route53_record"</span> <span style="color:#ce9178;">"primary"</span> {
+  <span style="color:#9cdcfe;">zone_id</span> = <span style="color:#9cdcfe;">aws_route53_zone</span>.public.zone_id
+  <span style="color:#9cdcfe;">name</span>    = <span style="color:#ce9178;">"api.company.com"</span>
+  <span style="color:#9cdcfe;">type</span>    = <span style="color:#ce9178;">"A"</span>
+
+  <span style="color:#9cdcfe;">set_identifier</span> = <span style="color:#ce9178;">"primary"</span>
+
+  <span style="color:#9cdcfe;">failover_routing_policy</span> {
+    <span style="color:#9cdcfe;">type</span> = <span style="color:#ce9178;">"PRIMARY"</span>
+  }
+
+  <span style="color:#9cdcfe;">alias</span> {
+    <span style="color:#9cdcfe;">name</span>                   = <span style="color:#9cdcfe;">aws_lb</span>.primary.dns_name
+    <span style="color:#9cdcfe;">zone_id</span>                = <span style="color:#9cdcfe;">aws_lb</span>.primary.zone_id
+    <span style="color:#9cdcfe;">evaluate_target_health</span> = <span style="color:#569cd6;">true</span>
+  }
+
+  <span style="color:#9cdcfe;">health_check_id</span> = <span style="color:#9cdcfe;">aws_route53_health_check</span>.primary.id
+}
+
+<span style="color:#6a9955;"># Secondary DNS record — eu-central-1</span>
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_route53_record"</span> <span style="color:#ce9178;">"secondary"</span> {
+  <span style="color:#9cdcfe;">provider</span> = <span style="color:#9cdcfe;">aws</span>.eu_central_1
+
+  <span style="color:#9cdcfe;">zone_id</span> = <span style="color:#9cdcfe;">aws_route53_zone</span>.public.zone_id
+  <span style="color:#9cdcfe;">name</span>    = <span style="color:#ce9178;">"api.company.com"</span>
+  <span style="color:#9cdcfe;">type</span>    = <span style="color:#ce9178;">"A"</span>
+
+  <span style="color:#9cdcfe;">set_identifier</span> = <span style="color:#ce9178;">"secondary"</span>
+
+  <span style="color:#9cdcfe;">failover_routing_policy</span> {
+    <span style="color:#9cdcfe;">type</span> = <span style="color:#ce9178;">"SECONDARY"</span>
+  }
+
+  <span style="color:#9cdcfe;">alias</span> {
+    <span style="color:#9cdcfe;">name</span>                   = <span style="color:#9cdcfe;">aws_lb</span>.secondary.dns_name
+    <span style="color:#9cdcfe;">zone_id</span>                = <span style="color:#9cdcfe;">aws_lb</span>.secondary.zone_id
+    <span style="color:#9cdcfe;">evaluate_target_health</span> = <span style="color:#569cd6;">true</span>
+  }
+  <span style="color:#6a9955;"># No health_check_id on secondary — always available as fallback</span>
+}</code></pre>
+
+        <h3>Database Replication — RDS Multi-Region</h3>
+<pre><code class="nohighlight"><span style="color:#6a9955;"># Primary RDS instance — eu-west-1</span>
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_db_instance"</span> <span style="color:#ce9178;">"primary"</span> {
+  <span style="color:#9cdcfe;">provider</span> = <span style="color:#9cdcfe;">aws</span>.eu_west_1
+
+  <span style="color:#9cdcfe;">identifier</span>        = <span style="color:#ce9178;">"platform-db-primary"</span>
+  <span style="color:#9cdcfe;">engine</span>            = <span style="color:#ce9178;">"postgres"</span>
+  <span style="color:#9cdcfe;">engine_version</span>    = <span style="color:#ce9178;">"16.2"</span>
+  <span style="color:#9cdcfe;">instance_class</span>    = <span style="color:#ce9178;">"db.r6g.xlarge"</span>
+
+  <span style="color:#9cdcfe;">multi_az</span>               = <span style="color:#569cd6;">true</span>
+  <span style="color:#9cdcfe;">storage_encrypted</span>      = <span style="color:#569cd6;">true</span>
+  <span style="color:#9cdcfe;">deletion_protection</span>    = <span style="color:#569cd6;">true</span>
+
+  <span style="color:#9cdcfe;">backup_retention_period</span> = <span style="color:#b5cea8;">7</span>
+  <span style="color:#9cdcfe;">backup_window</span>          = <span style="color:#ce9178;">"03:00-04:00"</span>
+
+  <span style="color:#9cdcfe;">monitoring_interval</span> = <span style="color:#b5cea8;">30</span>
+  <span style="color:#9cdcfe;">monitoring_role_arn</span> = <span style="color:#9cdcfe;">aws_iam_role</span>.rds_monitoring.arn
+
+  <span style="color:#9cdcfe;">tags</span> = <span style="color:#9cdcfe;">local</span>.common_tags
+}
+
+<span style="color:#6a9955;"># Cross-region read replica — eu-central-1</span>
+<span style="color:#6a9955;"># Can be promoted to standalone primary during failover</span>
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_db_instance"</span> <span style="color:#ce9178;">"secondary_replica"</span> {
+  <span style="color:#9cdcfe;">provider</span> = <span style="color:#9cdcfe;">aws</span>.eu_central_1
+
+  <span style="color:#9cdcfe;">identifier</span> = <span style="color:#ce9178;">"platform-db-secondary-replica"</span>
+
+  <span style="color:#9cdcfe;">replicate_source_db</span> = <span style="color:#9cdcfe;">aws_db_instance</span>.primary.arn
+
+  <span style="color:#9cdcfe;">instance_class</span> = <span style="color:#ce9178;">"db.r6g.large"</span>
+
+  <span style="color:#9cdcfe;">multi_az</span>            = <span style="color:#569cd6;">false</span>
+  <span style="color:#9cdcfe;">publicly_accessible</span> = <span style="color:#569cd6;">false</span>
+  <span style="color:#9cdcfe;">storage_encrypted</span>   = <span style="color:#569cd6;">true</span>
+  <span style="color:#9cdcfe;">deletion_protection</span> = <span style="color:#569cd6;">true</span>
+
+  <span style="color:#9cdcfe;">tags</span> = <span style="color:#9cdcfe;">merge</span>(<span style="color:#9cdcfe;">local</span>.common_tags, { <span style="color:#9cdcfe;">Role</span> = <span style="color:#ce9178;">"read-replica"</span> })
+}
+
+<span style="color:#6a9955;"># CloudWatch alarm — replica lag exceeds RPO threshold</span>
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_cloudwatch_metric_alarm"</span> <span style="color:#ce9178;">"replica_lag"</span> {
+  <span style="color:#9cdcfe;">provider</span> = <span style="color:#9cdcfe;">aws</span>.eu_central_1
+
+  <span style="color:#9cdcfe;">alarm_name</span>          = <span style="color:#ce9178;">"rds-replica-lag-exceeds-rpo"</span>
+  <span style="color:#9cdcfe;">alarm_description</span>   = <span style="color:#ce9178;">"Replica lag exceeds RPO threshold — failover data loss risk"</span>
+  <span style="color:#9cdcfe;">comparison_operator</span> = <span style="color:#ce9178;">"GreaterThanThreshold"</span>
+  <span style="color:#9cdcfe;">evaluation_periods</span>  = <span style="color:#b5cea8;">2</span>
+  <span style="color:#9cdcfe;">metric_name</span>         = <span style="color:#ce9178;">"ReplicaLag"</span>
+  <span style="color:#9cdcfe;">namespace</span>           = <span style="color:#ce9178;">"AWS/RDS"</span>
+  <span style="color:#9cdcfe;">period</span>              = <span style="color:#b5cea8;">60</span>
+  <span style="color:#9cdcfe;">statistic</span>           = <span style="color:#ce9178;">"Maximum"</span>
+  <span style="color:#9cdcfe;">threshold</span>           = <span style="color:#b5cea8;">30</span>
+
+  <span style="color:#9cdcfe;">dimensions</span> = {
+    <span style="color:#9cdcfe;">DBInstanceIdentifier</span> = <span style="color:#9cdcfe;">aws_db_instance</span>.secondary_replica.id
+  }
+
+  <span style="color:#9cdcfe;">alarm_actions</span> = [<span style="color:#9cdcfe;">aws_sns_topic</span>.platform_alerts_secondary.arn]
+}</code></pre>
+
+        <h3>Failover Runbook — Automated vs Manual</h3>
+        <p>For Active-Passive, the failover itself can be automated (DNS health checks handle it) but the database promotion is typically manual in regulated environments because it is irreversible without re-establishing replication.</p>
+
+<pre><code class="nohighlight"><span style="color:#6a9955;"># EventBridge rule — detect primary region ALB alarm, trigger failover notification</span>
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_cloudwatch_event_rule"</span> <span style="color:#ce9178;">"primary_unhealthy"</span> {
+  <span style="color:#9cdcfe;">provider</span> = <span style="color:#9cdcfe;">aws</span>.eu_west_1
+  <span style="color:#9cdcfe;">name</span>     = <span style="color:#ce9178;">"primary-region-health-failure"</span>
+
+  <span style="color:#9cdcfe;">event_pattern</span> = <span style="color:#9cdcfe;">jsonencode</span>({
+    <span style="color:#9cdcfe;">source</span>      = [<span style="color:#ce9178;">"aws.route53"</span>]
+    <span style="color:#9cdcfe;">detail-type</span> = [<span style="color:#ce9178;">"Route 53 Health Check Status Change"</span>]
+    <span style="color:#9cdcfe;">detail</span> = {
+      <span style="color:#9cdcfe;">status</span>          = [<span style="color:#ce9178;">"ALARM"</span>]
+      <span style="color:#9cdcfe;">health-check-id</span> = [<span style="color:#9cdcfe;">aws_route53_health_check</span>.primary.id]
+    }
+  })
+}
+
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_cloudwatch_event_target"</span> <span style="color:#ce9178;">"failover_notification"</span> {
+  <span style="color:#9cdcfe;">provider</span> = <span style="color:#9cdcfe;">aws</span>.eu_west_1
+  <span style="color:#9cdcfe;">rule</span>     = <span style="color:#9cdcfe;">aws_cloudwatch_event_rule</span>.primary_unhealthy.name
+  <span style="color:#9cdcfe;">arn</span>      = <span style="color:#9cdcfe;">aws_sns_topic</span>.failover_alerts.arn
+}</code></pre>
+
+        <blockquote><strong>Why manual database promotion in production:</strong> Automatic promotion of a read replica is irreversible — once promoted, it is a standalone instance. Re-establishing it as a replica requires a fresh backup restore which takes hours. In a regulated environment, this is a decision that requires a human to confirm the primary region is genuinely down and will not recover within the RTO window, before committing to promotion.</blockquote>
+
+        <!-- Section 3 -->
+        <h2 id="active-active">3. Active-Active — Zero-RPO, Zero-RTO Architecture</h2>
+
+        <h3>Architecture Overview</h3>
+<pre><code class="language-plaintext">Normal operation:
+  EU users   → Route 53 (latency routing) → eu-west-1 ALB  → eu-west-1 EKS
+  DACH users → Route 53 (latency routing) → eu-central-1 ALB → eu-central-1 EKS
+
+Both regions:
+  - Full production capacity
+  - Receiving live traffic simultaneously
+  - Data writes synchronised in near-real-time
+
+Region failure:
+  Route 53 removes unhealthy region from DNS within ~30 seconds
+  Remaining region absorbs all traffic
+  No data loss (synchronous or near-synchronous replication)</code></pre>
+
+        <h3>Route 53 Latency-Based Routing with Health Checks</h3>
+<pre><code class="nohighlight"><span style="color:#6a9955;"># Health checks — both regions monitored</span>
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_route53_health_check"</span> <span style="color:#ce9178;">"eu_west_1"</span> {
+  <span style="color:#9cdcfe;">fqdn</span>              = <span style="color:#9cdcfe;">aws_lb</span>.eu_west_1.dns_name
+  <span style="color:#9cdcfe;">port</span>              = <span style="color:#b5cea8;">443</span>
+  <span style="color:#9cdcfe;">type</span>              = <span style="color:#ce9178;">"HTTPS"</span>
+  <span style="color:#9cdcfe;">resource_path</span>     = <span style="color:#ce9178;">"/health"</span>
+  <span style="color:#9cdcfe;">failure_threshold</span> = <span style="color:#b5cea8;">3</span>
+  <span style="color:#9cdcfe;">request_interval</span>  = <span style="color:#b5cea8;">10</span>
+
+  <span style="color:#9cdcfe;">tags</span> = { <span style="color:#9cdcfe;">Name</span> = <span style="color:#ce9178;">"health-check-eu-west-1"</span> }
+}
+
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_route53_health_check"</span> <span style="color:#ce9178;">"eu_central_1"</span> {
+  <span style="color:#9cdcfe;">fqdn</span>              = <span style="color:#9cdcfe;">aws_lb</span>.eu_central_1.dns_name
+  <span style="color:#9cdcfe;">port</span>              = <span style="color:#b5cea8;">443</span>
+  <span style="color:#9cdcfe;">type</span>              = <span style="color:#ce9178;">"HTTPS"</span>
+  <span style="color:#9cdcfe;">resource_path</span>     = <span style="color:#ce9178;">"/health"</span>
+  <span style="color:#9cdcfe;">failure_threshold</span> = <span style="color:#b5cea8;">3</span>
+  <span style="color:#9cdcfe;">request_interval</span>  = <span style="color:#b5cea8;">10</span>
+
+  <span style="color:#9cdcfe;">tags</span> = { <span style="color:#9cdcfe;">Name</span> = <span style="color:#ce9178;">"health-check-eu-central-1"</span> }
+}
+
+<span style="color:#6a9955;"># Latency routing — direct users to nearest healthy region</span>
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_route53_record"</span> <span style="color:#ce9178;">"api_eu_west_1"</span> {
+  <span style="color:#9cdcfe;">zone_id</span>        = <span style="color:#9cdcfe;">aws_route53_zone</span>.public.zone_id
+  <span style="color:#9cdcfe;">name</span>           = <span style="color:#ce9178;">"api.company.com"</span>
+  <span style="color:#9cdcfe;">type</span>           = <span style="color:#ce9178;">"A"</span>
+  <span style="color:#9cdcfe;">set_identifier</span> = <span style="color:#ce9178;">"eu-west-1"</span>
+
+  <span style="color:#9cdcfe;">latency_routing_policy</span> {
+    <span style="color:#9cdcfe;">region</span> = <span style="color:#ce9178;">"eu-west-1"</span>
+  }
+
+  <span style="color:#9cdcfe;">alias</span> {
+    <span style="color:#9cdcfe;">name</span>                   = <span style="color:#9cdcfe;">aws_lb</span>.eu_west_1.dns_name
+    <span style="color:#9cdcfe;">zone_id</span>                = <span style="color:#9cdcfe;">aws_lb</span>.eu_west_1.zone_id
+    <span style="color:#9cdcfe;">evaluate_target_health</span> = <span style="color:#569cd6;">true</span>
+  }
+
+  <span style="color:#9cdcfe;">health_check_id</span> = <span style="color:#9cdcfe;">aws_route53_health_check</span>.eu_west_1.id
+}
+
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_route53_record"</span> <span style="color:#ce9178;">"api_eu_central_1"</span> {
+  <span style="color:#9cdcfe;">zone_id</span>        = <span style="color:#9cdcfe;">aws_route53_zone</span>.public.zone_id
+  <span style="color:#9cdcfe;">name</span>           = <span style="color:#ce9178;">"api.company.com"</span>
+  <span style="color:#9cdcfe;">type</span>           = <span style="color:#ce9178;">"A"</span>
+  <span style="color:#9cdcfe;">set_identifier</span> = <span style="color:#ce9178;">"eu-central-1"</span>
+
+  <span style="color:#9cdcfe;">latency_routing_policy</span> {
+    <span style="color:#9cdcfe;">region</span> = <span style="color:#ce9178;">"eu-central-1"</span>
+  }
+
+  <span style="color:#9cdcfe;">alias</span> {
+    <span style="color:#9cdcfe;">name</span>                   = <span style="color:#9cdcfe;">aws_lb</span>.eu_central_1.dns_name
+    <span style="color:#9cdcfe;">zone_id</span>                = <span style="color:#9cdcfe;">aws_lb</span>.eu_central_1.zone_id
+    <span style="color:#9cdcfe;">evaluate_target_health</span> = <span style="color:#569cd6;">true</span>
+  }
+
+  <span style="color:#9cdcfe;">health_check_id</span> = <span style="color:#9cdcfe;">aws_route53_health_check</span>.eu_central_1.id
+}</code></pre>
+
+        <h3>The Hard Problem — Data in Active-Active</h3>
+        <p>Active-Active compute is straightforward. Active-Active data is the genuinely hard part. If a write happens in eu-west-1 and a read for the same record happens in eu-central-1 100ms later, does the read see the write? The answer depends entirely on your replication strategy. Three patterns:</p>
+
+        <h4>Pattern 1 — Global Tables (DynamoDB)</h4>
+        <p>Fully managed multi-region replication with eventual consistency. Writes in any region propagate to all regions, typically within 1 second. Best for use cases where eventual consistency is acceptable.</p>
+
+<pre><code class="nohighlight"><span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_dynamodb_table"</span> <span style="color:#ce9178;">"global"</span> {
+  <span style="color:#9cdcfe;">name</span>         = <span style="color:#ce9178;">"platform-sessions"</span>
+  <span style="color:#9cdcfe;">billing_mode</span> = <span style="color:#ce9178;">"PAY_PER_REQUEST"</span>
+  <span style="color:#9cdcfe;">hash_key</span>     = <span style="color:#ce9178;">"session_id"</span>
+
+  <span style="color:#9cdcfe;">stream_enabled</span>   = <span style="color:#569cd6;">true</span>
+  <span style="color:#9cdcfe;">stream_view_type</span> = <span style="color:#ce9178;">"NEW_AND_OLD_IMAGES"</span>
+
+  <span style="color:#9cdcfe;">attribute</span> {
+    <span style="color:#9cdcfe;">name</span> = <span style="color:#ce9178;">"session_id"</span>
+    <span style="color:#9cdcfe;">type</span> = <span style="color:#ce9178;">"S"</span>
+  }
+
+  <span style="color:#9cdcfe;">replica</span> {
+    <span style="color:#9cdcfe;">region_name</span> = <span style="color:#ce9178;">"eu-central-1"</span>
+    <span style="color:#9cdcfe;">kms_key_arn</span> = <span style="color:#9cdcfe;">aws_kms_key</span>.dynamodb_eu_central_1.arn
+  }
+
+  <span style="color:#9cdcfe;">server_side_encryption</span> {
+    <span style="color:#9cdcfe;">enabled</span>     = <span style="color:#569cd6;">true</span>
+    <span style="color:#9cdcfe;">kms_key_arn</span> = <span style="color:#9cdcfe;">aws_kms_key</span>.dynamodb_eu_west_1.arn
+  }
+
+  <span style="color:#9cdcfe;">tags</span> = <span style="color:#9cdcfe;">local</span>.common_tags
+}</code></pre>
+
+        <h4>Pattern 2 — Aurora Global Database</h4>
+        <p>Sub-second cross-region replication with the ability to promote the secondary in under 1 minute during failover. The best option for relational data with strong consistency requirements.</p>
+
+<pre><code class="nohighlight"><span style="color:#6a9955;"># Aurora Global Cluster</span>
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_rds_global_cluster"</span> <span style="color:#ce9178;">"main"</span> {
+  <span style="color:#9cdcfe;">global_cluster_identifier</span> = <span style="color:#ce9178;">"platform-global-db"</span>
+  <span style="color:#9cdcfe;">engine</span>                    = <span style="color:#ce9178;">"aurora-postgresql"</span>
+  <span style="color:#9cdcfe;">engine_version</span>            = <span style="color:#ce9178;">"16.2"</span>
+  <span style="color:#9cdcfe;">database_name</span>             = <span style="color:#ce9178;">"platform"</span>
+  <span style="color:#9cdcfe;">storage_encrypted</span>         = <span style="color:#569cd6;">true</span>
+}
+
+<span style="color:#6a9955;"># Primary cluster — eu-west-1</span>
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_rds_cluster"</span> <span style="color:#ce9178;">"primary"</span> {
+  <span style="color:#9cdcfe;">provider</span> = <span style="color:#9cdcfe;">aws</span>.eu_west_1
+
+  <span style="color:#9cdcfe;">cluster_identifier</span>        = <span style="color:#ce9178;">"platform-primary-eu-west-1"</span>
+  <span style="color:#9cdcfe;">global_cluster_identifier</span> = <span style="color:#9cdcfe;">aws_rds_global_cluster</span>.main.id
+  <span style="color:#9cdcfe;">engine</span>                    = <span style="color:#ce9178;">"aurora-postgresql"</span>
+  <span style="color:#9cdcfe;">engine_version</span>            = <span style="color:#ce9178;">"16.2"</span>
+
+  <span style="color:#9cdcfe;">db_subnet_group_name</span>   = <span style="color:#9cdcfe;">aws_db_subnet_group</span>.primary.name
+  <span style="color:#9cdcfe;">vpc_security_group_ids</span> = [<span style="color:#9cdcfe;">aws_security_group</span>.rds_primary.id]
+
+  <span style="color:#9cdcfe;">master_username</span> = <span style="color:#9cdcfe;">var</span>.db_username
+  <span style="color:#9cdcfe;">master_password</span> = <span style="color:#9cdcfe;">var</span>.db_password
+
+  <span style="color:#9cdcfe;">backup_retention_period</span> = <span style="color:#b5cea8;">7</span>
+
+  <span style="color:#9cdcfe;">tags</span> = <span style="color:#9cdcfe;">local</span>.common_tags
+}
+
+<span style="color:#6a9955;"># Secondary cluster — eu-central-1</span>
+<span style="color:#6a9955;"># Replicates from primary with typical lag &lt;1 second</span>
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_rds_cluster"</span> <span style="color:#ce9178;">"secondary"</span> {
+  <span style="color:#9cdcfe;">provider</span> = <span style="color:#9cdcfe;">aws</span>.eu_central_1
+
+  <span style="color:#9cdcfe;">cluster_identifier</span>        = <span style="color:#ce9178;">"platform-secondary-eu-central-1"</span>
+  <span style="color:#9cdcfe;">global_cluster_identifier</span> = <span style="color:#9cdcfe;">aws_rds_global_cluster</span>.main.id
+  <span style="color:#9cdcfe;">engine</span>                    = <span style="color:#ce9178;">"aurora-postgresql"</span>
+  <span style="color:#9cdcfe;">engine_version</span>            = <span style="color:#ce9178;">"16.2"</span>
+
+  <span style="color:#9cdcfe;">db_subnet_group_name</span>   = <span style="color:#9cdcfe;">aws_db_subnet_group</span>.secondary.name
+  <span style="color:#9cdcfe;">vpc_security_group_ids</span> = [<span style="color:#9cdcfe;">aws_security_group</span>.rds_secondary.id]
+
+  <span style="color:#9cdcfe;">tags</span> = <span style="color:#9cdcfe;">local</span>.common_tags
+}</code></pre>
+
+        <h4>Pattern 3 — Write to Primary, Read from Local Replica</h4>
+        <p>A hybrid approach where all writes go to one region (eliminating write conflicts) and reads are served from the nearest replica. Simpler consistency model, slightly higher write latency for the non-primary region.</p>
+
+<pre><code class="language-python">import boto3
+import os
+
+class MultiRegionDBClient:
+    def __init__(self):
+        self.region = os.environ.get('AWS_REGION', 'eu-west-1')
+        self.primary_region = 'eu-west-1'
+
+        # Write endpoint — always primary region
+        self.write_client = boto3.client(
+            'rds-data',
+            region_name=self.primary_region,
+            endpoint_url=os.environ['AURORA_WRITE_ENDPOINT']
+        )
+
+        # Read endpoint — local region replica
+        self.read_client = boto3.client(
+            'rds-data',
+            region_name=self.region,
+            endpoint_url=os.environ['AURORA_READ_ENDPOINT']
+        )
+
+    def write(self, sql, parameters):
+        # All writes go to primary — no conflict risk
+        return self.write_client.execute_statement(
+            resourceArn=os.environ['AURORA_CLUSTER_ARN_PRIMARY'],
+            secretArn=os.environ['DB_SECRET_ARN'],
+            sql=sql,
+            parameters=parameters
+        )
+
+    def read(self, sql, parameters):
+        # Reads from local replica — lower latency
+        # Accept eventual consistency — replica lag is typically &lt;1s
+        return self.read_client.execute_statement(
+            resourceArn=os.environ['AURORA_CLUSTER_ARN_LOCAL'],
+            secretArn=os.environ['DB_SECRET_ARN'],
+            sql=sql,
+            parameters=parameters
+        )</code></pre>
+
+        <!-- Section 4 -->
+        <h2 id="eks-multiregion">4. EKS Multi-Region — Deploying to Both Clusters</h2>
+        <p>Part 15 covered multi-cluster ArgoCD. From a multi-region perspective, the ApplicationSet generator pattern handles deployment to both regional clusters automatically:</p>
+
+<pre><code class="language-yaml">apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: platform-services-multiregion
+  namespace: argocd
+spec:
+  generators:
+    - matrix:
+        generators:
+          - git:
+              repoURL:  https://github.com/org/gitops-config
+              revision: main
+              directories:
+                - path: apps/services/*
+          - list:
+              elements:
+                - region:    eu-west-1
+                  cluster:   https://eks-primary.eu-west-1.eks.amazonaws.com
+                  valuesFile: values-prod-eu-west-1.yaml
+                - region:    eu-central-1
+                  cluster:   https://eks-secondary.eu-central-1.eks.amazonaws.com
+                  valuesFile: values-prod-eu-central-1.yaml
+
+  template:
+    metadata:
+      name: "{{path.basename}}-{{region}}"
+      namespace: argocd
+    spec:
+      project: services-prod
+      source:
+        repoURL:        https://github.com/org/gitops-config
+        targetRevision: main
+        path:           "{{path}}"
+        helm:
+          valueFiles:
+            - values.yaml
+            - values-prod.yaml
+            - "{{valuesFile}}"
+      destination:
+        server:    "{{cluster}}"
+        namespace: "{{path.basename}}"
+      syncPolicy:
+        automated:
+          prune:    false
+          selfHeal: true</code></pre>
+
+        <p>Region-specific values provide different endpoints per cluster while sharing the same base configuration:</p>
+
+<pre><code class="language-yaml"># values-prod-eu-west-1.yaml
+database:
+  writeEndpoint: platform-primary.cluster-xxx.eu-west-1.rds.amazonaws.com
+  readEndpoint:  platform-primary.cluster-ro-xxx.eu-west-1.rds.amazonaws.com
+
+region: eu-west-1
+isPrimary: true
+
+---
+# values-prod-eu-central-1.yaml
+database:
+  writeEndpoint: platform-primary.cluster-xxx.eu-west-1.rds.amazonaws.com   # Still primary!
+  readEndpoint:  platform-secondary.cluster-ro-xxx.eu-central-1.rds.amazonaws.com
+
+region: eu-central-1
+isPrimary: false</code></pre>
+
+        <!-- Section 5 -->
+        <h2 id="global-accelerator">5. Global Accelerator — Improving Active-Active Performance</h2>
+        <p>Standard Route 53 latency routing sends users to the nearest region based on measured network latency. AWS Global Accelerator improves this further: users connect to the nearest AWS edge location (anycast), and traffic travels over the AWS private backbone rather than the public internet for the entire journey to your ALB.</p>
+
+<pre><code class="nohighlight"><span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_globalaccelerator_accelerator"</span> <span style="color:#ce9178;">"main"</span> {
+  <span style="color:#9cdcfe;">name</span>            = <span style="color:#ce9178;">"platform-global-accelerator"</span>
+  <span style="color:#9cdcfe;">ip_address_type</span> = <span style="color:#ce9178;">"IPV4"</span>
+  <span style="color:#9cdcfe;">enabled</span>         = <span style="color:#569cd6;">true</span>
+
+  <span style="color:#9cdcfe;">attributes</span> {
+    <span style="color:#9cdcfe;">flow_logs_enabled</span>   = <span style="color:#569cd6;">true</span>
+    <span style="color:#9cdcfe;">flow_logs_s3_bucket</span> = <span style="color:#9cdcfe;">aws_s3_bucket</span>.ga_logs.bucket
+    <span style="color:#9cdcfe;">flow_logs_s3_prefix</span> = <span style="color:#ce9178;">"global-accelerator/"</span>
+  }
+}
+
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_globalaccelerator_listener"</span> <span style="color:#ce9178;">"https"</span> {
+  <span style="color:#9cdcfe;">accelerator_arn</span> = <span style="color:#9cdcfe;">aws_globalaccelerator_accelerator</span>.main.id
+  <span style="color:#9cdcfe;">protocol</span>        = <span style="color:#ce9178;">"TCP"</span>
+
+  <span style="color:#9cdcfe;">port_range</span> {
+    <span style="color:#9cdcfe;">from_port</span> = <span style="color:#b5cea8;">443</span>
+    <span style="color:#9cdcfe;">to_port</span>   = <span style="color:#b5cea8;">443</span>
+  }
+}
+
+<span style="color:#6a9955;"># Endpoint group — eu-west-1</span>
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_globalaccelerator_endpoint_group"</span> <span style="color:#ce9178;">"eu_west_1"</span> {
+  <span style="color:#9cdcfe;">listener_arn</span> = <span style="color:#9cdcfe;">aws_globalaccelerator_listener</span>.https.id
+
+  <span style="color:#9cdcfe;">endpoint_group_region</span>         = <span style="color:#ce9178;">"eu-west-1"</span>
+  <span style="color:#9cdcfe;">traffic_dial_percentage</span>       = <span style="color:#b5cea8;">50</span>
+
+  <span style="color:#9cdcfe;">health_check_path</span>             = <span style="color:#ce9178;">"/health"</span>
+  <span style="color:#9cdcfe;">health_check_protocol</span>         = <span style="color:#ce9178;">"HTTPS"</span>
+  <span style="color:#9cdcfe;">health_check_interval_seconds</span> = <span style="color:#b5cea8;">10</span>
+  <span style="color:#9cdcfe;">threshold_count</span>               = <span style="color:#b5cea8;">3</span>
+
+  <span style="color:#9cdcfe;">endpoint_configuration</span> {
+    <span style="color:#9cdcfe;">endpoint_id</span>                    = <span style="color:#9cdcfe;">aws_lb</span>.eu_west_1.arn
+    <span style="color:#9cdcfe;">weight</span>                         = <span style="color:#b5cea8;">100</span>
+    <span style="color:#9cdcfe;">client_ip_preservation_enabled</span> = <span style="color:#569cd6;">true</span>
+  }
+}
+
+<span style="color:#6a9955;"># Endpoint group — eu-central-1</span>
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_globalaccelerator_endpoint_group"</span> <span style="color:#ce9178;">"eu_central_1"</span> {
+  <span style="color:#9cdcfe;">listener_arn</span> = <span style="color:#9cdcfe;">aws_globalaccelerator_listener</span>.https.id
+
+  <span style="color:#9cdcfe;">endpoint_group_region</span>         = <span style="color:#ce9178;">"eu-central-1"</span>
+  <span style="color:#9cdcfe;">traffic_dial_percentage</span>       = <span style="color:#b5cea8;">50</span>
+
+  <span style="color:#9cdcfe;">health_check_path</span>             = <span style="color:#ce9178;">"/health"</span>
+  <span style="color:#9cdcfe;">health_check_protocol</span>         = <span style="color:#ce9178;">"HTTPS"</span>
+  <span style="color:#9cdcfe;">health_check_interval_seconds</span> = <span style="color:#b5cea8;">10</span>
+  <span style="color:#9cdcfe;">threshold_count</span>               = <span style="color:#b5cea8;">3</span>
+
+  <span style="color:#9cdcfe;">endpoint_configuration</span> {
+    <span style="color:#9cdcfe;">endpoint_id</span>                    = <span style="color:#9cdcfe;">aws_lb</span>.eu_central_1.arn
+    <span style="color:#9cdcfe;">weight</span>                         = <span style="color:#b5cea8;">100</span>
+    <span style="color:#9cdcfe;">client_ip_preservation_enabled</span> = <span style="color:#569cd6;">true</span>
+  }
+}</code></pre>
+
+        <blockquote><strong>Traffic dial percentage</strong> is the traffic shifting mechanism during deployments and incidents. Setting <code>traffic_dial_percentage = 0</code> on a region removes it from rotation entirely without removing the endpoint group configuration — a safer, faster alternative to DNS TTL-based traffic shifting.</blockquote>
+
+        <!-- Section 6 -->
+        <h2 id="data-residency">6. Data Residency and Compliance</h2>
+        <p>For European workloads, data residency is not optional. GDPR requires that personal data of EU residents is stored within the EU. Multi-region architectures that include non-EU regions for DR must carefully separate data by type.</p>
+
+<pre><code class="nohighlight"><span style="color:#6a9955;"># SCP — prevent data from leaving EU regions</span>
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_organizations_policy"</span> <span style="color:#ce9178;">"eu_data_residency"</span> {
+  <span style="color:#9cdcfe;">name</span> = <span style="color:#ce9178;">"eu-data-residency"</span>
+  <span style="color:#9cdcfe;">type</span> = <span style="color:#ce9178;">"SERVICE_CONTROL_POLICY"</span>
+
+  <span style="color:#9cdcfe;">content</span> = <span style="color:#9cdcfe;">jsonencode</span>({
+    <span style="color:#9cdcfe;">Version</span> = <span style="color:#ce9178;">"2012-10-17"</span>
+    <span style="color:#9cdcfe;">Statement</span> = [
+      {
+        <span style="color:#9cdcfe;">Sid</span>    = <span style="color:#ce9178;">"DenyNonEUDataServices"</span>
+        <span style="color:#9cdcfe;">Effect</span> = <span style="color:#ce9178;">"Deny"</span>
+        <span style="color:#9cdcfe;">Action</span> = [
+          <span style="color:#ce9178;">"s3:CreateBucket"</span>,
+          <span style="color:#ce9178;">"rds:CreateDBInstance"</span>,
+          <span style="color:#ce9178;">"dynamodb:CreateTable"</span>,
+          <span style="color:#ce9178;">"es:CreateDomain"</span>,
+          <span style="color:#ce9178;">"elasticache:CreateCacheCluster"</span>
+        ]
+        <span style="color:#9cdcfe;">Resource</span> = <span style="color:#ce9178;">"*"</span>
+        <span style="color:#9cdcfe;">Condition</span> = {
+          <span style="color:#9cdcfe;">StringNotEquals</span> = {
+            <span style="color:#ce9178;">"aws:RequestedRegion"</span> = [
+              <span style="color:#ce9178;">"eu-west-1"</span>,
+              <span style="color:#ce9178;">"eu-west-2"</span>,
+              <span style="color:#ce9178;">"eu-west-3"</span>,
+              <span style="color:#ce9178;">"eu-central-1"</span>,
+              <span style="color:#ce9178;">"eu-central-2"</span>,
+              <span style="color:#ce9178;">"eu-north-1"</span>,
+              <span style="color:#ce9178;">"eu-south-1"</span>,
+              <span style="color:#ce9178;">"eu-south-2"</span>
+            ]
+          }
+        }
+      }
+    ]
+  })
+}</code></pre>
+
+        <!-- Section 7 -->
+        <h2 id="chaos-engineering">7. Chaos Engineering — Testing Your HA Before You Need It</h2>
+        <p>An HA architecture that has never been tested is a hypothesis. AWS Fault Injection Simulator (FIS) lets you run controlled failure scenarios in production to validate that failover actually works.</p>
+
+<pre><code class="nohighlight"><span style="color:#6a9955;"># FIS experiment — simulate AZ failure</span>
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_fis_experiment_template"</span> <span style="color:#ce9178;">"az_failure"</span> {
+  <span style="color:#9cdcfe;">description</span> = <span style="color:#ce9178;">"Simulate AZ failure — validate multi-AZ pod rescheduling"</span>
+  <span style="color:#9cdcfe;">role_arn</span>    = <span style="color:#9cdcfe;">aws_iam_role</span>.fis.arn
+
+  <span style="color:#9cdcfe;">stop_condition</span> {
+    <span style="color:#9cdcfe;">source</span> = <span style="color:#ce9178;">"aws:cloudwatch:alarm"</span>
+    <span style="color:#9cdcfe;">value</span>  = <span style="color:#9cdcfe;">aws_cloudwatch_metric_alarm</span>.error_rate_critical.arn
+  }
+
+  <span style="color:#9cdcfe;">action</span> {
+    <span style="color:#9cdcfe;">name</span>      = <span style="color:#ce9178;">"terminate-az-a-instances"</span>
+    <span style="color:#9cdcfe;">action_id</span> = <span style="color:#ce9178;">"aws:ec2:terminate-instances"</span>
+
+    <span style="color:#9cdcfe;">parameter</span> {
+      <span style="color:#9cdcfe;">key</span>   = <span style="color:#ce9178;">"startInstancesAfterDuration"</span>
+      <span style="color:#9cdcfe;">value</span> = <span style="color:#ce9178;">"PT5M"</span>
+    }
+
+    <span style="color:#9cdcfe;">target</span> {
+      <span style="color:#9cdcfe;">key</span>   = <span style="color:#ce9178;">"Instances"</span>
+      <span style="color:#9cdcfe;">value</span> = <span style="color:#ce9178;">"nodegroup-az-a-instances"</span>
+    }
+  }
+
+  <span style="color:#9cdcfe;">target</span> {
+    <span style="color:#9cdcfe;">name</span>           = <span style="color:#ce9178;">"nodegroup-az-a-instances"</span>
+    <span style="color:#9cdcfe;">resource_type</span>  = <span style="color:#ce9178;">"aws:ec2:instance"</span>
+    <span style="color:#9cdcfe;">selection_mode</span> = <span style="color:#ce9178;">"ALL"</span>
+
+    <span style="color:#9cdcfe;">resource_tag</span> {
+      <span style="color:#9cdcfe;">key</span>   = <span style="color:#ce9178;">"kubernetes.io/cluster/${var.cluster_name}"</span>
+      <span style="color:#9cdcfe;">value</span> = <span style="color:#ce9178;">"owned"</span>
+    }
+
+    <span style="color:#9cdcfe;">resource_tag</span> {
+      <span style="color:#9cdcfe;">key</span>   = <span style="color:#ce9178;">"topology.kubernetes.io/zone"</span>
+      <span style="color:#9cdcfe;">value</span> = <span style="color:#ce9178;">"${var.region}a"</span>
+    }
+  }
+
+  <span style="color:#9cdcfe;">tags</span> = { <span style="color:#9cdcfe;">Name</span> = <span style="color:#ce9178;">"fis-az-failure-test"</span> }
+}</code></pre>
+
+        <p>What to test and when:</p>
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th>Test</th>
+              <th>Frequency</th>
+              <th>What it validates</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>AZ failure (FIS)</td>
+              <td>Quarterly</td>
+              <td>Pod rescheduling, Karpenter provisioning, no traffic drop</td>
+            </tr>
+            <tr>
+              <td>Route 53 failover (FIS or manual)</td>
+              <td>Quarterly</td>
+              <td>DNS failover time, secondary region warm-up speed</td>
+            </tr>
+            <tr>
+              <td>RDS replica lag under load</td>
+              <td>Monthly</td>
+              <td>RPO under realistic write volume</td>
+            </tr>
+            <tr>
+              <td>RDS failover (Multi-AZ)</td>
+              <td>Semi-annually</td>
+              <td>Failover time, connection pool recovery</td>
+            </tr>
+            <tr>
+              <td>Full region failover drill</td>
+              <td>Annually</td>
+              <td>Complete DR runbook validation end-to-end</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Section 8 -->
+        <h2 id="cost">8. Cost — Multi-Region Is Not Free</h2>
+<pre><code class="language-plaintext">Single region (Active):                            $X/month
+
+Active-Passive (1 primary + 1 standby at 30% capacity):
+  ~$X + $0.3X = 1.3× single-region
+  Add: inter-region data transfer ($0.02/GB TGW peering)
+  Add: Route 53 health checks ($0.50/check + $1/million queries)
+  Add: RDS cross-region replica (instance + storage + transfer)
+
+Active-Active (2 full regions):
+  ~2× single-region compute
+  + inter-region replication transfer
+  + Global Accelerator ($0.025/hour + $0.015/GB)
+  + Full redundant networking in both regions</code></pre>
+
+        <p><strong>The business case for Active-Passive:</strong> If your SLA allows for 10 minutes RTO and 60 seconds RPO, Active-Passive with a warm standby (scaled to 30% capacity) delivers that at ~1.3× cost. For a $5,000/month platform, that is $1,500/month for DR capability — far cheaper than the reputational and contractual cost of an unplanned outage.</p>
+        <p><strong>The business case for Active-Active:</strong> If your SLA requires &lt;30 second RTO and near-zero RPO — or if you have significant user populations in multiple European regions that benefit from latency routing — Active-Active is the correct answer. The 2× cost is the cost of the SLA.</p>
+
+        <!-- Section 9 -->
+        <h2 id="decision-framework">9. The Decision Framework</h2>
+<pre><code class="language-plaintext">What is your RTO requirement?
+├── &lt; 1 minute    → Active-Active (DNS failover alone cannot achieve this)
+├── 1-15 minutes  → Active-Passive with warm standby
+└── 15-60 minutes → Active-Passive with cold standby (lower cost)
+
+What is your RPO requirement?
+├── Zero (no data loss)  → Active-Active with synchronous replication
+│                           or Aurora Global Database
+├── &lt; 30 seconds         → Active-Passive with Aurora Global Database
+└── Minutes acceptable   → Active-Passive with RDS cross-region replica
+
+Do you have users in multiple regions?
+├── YES → Active-Active with latency routing (serving AND DR benefit)
+└── NO  → Active-Passive (DR only — pay for standby, not serving)
+
+What is your compliance requirement?
+├── Data must stay in EU   → Both regions in EU — SCP to enforce
+├── DR region can be non-EU → Consider us-east-1 as standby (lower cost)
+└── Air-gapped requirement  → Private Direct Connect + no internet peering
+
+What is your budget?
+├── Minimal             → Active-Passive, cold standby, RDS replica
+├── Moderate            → Active-Passive, warm standby, Aurora Global
+└── Enterprise/SLA-driven → Active-Active, Aurora Global, Global Accelerator</code></pre>
+
+        <!-- Section 10: Mistakes -->
+        <h2 id="pitfalls"><i class="fa-solid fa-triangle-exclamation" style="color: #d13212; font-size: 22px; margin-right: 8px;"></i>10. Common Mistakes &amp; Anti-Patterns</h2>
+
+        <div class="pitfall-card">
+          <strong>Mistake 1: Overlapping CIDRs Between Regions</strong>
+          <p>The most common multi-region networking mistake. If eu-west-1 uses <code>10.0.0.0/16</code> and eu-central-1 also uses <code>10.0.0.0/16</code>, TGW peering cannot route between them — identical CIDRs are ambiguous. Plan your IP space org-wide from Day 1. Part 1 of this series covers CIDR planning in depth.</p>
+        </div>
+
+        <div class="pitfall-card">
+          <strong>Mistake 2: Assuming DNS Failover Is Instantaneous</strong>
+          <p>Route 53 health checks detect failure within 30 seconds (with 10-second interval and 3 failures threshold). DNS TTL determines how long clients cache the old record — typically 60 seconds. Total failover time: up to 90 seconds. For RTO requirements under 2 minutes, DNS failover alone is insufficient — use Global Accelerator which reroutes at the anycast layer within seconds.</p>
+        </div>
+
+        <div class="pitfall-card">
+          <strong>Mistake 3: Never Testing the Failover</strong>
+          <p>An untested failover is a hypothesis. The first time you fail over under real pressure is not the time to discover that the secondary database has 10 minutes of replication lag or that the secondary EKS cluster's node group is at <code>min_size = 0</code> and takes 8 minutes to provision capacity. Test quarterly. Document what broke.</p>
+        </div>
+
+        <div class="pitfall-card">
+          <strong>Mistake 4: Active-Active Without Conflict Resolution Strategy</strong>
+          <p>Writing to two regions simultaneously without a conflict resolution strategy produces inconsistent data. Two users updating the same record in different regions within the replication window creates a conflict. Use last-write-wins (DynamoDB default), write to single primary with local reads, or application-level conflict detection depending on your consistency requirements.</p>
+        </div>
+
+        <div class="pitfall-card">
+          <strong>Mistake 5: Forgetting Stateful Components</strong>
+          <p>Kubernetes deployments fail over easily — pods reschedule, Karpenter provisions new nodes. Databases, message queues, and caches do not. Multi-region failover planning that covers EKS but not RDS, Amazon MQ, and ElastiCache is incomplete. Every stateful component needs its own failover strategy.</p>
+        </div>
+
+        <div class="pitfall-card">
+          <strong>Mistake 6: No Pre-Warmed Capacity in the Secondary Region</strong>
+          <p>A cold standby EKS cluster with <code>min_size = 0</code> requires 8-12 minutes to provision EC2 nodes, bootstrap the kubelet, and schedule pods when failover occurs. A warm standby with <code>min_size = 1</code> per AZ can absorb traffic within 2-3 minutes. The cost difference is typically 2-3 <code>m5.large</code> instances — approximately $130/month for the capability of meeting a 5-minute RTO.</p>
+        </div>
+
+        <!-- Architecture Decision Matrix -->
+        <h2 id="decision-matrix">Architecture Decision Matrix</h2>
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th>Requirement</th>
+              <th>Active-Passive Cold</th>
+              <th>Active-Passive Warm</th>
+              <th>Active-Active</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>RTO</strong></td>
+              <td>15-60 min</td>
+              <td>2-10 min</td>
+              <td>&lt; 30 sec</td>
+            </tr>
+            <tr>
+              <td><strong>RPO</strong></td>
+              <td>Minutes</td>
+              <td>Seconds</td>
+              <td>Near-zero</td>
+            </tr>
+            <tr>
+              <td><strong>Cost vs single-region</strong></td>
+              <td>~1.1×</td>
+              <td>~1.3×</td>
+              <td>~2×</td>
+            </tr>
+            <tr>
+              <td><strong>Traffic latency benefit</strong></td>
+              <td>❌ None</td>
+              <td>❌ None</td>
+              <td>✅ Regional routing</td>
+            </tr>
+            <tr>
+              <td><strong>Data consistency</strong></td>
+              <td>Eventual</td>
+              <td>Eventual</td>
+              <td>Configurable</td>
+            </tr>
+            <tr>
+              <td><strong>Operational complexity</strong></td>
+              <td>Low</td>
+              <td>Medium</td>
+              <td>High</td>
+            </tr>
+            <tr>
+              <td><strong>Best for</strong></td>
+              <td>Cost-constrained DR</td>
+              <td>Standard enterprise DR</td>
+              <td>Global platforms, zero-downtime SLAs</td>
+            </tr>
+            <tr>
+              <td><strong>Database pattern</strong></td>
+              <td>RDS read replica</td>
+              <td>Aurora Global</td>
+              <td>Aurora Global or DynamoDB Global Tables</td>
+            </tr>
+            <tr>
+              <td><strong>DNS pattern</strong></td>
+              <td>Failover routing</td>
+              <td>Failover routing</td>
+              <td>Latency routing + health checks</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Golden Rule -->
+        <div style="background: var(--aws-highlight); padding: 32px; border-radius: 8px; border: 1px solid var(--aws-border); margin: 40px 0; text-align: center; border-left: 4px solid var(--aws-orange);">
+          <i class="fa-solid fa-globe" style="font-size: 36px; color: var(--aws-orange); display: block; margin-bottom: 16px;"></i>
+          <h3 style="font-size: 18px; color: var(--aws-text); margin-top: 0; margin-bottom: 12px;">The Golden Rule</h3>
+          <p style="font-size: 15px; color: var(--aws-text-light); font-style: italic; margin-bottom: 0;">
+            "Multi-region is not a feature you add at the end — it is an architectural constraint you design for from the beginning. Non-overlapping CIDRs, stateless application tiers, externally replicable databases, and Route 53 health checks are all decisions that need to be made before you have traffic, not after your first outage. Choose Active-Passive when your RTO and RPO allow minutes of recovery and your budget does not justify double capacity. Choose Active-Active when your SLA demands near-zero recovery time or when you have real users in multiple regions who benefit from latency routing. And test your failover quarterly — an HA architecture that has never been exercised is a disaster plan nobody has read."
+          </p>
+        </div>
+
+      </div><!-- End Blog Body -->
+
+      <div class="share-section">
+        <span style="font-weight: 700; color: var(--aws-text-light);">Share this article:</span>
+        <a href="https://www.linkedin.com/sharing/share-offsite/?url=https://www.ankushpanday.com/blog/architecture/multi-region-high-availability.html"
+          target="_blank" class="share-btn linkedin-btn">
+          <i class="fa-brands fa-linkedin"></i> Share on LinkedIn
+        </a>
+      </div>
+
+      <div class="author-card">
+        <div class="author-img"><i class="fa-solid fa-user-tie"></i></div>
+        <div>
+          <h4 style="margin: 0 0 8px 0; color: var(--aws-text);">Ankush Panday</h4>
+          <p style="margin: 0; font-size: 14px; color: var(--aws-text-light);">Specializing in highly scalable AWS infrastructure and automated quality engineering.</p>
+          <a href="https://www.linkedin.com/in/ankush-panday-39b97824/" target="_blank"
+            style="display: inline-block; margin-top: 10px; color: var(--aws-blue); text-decoration: none; font-size: 13px; font-weight: 600;">Connect
+            on LinkedIn <i class="fa-solid fa-external-link" style="font-size: 10px;"></i></a>
+        </div>
+      </div>
+
+    </article>
+
+    <!-- NAVIGATION LINKS -->
+    <div class="nav-links">
+      <a href="../finops/aws-finops-in-practice.html" class="nav-link">
+        <i class="fa-solid fa-arrow-left"></i> Previous: AWS FinOps in Practice
+      </a>
+      <a href="../index.html" class="nav-link">
+        Return to Blog Hub <i class="fa-solid fa-arrow-right"></i>
+      </a>
+    </div>
+
+  </main>
+
+  <footer class="aws-footer">
+    Built for Performance. Architected for the Cloud. &bull; &copy; 2026 <span>Ankush Panday</span>
+  </footer>
+
+  <script>
+    if (window.location.protocol === 'file:') {
+      document.querySelectorAll('a').forEach(link => {
+        let href = link.getAttribute('href');
+        if (href && !href.startsWith('http') && !href.startsWith('#')) {
+          let path = href.split('#')[0];
+          let anchor = href.split('#')[1] ? '#' + href.split('#')[1] : '';
+          if (path && !path.endsWith('.html') && !path.endsWith('/')) {
+            link.setAttribute('href', path + '.html' + anchor);
+          }
+        }
+      });
+    }
+    document.addEventListener('DOMContentLoaded', () => {
+      document.querySelectorAll('pre code:not(.nohighlight)').forEach(block => {
+        hljs.highlightElement(block);
+      });
+    });
+  </script>
+
+</body>
+</html>

@@ -1099,7 +1099,7 @@ What is your budget?
 
         <!-- Golden Rule -->
         <div style="background: var(--aws-highlight); padding: 32px; border-radius: 8px; border: 1px solid var(--aws-border); margin: 40px 0; text-align: center; border-left: 4px solid var(--aws-orange);">
-          <i class="fa-solid fa-globe" style="font-size: 36px; color: var(--aws-orange); display: block; margin-bottom: 16px;"></i>
+          <i class="fa-solid fa-circle-nodes" style="font-size: 36px; color: var(--aws-orange); display: block; margin-bottom: 16px;"></i>
           <h3 style="font-size: 18px; color: var(--aws-text); margin-top: 0; margin-bottom: 12px;">The Golden Rule</h3>
           <p style="font-size: 15px; color: var(--aws-text-light); font-style: italic; margin-bottom: 0;">
             "Multi-region is not a feature you add at the end — it is an architectural constraint you design for from the beginning. Non-overlapping CIDRs, stateless application tiers, externally replicable databases, and Route 53 health checks are all decisions that need to be made before you have traffic, not after your first outage. Choose Active-Passive when your RTO and RPO allow minutes of recovery and your budget does not justify double capacity. Choose Active-Active when your SLA demands near-zero recovery time or when you have real users in multiple regions who benefit from latency routing. And test your failover quarterly — an HA architecture that has never been exercised is a disaster plan nobody has read."

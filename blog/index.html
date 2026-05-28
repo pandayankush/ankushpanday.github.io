@@ -126,6 +126,28 @@
       cursor: default;
       pointer-events: none;
     }
+
+    /* ===== Learning Path ===== */
+    .learning-path { margin-bottom: 56px; }
+    .learning-path-title { font-size: 26px; color: var(--aws-text); margin: 0 0 8px 0; text-align: center; }
+    .learning-path-title .lp-accent { color: var(--aws-orange); }
+    .learning-path-subtitle { text-align: center; color: var(--aws-text-light); font-size: 15px; margin: 0 auto 28px auto; max-width: 620px; }
+    .lp-flow { display: flex; flex-wrap: wrap; align-items: stretch; justify-content: center; gap: 8px; }
+    .lp-phase { flex: 1 1 150px; min-width: 140px; max-width: 185px; background: var(--aws-white); border: 1px solid var(--aws-border); border-top: 3px solid var(--aws-orange); border-radius: 8px; padding: 14px 14px 16px 14px; text-decoration: none; display: flex; flex-direction: column; transition: transform 0.2s, box-shadow 0.2s; }
+    .lp-phase:hover { transform: translateY(-3px); box-shadow: 0 6px 18px rgba(0,0,0,0.10); }
+    .lp-phase-num { font-size: 11px; font-weight: 700; color: var(--aws-orange); text-transform: uppercase; letter-spacing: 0.6px; }
+    .lp-phase-title { font-size: 13px; font-weight: 700; color: var(--aws-text); margin: 6px 0 0 0; line-height: 1.35; flex-grow: 1; }
+    .lp-phase-count { font-size: 11px; color: var(--aws-text-light); margin-top: 8px; }
+    .lp-status { font-size: 10px; font-weight: 700; margin-top: 6px; text-transform: uppercase; letter-spacing: 0.4px; display: inline-flex; align-items: center; gap: 5px; }
+    .lp-status.done { color: #1a7f4e; }
+    .lp-status.soon { color: var(--aws-text-light); }
+    .lp-arrow { display: flex; align-items: center; justify-content: center; color: var(--aws-orange); font-size: 13px; flex: 0 0 auto; }
+    .lp-phase.lp-soon { border-top-color: #c4c9d0; opacity: 0.55; cursor: default; pointer-events: none; background: #f8f9fa; }
+    @media (max-width: 720px) {
+      .lp-flow { flex-direction: column; align-items: stretch; }
+      .lp-phase { max-width: none; }
+      .lp-arrow i { transform: rotate(90deg); }
+    }
   </style>
 </head>
 
@@ -153,8 +175,89 @@
     <p style="color: var(--aws-text-light); border-left: 4px solid var(--aws-blue); padding-left: 15px; margin-bottom: 40px;">
       Architecting for the Real World: AWS Deep Dives, Production Scaling Patterns, and the AI-Driven Cloud.</p>
 
+    <!-- ===== LEARNING PATH ===== -->
+    <section class="learning-path">
+      <h2 class="learning-path-title">The <span class="lp-accent">AWS Architecture</span> Learning Path</h2>
+      <p class="learning-path-subtitle">20 posts across 9 phases — from VPC fundamentals to enterprise-grade platforms.</p>
+
+      <div class="lp-flow">
+
+        <a href="#networking" class="lp-phase">
+          <span class="lp-phase-num">Phase 1</span>
+          <span class="lp-phase-title">AWS Networking</span>
+          <span class="lp-phase-count">7 posts</span>
+          <span class="lp-status done"><i class="fa-solid fa-circle-check"></i> Complete</span>
+        </a>
+        <span class="lp-arrow"><i class="fa-solid fa-chevron-right"></i></span>
+
+        <a href="#security" class="lp-phase">
+          <span class="lp-phase-num">Phase 2</span>
+          <span class="lp-phase-title">Identity &amp; Security</span>
+          <span class="lp-phase-count">2 posts</span>
+          <span class="lp-status done"><i class="fa-solid fa-circle-check"></i> Complete</span>
+        </a>
+        <span class="lp-arrow"><i class="fa-solid fa-chevron-right"></i></span>
+
+        <a href="#containers" class="lp-phase">
+          <span class="lp-phase-num">Phase 3</span>
+          <span class="lp-phase-title">Containers &amp; Platform</span>
+          <span class="lp-phase-count">4 posts</span>
+          <span class="lp-status done"><i class="fa-solid fa-circle-check"></i> Complete</span>
+        </a>
+        <span class="lp-arrow"><i class="fa-solid fa-chevron-right"></i></span>
+
+        <a href="#iac" class="lp-phase">
+          <span class="lp-phase-num">Phase 4</span>
+          <span class="lp-phase-title">IaC &amp; GitOps</span>
+          <span class="lp-phase-count">2 posts</span>
+          <span class="lp-status done"><i class="fa-solid fa-circle-check"></i> Complete</span>
+        </a>
+        <span class="lp-arrow"><i class="fa-solid fa-chevron-right"></i></span>
+
+        <a href="#deepdives" class="lp-phase">
+          <span class="lp-phase-num">Phase 5</span>
+          <span class="lp-phase-title">Production Deep Dives</span>
+          <span class="lp-phase-count">1 post</span>
+          <span class="lp-status done"><i class="fa-solid fa-circle-check"></i> Complete</span>
+        </a>
+        <span class="lp-arrow"><i class="fa-solid fa-chevron-right"></i></span>
+
+        <a href="#observability" class="lp-phase">
+          <span class="lp-phase-num">Phase 6</span>
+          <span class="lp-phase-title">Observability &amp; FinOps</span>
+          <span class="lp-phase-count">2 posts</span>
+          <span class="lp-status done"><i class="fa-solid fa-circle-check"></i> Complete</span>
+        </a>
+        <span class="lp-arrow"><i class="fa-solid fa-chevron-right"></i></span>
+
+        <a href="#advanced" class="lp-phase">
+          <span class="lp-phase-num">Phase 7</span>
+          <span class="lp-phase-title">Advanced Architecture</span>
+          <span class="lp-phase-count">2 posts</span>
+          <span class="lp-status done"><i class="fa-solid fa-circle-check"></i> Complete</span>
+        </a>
+        <span class="lp-arrow"><i class="fa-solid fa-chevron-right"></i></span>
+
+        <div class="lp-phase lp-soon">
+          <span class="lp-phase-num">Phase 8</span>
+          <span class="lp-phase-title">Case Studies</span>
+          <span class="lp-phase-count">3 posts planned</span>
+          <span class="lp-status soon"><i class="fa-regular fa-clock"></i> Coming Soon</span>
+        </div>
+        <span class="lp-arrow"><i class="fa-solid fa-chevron-right"></i></span>
+
+        <div class="lp-phase lp-soon">
+          <span class="lp-phase-num">Phase 9</span>
+          <span class="lp-phase-title">AI + Cloud</span>
+          <span class="lp-phase-count">2 posts planned</span>
+          <span class="lp-status soon"><i class="fa-regular fa-clock"></i> Coming Soon</span>
+        </div>
+
+      </div>
+    </section>
+
     <!-- CATEGORY 1: AWS Networking Series -->
-    <div style="background: var(--aws-header); color: white; padding: 12px 20px; border-radius: 6px; display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+    <div id="networking" style="scroll-margin-top: 90px; background: var(--aws-header); color: white; padding: 12px 20px; border-radius: 6px; display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
       <i class="fa-solid fa-network-wired" style="color: var(--aws-orange);"></i>
       <span style="font-weight: 700; text-transform: uppercase; letter-spacing: 1px; font-size: 13px;">AWS Networking Series</span>
     </div>
@@ -275,7 +378,7 @@
     </div>
 
     <!-- CATEGORY 2: AWS Security Series -->
-    <div style="background: var(--aws-header); color: white; padding: 12px 20px; border-radius: 6px; display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+    <div id="security" style="scroll-margin-top: 90px; background: var(--aws-header); color: white; padding: 12px 20px; border-radius: 6px; display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
       <i class="fa-solid fa-shield-halved" style="color: var(--aws-orange);"></i>
       <span style="font-weight: 700; text-transform: uppercase; letter-spacing: 1px; font-size: 13px;">AWS Security Series</span>
     </div>
@@ -316,7 +419,7 @@
     </div>
 
     <!-- CATEGORY 3: AWS Containers & Platform Engineering -->
-    <div style="background: var(--aws-header); color: white; padding: 12px 20px; border-radius: 6px; display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+    <div id="containers" style="scroll-margin-top: 90px; background: var(--aws-header); color: white; padding: 12px 20px; border-radius: 6px; display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
       <i class="fa-solid fa-cubes" style="color: var(--aws-orange);"></i>
       <span style="font-weight: 700; text-transform: uppercase; letter-spacing: 1px; font-size: 13px;">AWS Containers &amp; Platform Engineering</span>
     </div>
@@ -389,7 +492,7 @@
       </a>
 
       <!-- Part 14 -->
-      <a href="iac/terraform-at-scale-enterprise-aws.html" class="blog-card">
+      <a href="iac/terraform-at-scale-enterprise-aws.html" id="iac" style="scroll-margin-top: 90px;" class="blog-card">
         <div class="blog-card-img">
           <img src="../images/aws-terraform-iac-enterprise-structure.png"
             alt="Terraform at Scale Enterprise IaC Structure">
@@ -423,7 +526,7 @@
     </div>
 
     <!-- CATEGORY 4: AWS Observability -->
-    <div style="background: var(--aws-header); color: white; padding: 12px 20px; border-radius: 6px; display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+    <div id="observability" style="scroll-margin-top: 90px; background: var(--aws-header); color: white; padding: 12px 20px; border-radius: 6px; display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
       <i class="fa-solid fa-chart-line" style="color: var(--aws-orange);"></i>
       <span style="font-weight: 700; text-transform: uppercase; letter-spacing: 1px; font-size: 13px;">AWS Observability</span>
     </div>
@@ -471,7 +574,7 @@
     </div>
 
     <!-- CATEGORY 6: Advanced Architecture Patterns -->
-    <div style="background: var(--aws-header); color: white; padding: 12px 20px; border-radius: 6px; display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+    <div id="advanced" style="scroll-margin-top: 90px; background: var(--aws-header); color: white; padding: 12px 20px; border-radius: 6px; display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
       <i class="fa-solid fa-globe" style="color: var(--aws-orange);"></i>
       <span style="font-weight: 700; text-transform: uppercase; letter-spacing: 1px; font-size: 13px;">Advanced Architecture Patterns</span>
     </div>
@@ -509,7 +612,7 @@
     </div>
 
     <!-- CATEGORY 7: Production Deep Dives -->
-    <div style="background: var(--aws-header); color: white; padding: 12px 20px; border-radius: 6px; display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+    <div id="deepdives" style="scroll-margin-top: 90px; background: var(--aws-header); color: white; padding: 12px 20px; border-radius: 6px; display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
       <i class="fa-solid fa-microscope" style="color: var(--aws-orange);"></i>
       <span style="font-weight: 700; text-transform: uppercase; letter-spacing: 1px; font-size: 13px;">Production Deep Dives</span>
     </div>

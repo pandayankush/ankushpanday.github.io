@@ -128,11 +128,7 @@
     }
 
     /* ===== Learning Path ===== */
-    .learning-path { margin-bottom: 56px; }
-    .learning-path-eyebrow { text-align: center; color: var(--aws-orange); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 10px; display: flex; align-items: center; justify-content: center; gap: 7px; }
-    .learning-path-title { font-size: 28px; font-weight: 700; color: var(--aws-text); margin: 0 0 10px 0; text-align: center; letter-spacing: -0.3px; }
-    .learning-path-title .lp-accent { color: var(--aws-orange); }
-    .learning-path-subtitle { text-align: center; color: var(--aws-text-light); font-size: 15px; line-height: 1.6; margin: 0 auto 28px auto; max-width: 700px; }
+    .learning-path-subtitle { text-align: center; color: var(--aws-text-light); font-size: 14px; line-height: 1.6; margin: 0 auto 24px auto; max-width: 700px; }
     .lp-flow { display: flex; flex-wrap: wrap; align-items: stretch; justify-content: center; gap: 8px; }
     .lp-phase { flex: 1 1 150px; min-width: 140px; max-width: 185px; background: var(--aws-white); border: 1px solid var(--aws-border); border-top: 3px solid var(--aws-orange); border-radius: 8px; padding: 14px 14px 16px 14px; text-decoration: none; display: flex; flex-direction: column; transition: transform 0.2s, box-shadow 0.2s; }
     .lp-phase:hover { transform: translateY(-3px); box-shadow: 0 6px 18px rgba(0,0,0,0.10); }
@@ -177,12 +173,15 @@
       Architecting for the Real World: AWS Deep Dives, Production Scaling Patterns, and the AI-Driven Cloud.</p>
 
     <!-- ===== LEARNING PATH ===== -->
-    <section class="learning-path">
-      <div class="learning-path-eyebrow"><i class="fa-solid fa-route"></i> Learning Path</div>
-      <h2 class="learning-path-title">The AWS <span class="lp-accent">Platform Engineering</span> Roadmap</h2>
-      <p class="learning-path-subtitle">20 published posts across 7 phases — networking, security, containers, IaC, observability, and advanced architecture patterns.</p>
+    <section class="section-card">
+      <div class="section-card-header">
+        <h2><i class="fa-solid fa-route icon"></i> The AWS Platform Engineering Roadmap</h2>
+        <span style="font-size: 12px; color: var(--aws-text-light); font-weight: 600; white-space: nowrap;">20 posts · 7 phases</span>
+      </div>
+      <div class="section-card-body">
+        <p class="learning-path-subtitle">20 published posts across 7 phases — networking, security, containers, IaC, observability, and advanced architecture patterns.</p>
 
-      <div class="lp-flow">
+        <div class="lp-flow">
 
         <a href="#networking" class="lp-phase">
           <span class="lp-phase-num">Phase 1</span>
@@ -255,7 +254,8 @@
           <span class="lp-status soon"><i class="fa-regular fa-clock"></i> Coming Soon</span>
         </div>
 
-      </div>
+      </div><!-- end lp-flow -->
+      </div><!-- end section-card-body -->
     </section>
 
     <!-- CATEGORY 1: AWS Networking Series -->

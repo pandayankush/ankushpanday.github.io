@@ -17,6 +17,21 @@
     }
     .aws-topnav .logo { white-space: nowrap; flex-shrink: 0; }
     .nav-icon-btn { white-space: nowrap; flex-shrink: 0; }
+
+    /* Featured blogs — 3 columns × 2 rows, one card per domain */
+    .featured-blog-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-top: 28px; }
+    .featured-blog-card { text-decoration: none; display: flex; flex-direction: column; border: 1px solid var(--aws-border); border-radius: 8px; overflow: hidden; background: var(--aws-white); transition: transform 0.2s, box-shadow 0.2s; }
+    .featured-blog-card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,0.10); }
+    .featured-blog-thumb { position: relative; background: #f8f9fa; border-bottom: 1px solid var(--aws-border); height: 170px; display: flex; align-items: center; justify-content: center; }
+    .featured-blog-thumb img { max-width: 80%; max-height: 85%; object-fit: contain; }
+    .featured-blog-body { padding: 20px; flex-grow: 1; display: flex; flex-direction: column; }
+    .featured-blog-domain { font-size: 11px; color: var(--aws-orange); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+    .featured-blog-heading { font-size: 15px; font-weight: 700; color: var(--aws-text); margin: 0 0 10px 0; line-height: 1.4; }
+    .featured-blog-excerpt { font-size: 13px; color: var(--aws-text-light); line-height: 1.6; margin-bottom: 16px; flex-grow: 1; }
+    .featured-blog-meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 11px; color: var(--aws-text-light); }
+    .featured-blog-badge { position: absolute; top: 10px; right: 10px; background: var(--aws-orange); color: white; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+    @media (max-width: 900px) { .featured-blog-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 600px) { .featured-blog-grid { grid-template-columns: 1fr; } }
   </style>
 </head>
 
@@ -347,26 +362,19 @@
             systems at Rabobank and WCC Group.
           </p>
 
-          <!-- FEATURED BLOGS — one card per category -->
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 24px; margin-top: 28px;">
+          <!-- FEATURED BLOGS — 3 columns × 2 rows, one card per domain -->
+          <div class="featured-blog-grid">
 
-            <!-- Card 1: AWS Networking — Part 7 (Network Firewall) -->
-            <a href="blog/security/network-firewall-vs-security-groups.html"
-              style="text-decoration: none; display: flex; flex-direction: column; border: 1px solid var(--aws-border); border-radius: 8px; overflow: hidden; background: var(--aws-white); transition: transform 0.2s, box-shadow 0.2s;"
-              onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 8px 24px rgba(0,0,0,0.10)'"
-              onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='none'">
-              <div style="background: #f8f9fa; border-bottom: 1px solid var(--aws-border); height: 180px; display: flex; align-items: center; justify-content: center;">
-                <img src="images/aws-network-firewall-security-groups-nacl.png" alt="AWS Network Firewall vs SGs vs NACLs"
-                  style="max-width: 80%; max-height: 85%; object-fit: contain;">
+            <!-- Row 1, Card 1: AWS Networking -->
+            <a href="blog/security/network-firewall-vs-security-groups.html" class="featured-blog-card">
+              <div class="featured-blog-thumb">
+                <img src="images/aws-network-firewall-security-groups-nacl.png" alt="AWS Network Firewall vs SGs vs NACLs">
               </div>
-              <div style="padding: 20px; flex-grow: 1; display: flex; flex-direction: column;">
-                <div style="font-size: 11px; color: var(--aws-orange); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">
-                  AWS Networking</div>
-                <h3 style="font-size: 15px; font-weight: 700; color: var(--aws-text); margin-bottom: 10px; line-height: 1.4;">
-                  AWS Network Firewall vs Security Groups vs NACLs</h3>
-                <p style="font-size: 13px; color: var(--aws-text-light); line-height: 1.6; margin-bottom: 16px; flex-grow: 1;">
-                  Layered defence-in-depth: when to enforce at the subnet boundary, when at the instance, and when you need stateful deep-packet inspection.</p>
-                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 11px; color: var(--aws-text-light);">
+              <div class="featured-blog-body">
+                <div class="featured-blog-domain">AWS Networking</div>
+                <h3 class="featured-blog-heading">AWS Network Firewall vs Security Groups vs NACLs</h3>
+                <p class="featured-blog-excerpt">Layered defence-in-depth: when to enforce at the subnet boundary, when at the instance, and when you need stateful deep-packet inspection.</p>
+                <div class="featured-blog-meta">
                   <span><i class="fa-regular fa-calendar"></i> May 6, 2026</span>
                   <span>•</span>
                   <span><i class="fa-regular fa-clock"></i> 22 min</span>
@@ -375,23 +383,16 @@
               </div>
             </a>
 
-            <!-- Card 2: AWS Security — Part 9 (GuardDuty, Security Hub & WAF) -->
-            <a href="blog/security/aws-security-in-depth.html"
-              style="text-decoration: none; display: flex; flex-direction: column; border: 1px solid var(--aws-border); border-radius: 8px; overflow: hidden; background: var(--aws-white); transition: transform 0.2s, box-shadow 0.2s;"
-              onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 8px 24px rgba(0,0,0,0.10)'"
-              onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='none'">
-              <div style="background: #f8f9fa; border-bottom: 1px solid var(--aws-border); height: 180px; display: flex; align-items: center; justify-content: center;">
-                <img src="images/aws-security-in-depth-architecture.png" alt="AWS Security in Depth"
-                  style="max-width: 80%; max-height: 85%; object-fit: contain;">
+            <!-- Row 1, Card 2: AWS Security -->
+            <a href="blog/security/aws-security-in-depth.html" class="featured-blog-card">
+              <div class="featured-blog-thumb">
+                <img src="images/aws-security-in-depth-architecture.png" alt="AWS Security in Depth">
               </div>
-              <div style="padding: 20px; flex-grow: 1; display: flex; flex-direction: column;">
-                <div style="font-size: 11px; color: var(--aws-orange); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">
-                  AWS Security</div>
-                <h3 style="font-size: 15px; font-weight: 700; color: var(--aws-text); margin-bottom: 10px; line-height: 1.4;">
-                  AWS Security in Depth: GuardDuty, Security Hub &amp; WAF</h3>
-                <p style="font-size: 13px; color: var(--aws-text-light); line-height: 1.6; margin-bottom: 16px; flex-grow: 1;">
-                  Beyond prevention: continuous monitoring, automated threat response, and application-layer protection using native AWS security services.</p>
-                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 11px; color: var(--aws-text-light);">
+              <div class="featured-blog-body">
+                <div class="featured-blog-domain">AWS Security</div>
+                <h3 class="featured-blog-heading">AWS Security in Depth: GuardDuty, Security Hub &amp; WAF</h3>
+                <p class="featured-blog-excerpt">Beyond prevention: continuous monitoring, automated threat response, and application-layer protection using native AWS security services.</p>
+                <div class="featured-blog-meta">
                   <span><i class="fa-regular fa-calendar"></i> May 8, 2026</span>
                   <span>•</span>
                   <span><i class="fa-regular fa-clock"></i> 25 min</span>
@@ -400,24 +401,34 @@
               </div>
             </a>
 
-            <!-- Card 3: Containers & Platform Engineering — Part 15 (GitOps/ArgoCD) -->
-            <a href="blog/iac/argocd-gitops-helm-eks.html"
-              style="text-decoration: none; display: flex; flex-direction: column; border: 1px solid var(--aws-border); border-radius: 8px; overflow: hidden; background: var(--aws-white); transition: transform 0.2s, box-shadow 0.2s;"
-              onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 8px 24px rgba(0,0,0,0.10)'"
-              onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='none'">
-              <div style="position: relative; background: #f8f9fa; border-bottom: 1px solid var(--aws-border); height: 180px; display: flex; align-items: center; justify-content: center;">
-                <img src="images/argocd-gitops-eks-helm.png" alt="GitOps with ArgoCD Helm on EKS"
-                  style="max-width: 80%; max-height: 85%; object-fit: contain;">
-                <span style="position: absolute; top: 10px; right: 10px; background: var(--aws-orange); color: white; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.5px;">Latest</span>
+            <!-- Row 1, Card 3: Containers & Kubernetes -->
+            <a href="blog/compute/karpenter-vs-cluster-autoscaler-eks.html" class="featured-blog-card">
+              <div class="featured-blog-thumb">
+                <img src="images/karpenter-vs-cluster-autoscaler-eks.png" alt="Karpenter vs Cluster Autoscaler on EKS">
               </div>
-              <div style="padding: 20px; flex-grow: 1; display: flex; flex-direction: column;">
-                <div style="font-size: 11px; color: var(--aws-orange); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">
-                  Containers &amp; Platform Engineering</div>
-                <h3 style="font-size: 15px; font-weight: 700; color: var(--aws-text); margin-bottom: 10px; line-height: 1.4;">
-                  GitOps with ArgoCD + Helm on EKS: App of Apps, Sync Waves &amp; Multi-Cluster</h3>
-                <p style="font-size: 13px; color: var(--aws-text-light); line-height: 1.6; margin-bottom: 16px; flex-grow: 1;">
-                  App of Apps bootstrap, ApplicationSet multi-env deployments, Sync Waves for ordered rollout, multi-cluster management, RBAC with SSO, and Notifications. Full YAML included.</p>
-                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 11px; color: var(--aws-text-light);">
+              <div class="featured-blog-body">
+                <div class="featured-blog-domain">Containers &amp; Kubernetes</div>
+                <h3 class="featured-blog-heading">Karpenter vs Cluster Autoscaler: Running Both in Production</h3>
+                <p class="featured-blog-excerpt">Three-tier compute — Cluster Autoscaler for On-Demand baseline, Karpenter for Spot. Terraform, Helm, interruption handling, and the real EKS cost levers.</p>
+                <div class="featured-blog-meta">
+                  <span><i class="fa-regular fa-calendar"></i> May 18, 2026</span>
+                  <span>•</span>
+                  <span><i class="fa-regular fa-clock"></i> 30 min</span>
+                  <span class="tag" style="font-size: 10px; padding: 2px 7px; margin-left: 4px;">EKS</span>
+                </div>
+              </div>
+            </a>
+
+            <!-- Row 2, Card 4: IaC & GitOps -->
+            <a href="blog/iac/argocd-gitops-helm-eks.html" class="featured-blog-card">
+              <div class="featured-blog-thumb">
+                <img src="images/argocd-gitops-eks-helm.png" alt="GitOps with ArgoCD Helm on EKS">
+              </div>
+              <div class="featured-blog-body">
+                <div class="featured-blog-domain">IaC &amp; GitOps</div>
+                <h3 class="featured-blog-heading">GitOps with ArgoCD + Helm on EKS: App of Apps &amp; Sync Waves</h3>
+                <p class="featured-blog-excerpt">App of Apps bootstrap, ApplicationSet multi-env deployments, Sync Waves for ordered rollout, multi-cluster RBAC with SSO. Full YAML included.</p>
+                <div class="featured-blog-meta">
                   <span><i class="fa-regular fa-calendar"></i> May 20, 2026</span>
                   <span>•</span>
                   <span><i class="fa-regular fa-clock"></i> 32 min</span>
@@ -426,22 +437,39 @@
               </div>
             </a>
 
-            <!-- Card 4: Production Deep Dives -->
-            <a href="blog/deep-dives/eks-karpenter-shutdown.html" style="display: flex; flex-direction: column; border: 1px solid var(--aws-border); border-radius: 8px; overflow: hidden; background: var(--aws-white); text-decoration: none; transition: box-shadow 0.2s;">
-              <div style="background: #f8f9fa; border-bottom: 1px solid var(--aws-border); height: 180px; display: flex; align-items: center; justify-content: center;">
-                <img src="images/eks-karpenter-step-functions-shutdown.png" alt="EKS Karpenter Step Functions Shutdown"
-                  style="max-width: 80%; max-height: 85%; object-fit: contain;">
+            <!-- Row 2, Card 5: FinOps & Cost -->
+            <a href="blog/finops/aws-finops-in-practice.html" class="featured-blog-card">
+              <div class="featured-blog-thumb">
+                <img src="images/aws-finops-cost-optimisation-practitioner.png" alt="AWS FinOps Cost Optimisation">
               </div>
-              <div style="padding: 20px; flex-grow: 1; display: flex; flex-direction: column;">
-                <div style="font-size: 11px; color: var(--aws-orange); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">
-                  Production Deep Dives</div>
-                <h3 style="font-size: 15px; font-weight: 700; color: var(--aws-text); margin-bottom: 10px; line-height: 1.4;">
-                  Stopping EKS Test Environments: Karpenter, Step Functions &amp; the Race Condition Fix</h3>
-                <p style="font-size: 13px; color: var(--aws-text-light); line-height: 1.6; margin-bottom: 16px; flex-grow: 1;">
-                  Multi-phase shutdown of EKS worker nodes and Karpenter-provisioned nodes overnight using AWS Step Functions, Lambda, and tag-based node identification.</p>
-                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 11px; color: var(--aws-text-light);">
-                  <span><i class="fa-regular fa-clock"></i> 15 min</span>
-                  <span class="tag" style="font-size: 10px; padding: 2px 7px; margin-left: 4px;">Deep Dive</span>
+              <div class="featured-blog-body">
+                <div class="featured-blog-domain">FinOps &amp; Cost</div>
+                <h3 class="featured-blog-heading">AWS FinOps in Practice: Cost Optimisation Strategies</h3>
+                <p class="featured-blog-excerpt">Cost optimisation across EKS, ECS, VPC, and S3 — Spot, Savings Plans, Gateway Endpoints, gp3 migration, and the operating model that prevents cost regression.</p>
+                <div class="featured-blog-meta">
+                  <span><i class="fa-regular fa-calendar"></i> May 26, 2026</span>
+                  <span>•</span>
+                  <span><i class="fa-regular fa-clock"></i> 20 min</span>
+                  <span class="tag" style="font-size: 10px; padding: 2px 7px; margin-left: 4px;">FinOps</span>
+                </div>
+              </div>
+            </a>
+
+            <!-- Row 2, Card 6: Advanced Architecture (Latest) -->
+            <a href="blog/architecture/multi-account-aws-strategy.html" class="featured-blog-card">
+              <div class="featured-blog-thumb">
+                <img src="images/aws-multi-account-strategy.png" alt="Multi-Account AWS Strategy">
+                <span class="featured-blog-badge">Latest</span>
+              </div>
+              <div class="featured-blog-body">
+                <div class="featured-blog-domain">Advanced Architecture</div>
+                <h3 class="featured-blog-heading">Multi-Account AWS Strategy: Landing Zones &amp; Control Tower</h3>
+                <p class="featured-blog-excerpt">AWS Organizations and OU design, Service Control Policies, Control Tower Landing Zones, AFT, and centralised networking + security at org scale.</p>
+                <div class="featured-blog-meta">
+                  <span><i class="fa-regular fa-calendar"></i> May 28, 2026</span>
+                  <span>•</span>
+                  <span><i class="fa-regular fa-clock"></i> 24 min</span>
+                  <span class="tag" style="font-size: 10px; padding: 2px 7px; margin-left: 4px;">Architecture</span>
                 </div>
               </div>
             </a>

@@ -1,0 +1,1178 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Multi-Account AWS Strategy: Landing Zones, Control Tower &amp; Org-Level Networking | Ankush Panday</title>
+  <meta name="description"
+    content="Building a secure multi-account AWS Organisation — OU design, Service Control Policies, Control Tower Landing Zones, Account Factory for Terraform, centralised networking with TGW + RAM, and a centralised security account model.">
+  <meta name="keywords"
+    content="AWS, Organizations, LandingZone, ControlTower, MultiAccount, SCPs, IAMIdentityCenter, TransitGateway, RAM, AFT, Governance, Terraform">
+  <link rel="canonical" href="https://www.ankushpanday.com/blog/architecture/multi-account-aws-strategy.html">
+
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://www.ankushpanday.com/blog/architecture/multi-account-aws-strategy.html">
+  <meta property="og:title" content="Multi-Account AWS Strategy: Landing Zones, Control Tower &amp; Org-Level Networking">
+  <meta property="og:description" content="Building a secure multi-account AWS Organisation — OU design, SCPs, Control Tower Landing Zones, AFT, centralised networking with TGW + RAM, and a centralised security account model.">
+  <meta property="og:image" content="https://www.ankushpanday.com/images/aws-multi-account-strategy.png">
+
+  <link rel="stylesheet" href="../../style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    .blog-page-container { max-width: 900px; margin: 100px auto 40px auto; padding: 0 20px; min-height: calc(100vh - 200px); }
+    .back-btn { display: inline-flex; align-items: center; gap: 8px; color: var(--aws-blue); text-decoration: none; font-weight: 500; margin-bottom: 24px; }
+    .blog-content-card { background: var(--aws-white); border: 1px solid var(--aws-border); border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+    .blog-header { background: #f8f9fa; padding: 40px; border-bottom: 1px solid var(--aws-border); }
+    .blog-body { padding: 40px; line-height: 1.8; font-size: 16px; color: var(--aws-text); }
+    .blog-body h2 { margin-top: 48px; font-size: 26px; color: var(--aws-text); border-bottom: 2px solid var(--aws-orange); display: inline-block; padding-bottom: 4px; margin-bottom: 24px; }
+    .blog-body h3 { margin-top: 32px; font-size: 22px; color: var(--aws-blue); margin-bottom: 16px; }
+    .blog-body h4 { margin-top: 24px; font-size: 18px; color: var(--aws-text); font-weight: 700; }
+    .blog-body p { margin-bottom: 20px; }
+    .blog-body ul, .blog-body ol { margin-bottom: 24px; padding-left: 24px; }
+    .blog-body li { margin-bottom: 12px; }
+    .blog-body strong { color: var(--aws-text); }
+    .blog-body blockquote { font-style: italic; color: var(--aws-text-light); margin: 30px 0; border-left: 4px solid var(--aws-orange); background: #fcfcfc; padding: 20px; }
+    pre { background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; margin: 24px 0; font-size: 13px; line-height: 1.5; border-left: 4px solid var(--aws-orange); }
+    code { font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; background: #f1f3f5; color: #232f3e; padding: 2px 4px; border-radius: 4px; border: 1px solid #dee2e6; font-size: 0.9em; }
+    pre code { background: none; color: inherit; padding: 0; border: none; font-size: inherit; }
+    .compare-table { width: 100%; border-collapse: collapse; text-align: left; margin-bottom: 30px; font-size: 14px; }
+    .compare-table th { background: var(--aws-blue); color: white; padding: 12px; border: 1px solid var(--aws-border); }
+    .compare-table td { padding: 12px; border: 1px solid var(--aws-border); vertical-align: top; }
+    .compare-table tr:nth-child(even) { background: #f9f9f9; }
+    .pitfall-card { background: #fcfcfc; border: 1px solid var(--aws-border); border-left: 4px solid #d13212; border-radius: 6px; padding: 20px 24px; margin-bottom: 16px; }
+    .pitfall-card strong { color: #d13212; font-size: 15px; }
+    .pitfall-card p { margin: 8px 0 0 0; font-size: 15px; color: var(--aws-text-light); line-height: 1.7; }
+    .author-card { display: flex; gap: 20px; align-items: center; padding: 30px; background: #fcfcfc; border-top: 1px solid var(--aws-border); }
+    .author-img { width: 80px; height: 80px; border-radius: 50%; background: var(--aws-highlight); display: flex; align-items: center; justify-content: center; font-size: 30px; color: var(--aws-orange); border: 2px solid var(--aws-border); flex-shrink: 0; }
+    .nav-links { display: flex; justify-content: space-between; margin: 40px 0; padding: 20px 0; border-top: 1px solid var(--aws-border); }
+    .nav-link { text-decoration: none; color: var(--aws-blue); font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 8px; }
+    .tag { display: inline-block; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: 600; margin-right: 8px; margin-bottom: 8px; }
+    .tag.blue { background: #e7f2fa; color: #0073bb; }
+    .tag.purple { background: #f2e7fa; color: #6b3fa0; }
+    .tag.green { background: #e7faf0; color: #1a7f4e; }
+    .share-section { padding: 20px 40px; border-top: 1px solid var(--aws-border); display: flex; justify-content: space-between; align-items: center; background: #fff; }
+    .share-btn { padding: 8px 16px; border: 1px solid var(--aws-border); border-radius: 4px; background: #fff; color: var(--aws-text); text-decoration: none; font-size: 14px; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
+    .share-btn:hover { background: #f8f9fa; }
+    .linkedin-btn { background: #0077b5; color: white; border: none; }
+    .linkedin-btn:hover { background: #005f8d; color: white; }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <style>
+    .hljs { background: transparent; padding: 0; color: #f8f8f2; }
+    .hljs-comment, .hljs-quote { color: #6a9955; }
+    .hljs-keyword, .hljs-built_in, .hljs-type { color: #569cd6; }
+    .hljs-string, .hljs-title { color: #ce9178; }
+    .hljs-attr, .hljs-variable, .hljs-selector-id { color: #9cdcfe; }
+    .hljs-number, .hljs-literal { color: #b5cea8; }
+    .hljs-meta, .hljs-tag { color: #f8f8f2; }
+  </style>
+</head>
+
+<body>
+
+  <nav class="aws-topnav">
+    <a href="../../index.html" class="logo">
+      <i class="fa-solid fa-cloud" style="color: var(--aws-orange); font-size: 20px;"></i>
+      <span>Ankush Panday</span>
+    </a>
+    <div class="nav-spacer"></div>
+    <div class="nav-icons">
+      <a href="../../index.html" class="nav-icon-btn" style="text-decoration: none;">Portfolio Home</a>
+      <a href="../index.html" class="nav-icon-btn orange" style="text-decoration: none; font-weight: 600;">Blog Hub</a>
+      <button class="nav-icon-btn"><i class="fa-solid fa-earth-europe" style="margin-right: 6px; font-size: 12px; color: var(--aws-orange);"></i> Europe (nl-ams-1)</button>
+      <button class="nav-icon-btn">ankushpandey@hotmail.com <i class="fa-solid fa-caret-down" style="margin-left: 4px;"></i></button>
+    </div>
+  </nav>
+
+  <main class="blog-page-container">
+
+    <a href="../index.html" class="back-btn"><i class="fa-solid fa-arrow-left"></i> Back to Blog Hub</a>
+
+    <article class="blog-content-card">
+      <header class="blog-header">
+        <h1 style="font-size: 32px; color: var(--aws-text); margin-bottom: 16px; line-height: 1.2;">Multi-Account AWS Strategy: Landing Zones, Control Tower &amp; Org-Level Networking</h1>
+        <div style="display: flex; gap: 12px; align-items: center; color: var(--aws-text-light); font-size: 14px; flex-wrap: wrap;">
+          <span>May 28, 2026</span>
+          <span>&bull;</span>
+          <span>24 min read</span>
+          <span class="tag blue">Architecture</span>
+          <span class="tag purple">Governance</span>
+          <span class="tag green">MultiAccount</span>
+        </div>
+      </header>
+
+      <div class="blog-body">
+        <p style="font-style: italic; color: var(--aws-text-light); margin-bottom: 30px; border-left: 4px solid var(--aws-orange); padding-left: 15px;">
+          <strong>AWS Series | Part 19</strong> — Building secure, cost-optimised, cloud-native infrastructure on AWS.
+        </p>
+
+        <img src="../../images/aws-multi-account-strategy.png"
+          alt="Multi-Account AWS Strategy — Landing Zones, Control Tower and Org-Level Networking"
+          style="width: 100%; border-radius: 8px; margin-bottom: 32px; border: 1px solid var(--aws-border);">
+
+        <!-- TL;DR -->
+        <h2 id="tldr">TL;DR</h2>
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th>Concept</th>
+              <th>What It Does</th>
+              <th>When You Need It</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>AWS Organizations</strong></td>
+              <td>Groups accounts, enables consolidated billing, SCPs</td>
+              <td>From Day 1 — even with 2 accounts</td>
+            </tr>
+            <tr>
+              <td><strong>Control Tower</strong></td>
+              <td>Automated Landing Zone setup, guardrails, account vending</td>
+              <td>3+ accounts, compliance requirements</td>
+            </tr>
+            <tr>
+              <td><strong>Landing Zone</strong></td>
+              <td>Baseline account structure with security, logging, networking pre-wired</td>
+              <td>Any production enterprise</td>
+            </tr>
+            <tr>
+              <td><strong>Service Control Policies</strong></td>
+              <td>Account-level permission guardrails — overrides everything</td>
+              <td>Compliance, governance, preventing privilege escalation</td>
+            </tr>
+            <tr>
+              <td><strong>AWS SSO / IAM Identity Center</strong></td>
+              <td>Centralised human access across all accounts</td>
+              <td>3+ accounts — never manage IAM users per account</td>
+            </tr>
+            <tr>
+              <td><strong>Transit Gateway + RAM</strong></td>
+              <td>Shared networking hub across accounts</td>
+              <td>Multi-account VPC connectivity</td>
+            </tr>
+            <tr>
+              <td><strong>Centralised Security Account</strong></td>
+              <td>GuardDuty, Security Hub, CloudTrail aggregated here</td>
+              <td>Regulated environments</td>
+            </tr>
+            <tr>
+              <td><strong>Account Factory</strong></td>
+              <td>Automated new account provisioning with baseline config</td>
+              <td>Scaling beyond 5 accounts</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Introduction -->
+        <h2 id="intro">Introduction — Why One Account Is Never Enough</h2>
+        <p>Every AWS journey starts with one account. It feels clean — one bill, one console, one set of credentials. Then the team grows. Dev and prod share the same account and a misconfigured IAM policy in a development script causes an outage in production. The security audit asks for proof that production data is isolated from development access. A new team needs their own environment but gets admin access to the whole account because nobody has time to scope permissions properly.</p>
+        <p>The move to multiple accounts is not a complexity choice — it is a security and governance choice. AWS accounts are the strongest isolation boundary available. A security incident in a dev account cannot affect production if they are separate accounts. A runaway cost spike in an experimentation account cannot affect the production budget if they have separate billing. An engineer with admin access in staging cannot accidentally modify production infrastructure if staging is a different account.</p>
+        <p>This post covers the complete multi-account strategy: how to structure an AWS Organisation, how to deploy a Landing Zone that pre-wires security, logging, and networking for every new account, how Control Tower automates this at scale, how to share networking across accounts via Transit Gateway and RAM, and how SCPs enforce governance that no IAM policy can override.</p>
+
+        <!-- Section 1 -->
+        <h2 id="organizations">1. AWS Organizations — The Foundation</h2>
+
+        <h3>Account Structure — The OU Design</h3>
+        <p>Organisational Units (OUs) are the grouping mechanism in AWS Organizations. OUs let you apply SCPs to groups of accounts rather than individual accounts — a policy attached to the <code>Production</code> OU applies to every account inside it automatically.</p>
+
+<pre><code class="language-plaintext">Root
+├── Security OU
+│   ├── Security-Tooling Account    (GuardDuty admin, Security Hub, Macie)
+│   └── Log-Archive Account         (CloudTrail logs, Config records — immutable)
+│
+├── Infrastructure OU
+│   ├── Networking Account          (TGW, Direct Connect, DNS)
+│   └── Shared-Services Account     (ECR, Artifact Registry, tooling)
+│
+├── Workloads OU
+│   ├── Production OU
+│   │   ├── Production Account      (live workloads)
+│   │   └── Production-DR Account   (disaster recovery — Blog 18)
+│   └── Non-Production OU
+│       ├── Development Account
+│       ├── Staging Account
+│       └── Sandbox Account         (experimental — no prod data allowed)
+│
+└── Management OU
+    └── Management Account          (billing, Organizations, Control Tower)</code></pre>
+
+        <h4>Why this structure</h4>
+        <p>The <strong>Security OU</strong> is isolated from everything else. Even if an attacker compromises a workload account, they cannot modify the security tooling or tamper with the log archive — those accounts have SCPs that deny all actions except from approved security roles.</p>
+        <p>The <strong>Networking account</strong> owns all shared connectivity (TGW, Direct Connect, Route 53). VPCs in workload accounts connect to the TGW via RAM-shared attachments. No workload account needs its own internet gateway or VPN connection.</p>
+        <p>The <strong>Production OU</strong> has stricter SCPs than Non-Production — production accounts cannot create public S3 buckets, cannot disable CloudTrail, and cannot deploy resources in non-EU regions.</p>
+
+        <h3>Terraform — Organizations Structure</h3>
+<pre><code class="nohighlight"><span style="color:#6a9955;"># Management account — creates the Organisation and OU structure</span>
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_organizations_organization"</span> <span style="color:#ce9178;">"main"</span> {
+  <span style="color:#9cdcfe;">aws_service_access_principals</span> = [
+    <span style="color:#ce9178;">"cloudtrail.amazonaws.com"</span>,
+    <span style="color:#ce9178;">"config.amazonaws.com"</span>,
+    <span style="color:#ce9178;">"sso.amazonaws.com"</span>,
+    <span style="color:#ce9178;">"controltower.amazonaws.com"</span>,
+    <span style="color:#ce9178;">"guardduty.amazonaws.com"</span>,
+    <span style="color:#ce9178;">"securityhub.amazonaws.com"</span>,
+    <span style="color:#ce9178;">"macie.amazonaws.com"</span>,
+    <span style="color:#ce9178;">"ram.amazonaws.com"</span>,
+    <span style="color:#ce9178;">"cost-optimization-hub.bcm.amazonaws.com"</span>
+  ]
+
+  <span style="color:#9cdcfe;">feature_set</span> = <span style="color:#ce9178;">"ALL"</span>   <span style="color:#6a9955;"># Enables SCPs — do not use "CONSOLIDATED_BILLING" only</span>
+}
+
+<span style="color:#6a9955;"># Root OU — get the root ID</span>
+<span style="color:#569cd6;">data</span> <span style="color:#ce9178;">"aws_organizations_organization"</span> <span style="color:#ce9178;">"main"</span> {}
+
+<span style="color:#6a9955;"># Security OU</span>
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_organizations_organizational_unit"</span> <span style="color:#ce9178;">"security"</span> {
+  <span style="color:#9cdcfe;">name</span>      = <span style="color:#ce9178;">"Security"</span>
+  <span style="color:#9cdcfe;">parent_id</span> = <span style="color:#9cdcfe;">data</span>.aws_organizations_organization.main.roots[<span style="color:#b5cea8;">0</span>].id
+}
+
+<span style="color:#6a9955;"># Infrastructure OU</span>
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_organizations_organizational_unit"</span> <span style="color:#ce9178;">"infrastructure"</span> {
+  <span style="color:#9cdcfe;">name</span>      = <span style="color:#ce9178;">"Infrastructure"</span>
+  <span style="color:#9cdcfe;">parent_id</span> = <span style="color:#9cdcfe;">data</span>.aws_organizations_organization.main.roots[<span style="color:#b5cea8;">0</span>].id
+}
+
+<span style="color:#6a9955;"># Workloads OU</span>
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_organizations_organizational_unit"</span> <span style="color:#ce9178;">"workloads"</span> {
+  <span style="color:#9cdcfe;">name</span>      = <span style="color:#ce9178;">"Workloads"</span>
+  <span style="color:#9cdcfe;">parent_id</span> = <span style="color:#9cdcfe;">data</span>.aws_organizations_organization.main.roots[<span style="color:#b5cea8;">0</span>].id
+}
+
+<span style="color:#6a9955;"># Production OU — nested under Workloads</span>
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_organizations_organizational_unit"</span> <span style="color:#ce9178;">"production"</span> {
+  <span style="color:#9cdcfe;">name</span>      = <span style="color:#ce9178;">"Production"</span>
+  <span style="color:#9cdcfe;">parent_id</span> = <span style="color:#9cdcfe;">aws_organizations_organizational_unit</span>.workloads.id
+}
+
+<span style="color:#6a9955;"># Non-Production OU — nested under Workloads</span>
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_organizations_organizational_unit"</span> <span style="color:#ce9178;">"non_production"</span> {
+  <span style="color:#9cdcfe;">name</span>      = <span style="color:#ce9178;">"Non-Production"</span>
+  <span style="color:#9cdcfe;">parent_id</span> = <span style="color:#9cdcfe;">aws_organizations_organizational_unit</span>.workloads.id
+}
+
+<span style="color:#6a9955;"># Create accounts — vended into the correct OUs</span>
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_organizations_account"</span> <span style="color:#ce9178;">"security_tooling"</span> {
+  <span style="color:#9cdcfe;">name</span>      = <span style="color:#ce9178;">"security-tooling"</span>
+  <span style="color:#9cdcfe;">email</span>     = <span style="color:#ce9178;">"aws-security-tooling@company.com"</span>
+  <span style="color:#9cdcfe;">parent_id</span> = <span style="color:#9cdcfe;">aws_organizations_organizational_unit</span>.security.id
+
+  <span style="color:#6a9955;"># Prevent accidental account closure</span>
+  <span style="color:#9cdcfe;">close_on_deletion</span> = <span style="color:#569cd6;">false</span>
+
+  <span style="color:#9cdcfe;">tags</span> = { <span style="color:#9cdcfe;">AccountType</span> = <span style="color:#ce9178;">"security"</span>, <span style="color:#9cdcfe;">Environment</span> = <span style="color:#ce9178;">"all"</span> }
+}
+
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_organizations_account"</span> <span style="color:#ce9178;">"networking"</span> {
+  <span style="color:#9cdcfe;">name</span>      = <span style="color:#ce9178;">"networking"</span>
+  <span style="color:#9cdcfe;">email</span>     = <span style="color:#ce9178;">"aws-networking@company.com"</span>
+  <span style="color:#9cdcfe;">parent_id</span> = <span style="color:#9cdcfe;">aws_organizations_organizational_unit</span>.infrastructure.id
+
+  <span style="color:#9cdcfe;">close_on_deletion</span> = <span style="color:#569cd6;">false</span>
+
+  <span style="color:#9cdcfe;">tags</span> = { <span style="color:#9cdcfe;">AccountType</span> = <span style="color:#ce9178;">"infrastructure"</span>, <span style="color:#9cdcfe;">Environment</span> = <span style="color:#ce9178;">"all"</span> }
+}
+
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_organizations_account"</span> <span style="color:#ce9178;">"production"</span> {
+  <span style="color:#9cdcfe;">name</span>      = <span style="color:#ce9178;">"production"</span>
+  <span style="color:#9cdcfe;">email</span>     = <span style="color:#ce9178;">"aws-production@company.com"</span>
+  <span style="color:#9cdcfe;">parent_id</span> = <span style="color:#9cdcfe;">aws_organizations_organizational_unit</span>.production.id
+
+  <span style="color:#9cdcfe;">close_on_deletion</span> = <span style="color:#569cd6;">false</span>
+
+  <span style="color:#9cdcfe;">tags</span> = { <span style="color:#9cdcfe;">AccountType</span> = <span style="color:#ce9178;">"workload"</span>, <span style="color:#9cdcfe;">Environment</span> = <span style="color:#ce9178;">"prod"</span> }
+}</code></pre>
+
+        <!-- Section 2 -->
+        <h2 id="scps">2. Service Control Policies — The Non-Overridable Guardrails</h2>
+        <p>SCPs are the most powerful governance mechanism in AWS. They define the maximum permissions that any principal in an account can have — including the account root user. An explicit Deny in an SCP overrides every Allow in every IAM policy everywhere in that account.</p>
+        <p>Blog 8 covered SCPs in the context of IAM. This section covers the org-level SCP strategy.</p>
+
+        <h3>SCP Architecture — Deny by Default vs Allow List</h3>
+        <p>Two approaches:</p>
+        <ul>
+          <li><strong>Deny List (recommended):</strong> Start with <code>FullAWSAccess</code> managed policy at the root, then attach specific Deny SCPs at OU or account level. Simpler to manage — you only write rules for what you want to prevent.</li>
+          <li><strong>Allow List:</strong> Remove <code>FullAWSAccess</code>, attach explicit Allow policies. More restrictive but requires listing every permitted action — maintenance-intensive.</li>
+        </ul>
+        <p>Most enterprises use Deny List with targeted denies for high-risk actions.</p>
+
+        <h3>Production OU SCPs</h3>
+<pre><code class="nohighlight"><span style="color:#6a9955;"># SCP — production security baseline</span>
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_organizations_policy"</span> <span style="color:#ce9178;">"production_guardrails"</span> {
+  <span style="color:#9cdcfe;">name</span>        = <span style="color:#ce9178;">"production-security-guardrails"</span>
+  <span style="color:#9cdcfe;">description</span> = <span style="color:#ce9178;">"Non-overridable security controls for all production accounts"</span>
+  <span style="color:#9cdcfe;">type</span>        = <span style="color:#ce9178;">"SERVICE_CONTROL_POLICY"</span>
+
+  <span style="color:#9cdcfe;">content</span> = <span style="color:#9cdcfe;">jsonencode</span>({
+    <span style="color:#9cdcfe;">Version</span> = <span style="color:#ce9178;">"2012-10-17"</span>
+    <span style="color:#9cdcfe;">Statement</span> = [
+
+      <span style="color:#6a9955;"># 1. Cannot leave the Organisation</span>
+      {
+        <span style="color:#9cdcfe;">Sid</span>    = <span style="color:#ce9178;">"DenyLeaveOrganization"</span>
+        <span style="color:#9cdcfe;">Effect</span> = <span style="color:#ce9178;">"Deny"</span>
+        <span style="color:#9cdcfe;">Action</span> = [<span style="color:#ce9178;">"organizations:LeaveOrganization"</span>]
+        <span style="color:#9cdcfe;">Resource</span> = <span style="color:#ce9178;">"*"</span>
+      },
+
+      <span style="color:#6a9955;"># 2. Cannot disable or modify CloudTrail</span>
+      {
+        <span style="color:#9cdcfe;">Sid</span>    = <span style="color:#ce9178;">"DenyCloudTrailModification"</span>
+        <span style="color:#9cdcfe;">Effect</span> = <span style="color:#ce9178;">"Deny"</span>
+        <span style="color:#9cdcfe;">Action</span> = [
+          <span style="color:#ce9178;">"cloudtrail:DeleteTrail"</span>,
+          <span style="color:#ce9178;">"cloudtrail:StopLogging"</span>,
+          <span style="color:#ce9178;">"cloudtrail:UpdateTrail"</span>,
+          <span style="color:#ce9178;">"cloudtrail:PutEventSelectors"</span>
+        ]
+        <span style="color:#9cdcfe;">Resource</span> = <span style="color:#ce9178;">"*"</span>
+        <span style="color:#9cdcfe;">Condition</span> = {
+          <span style="color:#6a9955;"># Security account can still manage CloudTrail</span>
+          <span style="color:#9cdcfe;">StringNotEquals</span> = {
+            <span style="color:#ce9178;">"aws:PrincipalAccount"</span> = <span style="color:#9cdcfe;">var</span>.security_tooling_account_id
+          }
+        }
+      },
+
+      <span style="color:#6a9955;"># 3. Cannot disable GuardDuty</span>
+      {
+        <span style="color:#9cdcfe;">Sid</span>    = <span style="color:#ce9178;">"DenyGuardDutyModification"</span>
+        <span style="color:#9cdcfe;">Effect</span> = <span style="color:#ce9178;">"Deny"</span>
+        <span style="color:#9cdcfe;">Action</span> = [
+          <span style="color:#ce9178;">"guardduty:DeleteDetector"</span>,
+          <span style="color:#ce9178;">"guardduty:DisassociateFromMasterAccount"</span>,
+          <span style="color:#ce9178;">"guardduty:StopMonitoringMembers"</span>,
+          <span style="color:#ce9178;">"guardduty:UpdateDetector"</span>
+        ]
+        <span style="color:#9cdcfe;">Resource</span> = <span style="color:#ce9178;">"*"</span>
+        <span style="color:#9cdcfe;">Condition</span> = {
+          <span style="color:#9cdcfe;">StringNotEquals</span> = {
+            <span style="color:#ce9178;">"aws:PrincipalAccount"</span> = <span style="color:#9cdcfe;">var</span>.security_tooling_account_id
+          }
+        }
+      },
+
+      <span style="color:#6a9955;"># 4. Cannot make S3 buckets public</span>
+      {
+        <span style="color:#9cdcfe;">Sid</span>    = <span style="color:#ce9178;">"DenyS3PublicAccess"</span>
+        <span style="color:#9cdcfe;">Effect</span> = <span style="color:#ce9178;">"Deny"</span>
+        <span style="color:#9cdcfe;">Action</span> = [
+          <span style="color:#ce9178;">"s3:PutBucketPublicAccessBlock"</span>,
+          <span style="color:#ce9178;">"s3:DeletePublicAccessBlock"</span>
+        ]
+        <span style="color:#9cdcfe;">Resource</span> = <span style="color:#ce9178;">"*"</span>
+        <span style="color:#9cdcfe;">Condition</span> = {
+          <span style="color:#6a9955;"># Only security account can modify public access blocks</span>
+          <span style="color:#9cdcfe;">StringNotEquals</span> = {
+            <span style="color:#ce9178;">"aws:PrincipalAccount"</span> = <span style="color:#9cdcfe;">var</span>.security_tooling_account_id
+          }
+        }
+      },
+
+      <span style="color:#6a9955;"># 5. Cannot deploy outside EU regions</span>
+      {
+        <span style="color:#9cdcfe;">Sid</span>    = <span style="color:#ce9178;">"DenyNonEURegions"</span>
+        <span style="color:#9cdcfe;">Effect</span> = <span style="color:#ce9178;">"Deny"</span>
+        <span style="color:#9cdcfe;">NotAction</span> = [
+          <span style="color:#6a9955;"># Global services — must be excluded from region restriction</span>
+          <span style="color:#ce9178;">"iam:*"</span>,
+          <span style="color:#ce9178;">"sts:*"</span>,
+          <span style="color:#ce9178;">"organizations:*"</span>,
+          <span style="color:#ce9178;">"route53:*"</span>,
+          <span style="color:#ce9178;">"cloudfront:*"</span>,
+          <span style="color:#ce9178;">"waf:*"</span>,
+          <span style="color:#ce9178;">"wafv2:*"</span>,
+          <span style="color:#ce9178;">"shield:*"</span>,
+          <span style="color:#ce9178;">"support:*"</span>,
+          <span style="color:#ce9178;">"trustedadvisor:*"</span>,
+          <span style="color:#ce9178;">"account:*"</span>,
+          <span style="color:#ce9178;">"billing:*"</span>,
+          <span style="color:#ce9178;">"budgets:*"</span>,
+          <span style="color:#ce9178;">"ce:*"</span>,
+          <span style="color:#ce9178;">"cur:*"</span>
+        ]
+        <span style="color:#9cdcfe;">Resource</span> = <span style="color:#ce9178;">"*"</span>
+        <span style="color:#9cdcfe;">Condition</span> = {
+          <span style="color:#9cdcfe;">StringNotEquals</span> = {
+            <span style="color:#ce9178;">"aws:RequestedRegion"</span> = [
+              <span style="color:#ce9178;">"eu-west-1"</span>,
+              <span style="color:#ce9178;">"eu-west-2"</span>,
+              <span style="color:#ce9178;">"eu-west-3"</span>,
+              <span style="color:#ce9178;">"eu-central-1"</span>,
+              <span style="color:#ce9178;">"eu-central-2"</span>,
+              <span style="color:#ce9178;">"eu-north-1"</span>,
+              <span style="color:#ce9178;">"eu-south-1"</span>,
+              <span style="color:#ce9178;">"eu-south-2"</span>
+            ]
+          }
+        }
+      },
+
+      <span style="color:#6a9955;"># 6. Cannot create IAM users (human access via SSO only)</span>
+      {
+        <span style="color:#9cdcfe;">Sid</span>    = <span style="color:#ce9178;">"DenyIAMUserCreation"</span>
+        <span style="color:#9cdcfe;">Effect</span> = <span style="color:#ce9178;">"Deny"</span>
+        <span style="color:#9cdcfe;">Action</span> = [
+          <span style="color:#ce9178;">"iam:CreateUser"</span>,
+          <span style="color:#ce9178;">"iam:CreateAccessKey"</span>
+        ]
+        <span style="color:#9cdcfe;">Resource</span> = <span style="color:#ce9178;">"*"</span>
+        <span style="color:#9cdcfe;">Condition</span> = {
+          <span style="color:#6a9955;"># Break-glass emergency account is the only exception</span>
+          <span style="color:#9cdcfe;">StringNotEquals</span> = {
+            <span style="color:#ce9178;">"aws:PrincipalArn"</span> = <span style="color:#ce9178;">"arn:aws:iam::${var.management_account_id}:root"</span>
+          }
+        }
+      },
+
+      <span style="color:#6a9955;"># 7. Protect the Log Archive account data</span>
+      {
+        <span style="color:#9cdcfe;">Sid</span>    = <span style="color:#ce9178;">"DenyLogArchiveModification"</span>
+        <span style="color:#9cdcfe;">Effect</span> = <span style="color:#ce9178;">"Deny"</span>
+        <span style="color:#9cdcfe;">Action</span> = [
+          <span style="color:#ce9178;">"s3:DeleteBucket"</span>,
+          <span style="color:#ce9178;">"s3:DeleteObject"</span>,
+          <span style="color:#ce9178;">"s3:PutBucketPolicy"</span>,
+          <span style="color:#ce9178;">"s3:PutLifecycleConfiguration"</span>
+        ]
+        <span style="color:#9cdcfe;">Resource</span> = <span style="color:#ce9178;">"arn:aws:s3:::org-log-archive-*"</span>
+        <span style="color:#9cdcfe;">Condition</span> = {
+          <span style="color:#9cdcfe;">StringNotEquals</span> = {
+            <span style="color:#ce9178;">"aws:PrincipalAccount"</span> = <span style="color:#9cdcfe;">var</span>.log_archive_account_id
+          }
+        }
+      }
+    ]
+  })
+}
+
+<span style="color:#6a9955;"># Attach to Production OU</span>
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_organizations_policy_attachment"</span> <span style="color:#ce9178;">"production_guardrails"</span> {
+  <span style="color:#9cdcfe;">policy_id</span> = <span style="color:#9cdcfe;">aws_organizations_policy</span>.production_guardrails.id
+  <span style="color:#9cdcfe;">target_id</span> = <span style="color:#9cdcfe;">aws_organizations_organizational_unit</span>.production.id
+}</code></pre>
+
+        <h3>Non-Production Additional Restrictions</h3>
+<pre><code class="nohighlight"><span style="color:#6a9955;"># Additional SCP for Non-Production — no production data</span>
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_organizations_policy"</span> <span style="color:#ce9178;">"nonprod_data_restrictions"</span> {
+  <span style="color:#9cdcfe;">name</span> = <span style="color:#ce9178;">"nonprod-data-restrictions"</span>
+  <span style="color:#9cdcfe;">type</span> = <span style="color:#ce9178;">"SERVICE_CONTROL_POLICY"</span>
+
+  <span style="color:#9cdcfe;">content</span> = <span style="color:#9cdcfe;">jsonencode</span>({
+    <span style="color:#9cdcfe;">Version</span> = <span style="color:#ce9178;">"2012-10-17"</span>
+    <span style="color:#9cdcfe;">Statement</span> = [
+      {
+        <span style="color:#6a9955;"># Prevent non-prod from accessing production S3 buckets</span>
+        <span style="color:#9cdcfe;">Sid</span>    = <span style="color:#ce9178;">"DenyProductionDataAccess"</span>
+        <span style="color:#9cdcfe;">Effect</span> = <span style="color:#ce9178;">"Deny"</span>
+        <span style="color:#9cdcfe;">Action</span> = [<span style="color:#ce9178;">"s3:*"</span>]
+        <span style="color:#9cdcfe;">Resource</span> = [
+          <span style="color:#ce9178;">"arn:aws:s3:::*-prod-*"</span>,
+          <span style="color:#ce9178;">"arn:aws:s3:::*-prod-*/*"</span>
+        ]
+      },
+      {
+        <span style="color:#6a9955;"># Limit instance sizes in non-prod — cost control</span>
+        <span style="color:#9cdcfe;">Sid</span>    = <span style="color:#ce9178;">"DenyLargeInstances"</span>
+        <span style="color:#9cdcfe;">Effect</span> = <span style="color:#ce9178;">"Deny"</span>
+        <span style="color:#9cdcfe;">Action</span> = [<span style="color:#ce9178;">"ec2:RunInstances"</span>]
+        <span style="color:#9cdcfe;">Resource</span> = <span style="color:#ce9178;">"arn:aws:ec2:*:*:instance/*"</span>
+        <span style="color:#9cdcfe;">Condition</span> = {
+          <span style="color:#9cdcfe;">StringNotLike</span> = {
+            <span style="color:#ce9178;">"ec2:InstanceType"</span> = [
+              <span style="color:#ce9178;">"*.nano"</span>, <span style="color:#ce9178;">"*.micro"</span>, <span style="color:#ce9178;">"*.small"</span>,
+              <span style="color:#ce9178;">"*.medium"</span>, <span style="color:#ce9178;">"*.large"</span>, <span style="color:#ce9178;">"*.xlarge"</span>
+            ]
+          }
+        }
+      }
+    ]
+  })
+}
+
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_organizations_policy_attachment"</span> <span style="color:#ce9178;">"nonprod_restrictions"</span> {
+  <span style="color:#9cdcfe;">policy_id</span> = <span style="color:#9cdcfe;">aws_organizations_policy</span>.nonprod_data_restrictions.id
+  <span style="color:#9cdcfe;">target_id</span> = <span style="color:#9cdcfe;">aws_organizations_organizational_unit</span>.non_production.id
+}</code></pre>
+
+        <!-- Section 3 -->
+        <h2 id="control-tower">3. AWS Control Tower — Automated Landing Zone</h2>
+
+        <h3>What Control Tower Does</h3>
+        <p>Control Tower automates the creation and configuration of a multi-account Landing Zone — a pre-configured baseline that every new account inherits automatically. Without Control Tower, creating a new account that meets your security baseline requires a manual checklist: enable CloudTrail, enable GuardDuty, configure Security Hub, set up the networking, create the baseline IAM roles. With Control Tower, this happens automatically when a new account is vended.</p>
+        <p>Control Tower provides:</p>
+        <ul>
+          <li><strong>Landing Zone:</strong> Baseline account structure with Management, Log Archive, and Audit accounts pre-created</li>
+          <li><strong>Guardrails:</strong> Pre-built SCPs and Config rules (proactive and detective controls)</li>
+          <li><strong>Account Factory:</strong> Vend new accounts via Service Catalog — new account ready in ~20 minutes with all baseline config applied</li>
+          <li><strong>Account Factory for Terraform (AFT):</strong> IaC-driven account vending via a Git pipeline</li>
+        </ul>
+
+        <h3>Control Tower Guardrails — Three Types</h3>
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th>Type</th>
+              <th>Mechanism</th>
+              <th>Example</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Preventive</strong></td>
+              <td>SCP</td>
+              <td>Cannot disable CloudTrail in any account</td>
+            </tr>
+            <tr>
+              <td><strong>Detective</strong></td>
+              <td>AWS Config Rule</td>
+              <td>Alert if MFA not enabled on root account</td>
+            </tr>
+            <tr>
+              <td><strong>Proactive</strong></td>
+              <td>CloudFormation hooks</td>
+              <td>Block non-compliant resources before creation</td>
+            </tr>
+          </tbody>
+        </table>
+        <p>Preventive guardrails are always enforced — they use SCPs under the hood. Detective guardrails report non-compliance but do not block. Proactive guardrails are the newest type — they evaluate resources before they are created.</p>
+
+        <h3>Account Factory for Terraform (AFT)</h3>
+        <p>AFT replaces the Service Catalog-based Account Factory with a Git-driven pipeline. A new account is requested by creating a Terraform file in a Git repository — the pipeline provisions the account, applies the baseline configuration, and runs customisations.</p>
+
+<pre><code class="language-plaintext">AFT Architecture:
+Git PR: new account request
+    ↓
+AFT Pipeline (CodePipeline in Management account)
+    ↓
+Create AWS Account via Organizations
+    ↓
+Apply Account Baseline:
+  - Enable CloudTrail
+  - Enable GuardDuty (enrol in Security account)
+  - Enable Security Hub
+  - Create baseline IAM roles (AWSControlTowerExecution, etc.)
+  - Apply account-level SCPs
+    ↓
+Apply Account Customisations:
+  - VPC baseline (if networking customisation defined)
+  - Tag policies
+  - Team-specific IAM roles
+    ↓
+Account ready — team notified</code></pre>
+
+<pre><code class="nohighlight"><span style="color:#6a9955;"># AFT account request — creates a new AWS account with full baseline</span>
+<span style="color:#6a9955;"># Committed to the AFT account-requests repository</span>
+<span style="color:#569cd6;">module</span> <span style="color:#ce9178;">"production_account"</span> {
+  <span style="color:#9cdcfe;">source</span> = <span style="color:#ce9178;">"./modules/aft-account-request"</span>
+
+  <span style="color:#9cdcfe;">control_tower_parameters</span> = {
+    <span style="color:#9cdcfe;">AccountEmail</span>              = <span style="color:#ce9178;">"aws-new-service-prod@company.com"</span>
+    <span style="color:#9cdcfe;">AccountName</span>               = <span style="color:#ce9178;">"new-service-production"</span>
+    <span style="color:#9cdcfe;">ManagedOrganizationalUnit</span> = <span style="color:#ce9178;">"Production"</span>
+    <span style="color:#9cdcfe;">SSOUserEmail</span>              = <span style="color:#ce9178;">"platform-lead@company.com"</span>
+    <span style="color:#9cdcfe;">SSOUserFirstName</span>          = <span style="color:#ce9178;">"Platform"</span>
+    <span style="color:#9cdcfe;">SSOUserLastName</span>           = <span style="color:#ce9178;">"Team"</span>
+  }
+
+  <span style="color:#9cdcfe;">account_tags</span> = {
+    <span style="color:#9cdcfe;">Environment</span> = <span style="color:#ce9178;">"prod"</span>
+    <span style="color:#9cdcfe;">Team</span>        = <span style="color:#ce9178;">"new-service"</span>
+    <span style="color:#9cdcfe;">CostCentre</span>  = <span style="color:#ce9178;">"NEW-SVC-001"</span>
+  }
+
+  <span style="color:#6a9955;"># Run these customisations after account baseline is applied</span>
+  <span style="color:#9cdcfe;">account_customizations_name</span> = <span style="color:#ce9178;">"production-workload"</span>
+
+  <span style="color:#6a9955;"># Global customisations run in every account</span>
+  <span style="color:#6a9955;"># (applied from the AFT global-customizations repository)</span>
+}</code></pre>
+
+<pre><code class="nohighlight"><span style="color:#6a9955;"># AFT Global Customisation — runs in EVERY account that AFT provisions</span>
+<span style="color:#6a9955;"># Stored in: aft-global-customizations/terraform/main.tf</span>
+
+<span style="color:#6a9955;"># Enable Security Hub in every account</span>
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_securityhub_account"</span> <span style="color:#ce9178;">"main"</span> {}
+
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_securityhub_standards_subscription"</span> <span style="color:#ce9178;">"fsbp"</span> {
+  <span style="color:#9cdcfe;">depends_on</span>    = [<span style="color:#9cdcfe;">aws_securityhub_account</span>.main]
+  <span style="color:#9cdcfe;">standards_arn</span> = <span style="color:#ce9178;">"arn:aws:securityhub:${data.aws_region.current.name}::standards/aws-foundational-security-best-practices/v/1.0.0"</span>
+}
+
+<span style="color:#6a9955;"># Default VPC — delete it from every new account</span>
+<span style="color:#6a9955;"># The default VPC is a security risk — open default security groups, public subnets</span>
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"null_resource"</span> <span style="color:#ce9178;">"delete_default_vpc"</span> {
+  <span style="color:#9cdcfe;">provisioner</span> <span style="color:#ce9178;">"local-exec"</span> {
+    <span style="color:#9cdcfe;">command</span> = <span style="color:#ce9178;">&lt;&lt;-EOF</span>
+<span style="color:#ce9178;">      # Delete default VPC in all regions
+      for region in $(aws ec2 describe-regions --query 'Regions[].RegionName' --output text); do
+        vpc_id=$(aws ec2 describe-vpcs \
+          --region $region \
+          --filters "Name=isDefault,Values=true" \
+          --query 'Vpcs[0].VpcId' \
+          --output text 2&gt;/dev/null)
+
+        if [ "$vpc_id" != "None" ] &amp;&amp; [ -n "$vpc_id" ]; then
+          echo "Deleting default VPC $vpc_id in $region"
+          # Delete IGW, subnets, then VPC
+          aws ec2 delete-vpc --vpc-id $vpc_id --region $region 2&gt;/dev/null || true
+        fi
+      done
+    EOF</span>
+  }
+}
+
+<span style="color:#6a9955;"># Require IMDSv2 on all new EC2 instances — account-level default</span>
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_ec2_instance_metadata_defaults"</span> <span style="color:#ce9178;">"imdsv2"</span> {
+  <span style="color:#9cdcfe;">http_tokens</span> = <span style="color:#ce9178;">"required"</span>   <span style="color:#6a9955;"># IMDSv2 required for all new instances</span>
+}</code></pre>
+
+        <blockquote><strong>Why delete the default VPC:</strong> The default VPC comes with a default security group that allows all inbound traffic from other resources in the same default security group, and all outbound traffic. It also has public subnets with internet access by default. Every new account starts with an open network — deleting it as part of account vending ensures every account starts with zero network exposure.</blockquote>
+
+        <!-- Section 4 -->
+        <h2 id="networking">4. Centralised Networking — The Hub-and-Spoke Model</h2>
+        <p>Blog 4 covered Transit Gateway architecture. In a multi-account context, the TGW lives in the Networking account and is shared to all workload accounts via RAM.</p>
+
+<pre><code class="language-plaintext">Networking Account (TGW owner)
+├── Transit Gateway
+├── Direct Connect / VPN (if hybrid connectivity needed)
+├── Centralised Egress VPC (NAT Gateway for all spokes)
+├── Centralised Inspection VPC (Network Firewall)
+└── Route 53 Resolver Endpoints (hybrid DNS)
+
+Workload Accounts (TGW consumers)
+├── Production Account VPC → attached to TGW via RAM share
+├── Staging Account VPC   → attached to TGW via RAM share
+└── Dev Account VPC       → attached to TGW via RAM share</code></pre>
+
+        <h3>RAM — Share TGW Across the Organisation</h3>
+<pre><code class="nohighlight"><span style="color:#6a9955;"># In the Networking account — share TGW with entire Organisation</span>
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_ram_resource_share"</span> <span style="color:#ce9178;">"tgw"</span> {
+  <span style="color:#9cdcfe;">name</span>                      = <span style="color:#ce9178;">"org-transit-gateway"</span>
+  <span style="color:#9cdcfe;">allow_external_principals</span> = <span style="color:#569cd6;">false</span>   <span style="color:#6a9955;"># Organisation members only</span>
+
+  <span style="color:#9cdcfe;">tags</span> = { <span style="color:#9cdcfe;">Name</span> = <span style="color:#ce9178;">"tgw-org-share"</span> }
+}
+
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_ram_resource_association"</span> <span style="color:#ce9178;">"tgw"</span> {
+  <span style="color:#9cdcfe;">resource_arn</span>       = <span style="color:#9cdcfe;">aws_ec2_transit_gateway</span>.main.arn
+  <span style="color:#9cdcfe;">resource_share_arn</span> = <span style="color:#9cdcfe;">aws_ram_resource_share</span>.tgw.arn
+}
+
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_ram_principal_association"</span> <span style="color:#ce9178;">"org"</span> {
+  <span style="color:#9cdcfe;">principal</span>          = <span style="color:#9cdcfe;">data</span>.aws_organizations_organization.main.arn
+  <span style="color:#9cdcfe;">resource_share_arn</span> = <span style="color:#9cdcfe;">aws_ram_resource_share</span>.tgw.arn
+}
+
+<span style="color:#6a9955;"># In each workload account — accept the RAM share and attach VPC</span>
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_ec2_transit_gateway_vpc_attachment"</span> <span style="color:#ce9178;">"workload"</span> {
+  <span style="color:#9cdcfe;">subnet_ids</span>         = <span style="color:#9cdcfe;">aws_subnet</span>.private[*].id
+  <span style="color:#9cdcfe;">transit_gateway_id</span> = <span style="color:#9cdcfe;">var</span>.shared_tgw_id   <span style="color:#6a9955;"># From Networking account via RAM</span>
+  <span style="color:#9cdcfe;">vpc_id</span>             = <span style="color:#9cdcfe;">aws_vpc</span>.main.id
+
+  <span style="color:#9cdcfe;">tags</span> = { <span style="color:#9cdcfe;">Name</span> = <span style="color:#ce9178;">"tgw-attachment-${var.account_name}"</span> }
+}</code></pre>
+
+        <h3>Centralised Egress — All Internet Traffic Through One NAT Gateway</h3>
+        <p>Without centralised egress, every account needs its own NAT Gateway. With centralised egress in the Networking account, all internet-bound traffic from all workload accounts flows through a single managed NAT Gateway fleet — easier to monitor, inspect, and control.</p>
+
+<pre><code class="nohighlight"><span style="color:#6a9955;"># In workload accounts — default route to TGW (not to local NAT GW)</span>
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_route"</span> <span style="color:#ce9178;">"default_to_tgw"</span> {
+  <span style="color:#9cdcfe;">route_table_id</span>         = <span style="color:#9cdcfe;">aws_route_table</span>.private.id
+  <span style="color:#9cdcfe;">destination_cidr_block</span> = <span style="color:#ce9178;">"0.0.0.0/0"</span>
+  <span style="color:#9cdcfe;">transit_gateway_id</span>     = <span style="color:#9cdcfe;">var</span>.shared_tgw_id
+  <span style="color:#6a9955;"># Traffic goes to TGW → Networking account → Centralised NAT → Internet</span>
+}
+
+<span style="color:#6a9955;"># In Networking account — TGW route table sends 0.0.0.0/0 to Egress VPC</span>
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_ec2_transit_gateway_route"</span> <span style="color:#ce9178;">"default_to_egress"</span> {
+  <span style="color:#9cdcfe;">destination_cidr_block</span>         = <span style="color:#ce9178;">"0.0.0.0/0"</span>
+  <span style="color:#9cdcfe;">transit_gateway_attachment_id</span>  = <span style="color:#9cdcfe;">aws_ec2_transit_gateway_vpc_attachment</span>.egress.id
+  <span style="color:#9cdcfe;">transit_gateway_route_table_id</span> = <span style="color:#9cdcfe;">aws_ec2_transit_gateway_route_table</span>.workloads.id
+}</code></pre>
+
+        <h3>Centralised DNS — Route 53 Resolver in Networking Account</h3>
+<pre><code class="nohighlight"><span style="color:#6a9955;"># In Networking account — Resolver Endpoints serve all accounts</span>
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_route53_resolver_endpoint"</span> <span style="color:#ce9178;">"outbound"</span> {
+  <span style="color:#9cdcfe;">name</span>      = <span style="color:#ce9178;">"org-outbound-resolver"</span>
+  <span style="color:#9cdcfe;">direction</span> = <span style="color:#ce9178;">"OUTBOUND"</span>
+
+  <span style="color:#9cdcfe;">security_group_ids</span> = [<span style="color:#9cdcfe;">aws_security_group</span>.resolver.id]
+
+  <span style="color:#6a9955;"># One IP per AZ — deployed in the Networking account's VPC</span>
+  <span style="color:#9cdcfe;">ip_address</span> { <span style="color:#9cdcfe;">subnet_id</span> = <span style="color:#9cdcfe;">aws_subnet</span>.networking_private[<span style="color:#ce9178;">"eu-west-1a"</span>].id }
+  <span style="color:#9cdcfe;">ip_address</span> { <span style="color:#9cdcfe;">subnet_id</span> = <span style="color:#9cdcfe;">aws_subnet</span>.networking_private[<span style="color:#ce9178;">"eu-west-1b"</span>].id }
+  <span style="color:#9cdcfe;">ip_address</span> { <span style="color:#9cdcfe;">subnet_id</span> = <span style="color:#9cdcfe;">aws_subnet</span>.networking_private[<span style="color:#ce9178;">"eu-west-1c"</span>].id }
+
+  <span style="color:#9cdcfe;">tags</span> = { <span style="color:#9cdcfe;">Name</span> = <span style="color:#ce9178;">"org-outbound-resolver"</span> }
+}
+
+<span style="color:#6a9955;"># Forwarding rule — shared to all accounts via RAM</span>
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_route53_resolver_rule"</span> <span style="color:#ce9178;">"corp_forward"</span> {
+  <span style="color:#9cdcfe;">domain_name</span>          = <span style="color:#ce9178;">"corp.company.com"</span>
+  <span style="color:#9cdcfe;">name</span>                 = <span style="color:#ce9178;">"forward-to-onprem"</span>
+  <span style="color:#9cdcfe;">rule_type</span>            = <span style="color:#ce9178;">"FORWARD"</span>
+  <span style="color:#9cdcfe;">resolver_endpoint_id</span> = <span style="color:#9cdcfe;">aws_route53_resolver_endpoint</span>.outbound.id
+
+  <span style="color:#9cdcfe;">target_ip</span> { <span style="color:#9cdcfe;">ip</span> = <span style="color:#ce9178;">"192.168.1.10"</span> }
+  <span style="color:#9cdcfe;">target_ip</span> { <span style="color:#9cdcfe;">ip</span> = <span style="color:#ce9178;">"192.168.1.11"</span> }
+}
+
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_ram_resource_association"</span> <span style="color:#ce9178;">"resolver_rule"</span> {
+  <span style="color:#9cdcfe;">resource_arn</span>       = <span style="color:#9cdcfe;">aws_route53_resolver_rule</span>.corp_forward.arn
+  <span style="color:#9cdcfe;">resource_share_arn</span> = <span style="color:#9cdcfe;">aws_ram_resource_share</span>.tgw.arn
+}
+
+<span style="color:#6a9955;"># In each workload account — associate the shared resolver rule</span>
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_route53_resolver_rule_association"</span> <span style="color:#ce9178;">"corp"</span> {
+  <span style="color:#9cdcfe;">resolver_rule_id</span> = <span style="color:#9cdcfe;">var</span>.shared_resolver_rule_id
+  <span style="color:#9cdcfe;">vpc_id</span>           = <span style="color:#9cdcfe;">aws_vpc</span>.main.id
+}</code></pre>
+
+        <!-- Section 5 -->
+        <h2 id="security">5. Centralised Security — The Security Account Model</h2>
+        <p>All security tooling lives in the Security-Tooling account. Workload accounts enrol as members — they send findings to the central account but cannot modify the security configuration.</p>
+
+<pre><code class="nohighlight"><span style="color:#6a9955;"># In Security-Tooling account — delegate administration</span>
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_guardduty_organization_admin_account"</span> <span style="color:#ce9178;">"security"</span> {
+  <span style="color:#9cdcfe;">admin_account_id</span> = <span style="color:#9cdcfe;">data</span>.aws_caller_identity.security.account_id
+}
+
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_securityhub_organization_admin_account"</span> <span style="color:#ce9178;">"security"</span> {
+  <span style="color:#9cdcfe;">admin_account_id</span> = <span style="color:#9cdcfe;">data</span>.aws_caller_identity.security.account_id
+}
+
+<span style="color:#6a9955;"># Organisation-wide GuardDuty — auto-enable in all accounts</span>
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_guardduty_organization_configuration"</span> <span style="color:#ce9178;">"main"</span> {
+  <span style="color:#9cdcfe;">auto_enable_organization_members</span> = <span style="color:#ce9178;">"ALL"</span>
+  <span style="color:#9cdcfe;">detector_id</span>                      = <span style="color:#9cdcfe;">aws_guardduty_detector</span>.main.id
+
+  <span style="color:#9cdcfe;">datasources</span> {
+    <span style="color:#9cdcfe;">s3_logs</span> { <span style="color:#9cdcfe;">auto_enable</span> = <span style="color:#569cd6;">true</span> }
+    <span style="color:#9cdcfe;">kubernetes</span> { <span style="color:#9cdcfe;">audit_logs</span> { <span style="color:#9cdcfe;">enable</span> = <span style="color:#569cd6;">true</span> } }
+    <span style="color:#9cdcfe;">malware_protection</span> {
+      <span style="color:#9cdcfe;">scan_ec2_instance_with_findings</span> {
+        <span style="color:#9cdcfe;">ebs_volumes</span> { <span style="color:#9cdcfe;">auto_enable</span> = <span style="color:#569cd6;">true</span> }
+      }
+    }
+  }
+}
+
+<span style="color:#6a9955;"># Organisation-wide CloudTrail — one trail, all accounts, all regions</span>
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_cloudtrail"</span> <span style="color:#ce9178;">"org"</span> {
+  <span style="color:#9cdcfe;">name</span>                          = <span style="color:#ce9178;">"org-audit-trail"</span>
+  <span style="color:#9cdcfe;">s3_bucket_name</span>                = <span style="color:#9cdcfe;">aws_s3_bucket</span>.log_archive.bucket   <span style="color:#6a9955;"># Log Archive account</span>
+  <span style="color:#9cdcfe;">include_global_service_events</span> = <span style="color:#569cd6;">true</span>
+  <span style="color:#9cdcfe;">is_multi_region_trail</span>         = <span style="color:#569cd6;">true</span>
+  <span style="color:#9cdcfe;">is_organization_trail</span>         = <span style="color:#569cd6;">true</span>
+  <span style="color:#9cdcfe;">enable_log_file_validation</span>    = <span style="color:#569cd6;">true</span>
+  <span style="color:#9cdcfe;">kms_key_id</span>                    = <span style="color:#9cdcfe;">aws_kms_key</span>.cloudtrail.arn
+  <span style="color:#9cdcfe;">cloud_watch_logs_group_arn</span>    = <span style="color:#ce9178;">"${aws_cloudwatch_log_group.cloudtrail.arn}:*"</span>
+  <span style="color:#9cdcfe;">cloud_watch_logs_role_arn</span>     = <span style="color:#9cdcfe;">aws_iam_role</span>.cloudtrail_cw.arn
+
+  <span style="color:#9cdcfe;">tags</span> = { <span style="color:#9cdcfe;">Name</span> = <span style="color:#ce9178;">"org-audit-trail"</span> }
+}</code></pre>
+
+        <h3>Log Archive Account — Immutable Audit Logs</h3>
+<pre><code class="nohighlight"><span style="color:#6a9955;"># S3 bucket in Log Archive account — receives CloudTrail logs from all accounts</span>
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_s3_bucket"</span> <span style="color:#ce9178;">"log_archive"</span> {
+  <span style="color:#9cdcfe;">provider</span> = <span style="color:#9cdcfe;">aws</span>.log_archive
+
+  <span style="color:#9cdcfe;">bucket</span> = <span style="color:#ce9178;">"org-log-archive-${var.org_id}"</span>
+
+  <span style="color:#9cdcfe;">lifecycle</span> {
+    <span style="color:#9cdcfe;">prevent_destroy</span> = <span style="color:#569cd6;">true</span>   <span style="color:#6a9955;"># Never delete this bucket</span>
+  }
+}
+
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_s3_bucket_object_lock_configuration"</span> <span style="color:#ce9178;">"log_archive"</span> {
+  <span style="color:#9cdcfe;">provider</span> = <span style="color:#9cdcfe;">aws</span>.log_archive
+  <span style="color:#9cdcfe;">bucket</span>   = <span style="color:#9cdcfe;">aws_s3_bucket</span>.log_archive.bucket
+
+  <span style="color:#9cdcfe;">rule</span> {
+    <span style="color:#9cdcfe;">default_retention</span> {
+      <span style="color:#9cdcfe;">mode</span> = <span style="color:#ce9178;">"COMPLIANCE"</span>   <span style="color:#6a9955;"># Cannot be overridden — not even by root</span>
+      <span style="color:#9cdcfe;">days</span> = <span style="color:#b5cea8;">2555</span>           <span style="color:#6a9955;"># 7 years — common compliance requirement</span>
+    }
+  }
+}
+
+<span style="color:#6a9955;"># Bucket policy — only CloudTrail service and Security account can write</span>
+<span style="color:#6a9955;"># No account (including Log Archive itself) can delete objects</span>
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_s3_bucket_policy"</span> <span style="color:#ce9178;">"log_archive"</span> {
+  <span style="color:#9cdcfe;">provider</span> = <span style="color:#9cdcfe;">aws</span>.log_archive
+  <span style="color:#9cdcfe;">bucket</span>   = <span style="color:#9cdcfe;">aws_s3_bucket</span>.log_archive.bucket
+
+  <span style="color:#9cdcfe;">policy</span> = <span style="color:#9cdcfe;">jsonencode</span>({
+    <span style="color:#9cdcfe;">Version</span> = <span style="color:#ce9178;">"2012-10-17"</span>
+    <span style="color:#9cdcfe;">Statement</span> = [
+      {
+        <span style="color:#9cdcfe;">Sid</span>    = <span style="color:#ce9178;">"AllowCloudTrailWrite"</span>
+        <span style="color:#9cdcfe;">Effect</span> = <span style="color:#ce9178;">"Allow"</span>
+        <span style="color:#9cdcfe;">Principal</span> = { <span style="color:#9cdcfe;">Service</span> = <span style="color:#ce9178;">"cloudtrail.amazonaws.com"</span> }
+        <span style="color:#9cdcfe;">Action</span>    = [<span style="color:#ce9178;">"s3:PutObject"</span>]
+        <span style="color:#9cdcfe;">Resource</span>  = <span style="color:#ce9178;">"${aws_s3_bucket.log_archive.arn}/AWSLogs/*"</span>
+        <span style="color:#9cdcfe;">Condition</span> = {
+          <span style="color:#9cdcfe;">StringEquals</span> = {
+            <span style="color:#ce9178;">"s3:x-amz-acl"</span> = <span style="color:#ce9178;">"bucket-owner-full-control"</span>
+          }
+        }
+      },
+      {
+        <span style="color:#9cdcfe;">Sid</span>    = <span style="color:#ce9178;">"DenyDeleteForEveryone"</span>
+        <span style="color:#9cdcfe;">Effect</span> = <span style="color:#ce9178;">"Deny"</span>
+        <span style="color:#9cdcfe;">Principal</span> = { <span style="color:#9cdcfe;">AWS</span> = <span style="color:#ce9178;">"*"</span> }
+        <span style="color:#9cdcfe;">Action</span>    = [<span style="color:#ce9178;">"s3:DeleteObject"</span>, <span style="color:#ce9178;">"s3:DeleteObjectVersion"</span>]
+        <span style="color:#9cdcfe;">Resource</span>  = <span style="color:#ce9178;">"${aws_s3_bucket.log_archive.arn}/*"</span>
+      }
+    ]
+  })
+}</code></pre>
+
+        <!-- Section 6 -->
+        <h2 id="identity-center">6. IAM Identity Center — Human Access Across All Accounts</h2>
+        <p>Blog 8 covered IAM Identity Center in the context of single-account access. In a multi-account organisation, Identity Center becomes the single authentication point for all human access.</p>
+
+<pre><code class="nohighlight"><span style="color:#6a9955;"># Permission sets — define what a role can do in an account</span>
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_ssoadmin_permission_set"</span> <span style="color:#ce9178;">"platform_engineer"</span> {
+  <span style="color:#9cdcfe;">name</span>             = <span style="color:#ce9178;">"PlatformEngineer"</span>
+  <span style="color:#9cdcfe;">instance_arn</span>     = <span style="color:#9cdcfe;">data</span>.aws_ssoadmin_instances.main.arns[<span style="color:#b5cea8;">0</span>]
+  <span style="color:#9cdcfe;">session_duration</span> = <span style="color:#ce9178;">"PT8H"</span>
+  <span style="color:#9cdcfe;">description</span>      = <span style="color:#ce9178;">"Full access excluding IAM and billing — for platform team"</span>
+}
+
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_ssoadmin_managed_policy_attachment"</span> <span style="color:#ce9178;">"platform_poweruser"</span> {
+  <span style="color:#9cdcfe;">instance_arn</span>       = <span style="color:#9cdcfe;">data</span>.aws_ssoadmin_instances.main.arns[<span style="color:#b5cea8;">0</span>]
+  <span style="color:#9cdcfe;">permission_set_arn</span> = <span style="color:#9cdcfe;">aws_ssoadmin_permission_set</span>.platform_engineer.arn
+  <span style="color:#9cdcfe;">managed_policy_arn</span> = <span style="color:#ce9178;">"arn:aws:iam::aws:policy/PowerUserAccess"</span>
+}
+
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_ssoadmin_permission_set"</span> <span style="color:#ce9178;">"developer"</span> {
+  <span style="color:#9cdcfe;">name</span>             = <span style="color:#ce9178;">"Developer"</span>
+  <span style="color:#9cdcfe;">instance_arn</span>     = <span style="color:#9cdcfe;">data</span>.aws_ssoadmin_instances.main.arns[<span style="color:#b5cea8;">0</span>]
+  <span style="color:#9cdcfe;">session_duration</span> = <span style="color:#ce9178;">"PT8H"</span>
+}
+
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_ssoadmin_permission_set"</span> <span style="color:#ce9178;">"readonly"</span> {
+  <span style="color:#9cdcfe;">name</span>             = <span style="color:#ce9178;">"ReadOnly"</span>
+  <span style="color:#9cdcfe;">instance_arn</span>     = <span style="color:#9cdcfe;">data</span>.aws_ssoadmin_instances.main.arns[<span style="color:#b5cea8;">0</span>]
+  <span style="color:#9cdcfe;">session_duration</span> = <span style="color:#ce9178;">"PT4H"</span>
+}
+
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_ssoadmin_managed_policy_attachment"</span> <span style="color:#ce9178;">"readonly"</span> {
+  <span style="color:#9cdcfe;">instance_arn</span>       = <span style="color:#9cdcfe;">data</span>.aws_ssoadmin_instances.main.arns[<span style="color:#b5cea8;">0</span>]
+  <span style="color:#9cdcfe;">permission_set_arn</span> = <span style="color:#9cdcfe;">aws_ssoadmin_permission_set</span>.readonly.arn
+  <span style="color:#9cdcfe;">managed_policy_arn</span> = <span style="color:#ce9178;">"arn:aws:iam::aws:policy/ReadOnlyAccess"</span>
+}
+
+<span style="color:#6a9955;"># Account assignments — who gets what access in which account</span>
+<span style="color:#6a9955;"># Platform team: full access to networking + security accounts</span>
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_ssoadmin_account_assignment"</span> <span style="color:#ce9178;">"platform_networking"</span> {
+  <span style="color:#9cdcfe;">instance_arn</span>       = <span style="color:#9cdcfe;">data</span>.aws_ssoadmin_instances.main.arns[<span style="color:#b5cea8;">0</span>]
+  <span style="color:#9cdcfe;">permission_set_arn</span> = <span style="color:#9cdcfe;">aws_ssoadmin_permission_set</span>.platform_engineer.arn
+  <span style="color:#9cdcfe;">principal_type</span>     = <span style="color:#ce9178;">"GROUP"</span>
+  <span style="color:#9cdcfe;">principal_id</span>       = <span style="color:#9cdcfe;">data</span>.aws_identitystore_group.platform.group_id
+  <span style="color:#9cdcfe;">target_type</span>        = <span style="color:#ce9178;">"AWS_ACCOUNT"</span>
+  <span style="color:#9cdcfe;">target_id</span>          = <span style="color:#9cdcfe;">aws_organizations_account</span>.networking.id
+}
+
+<span style="color:#6a9955;"># Developers: ReadOnly in production, Developer in non-production</span>
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_ssoadmin_account_assignment"</span> <span style="color:#ce9178;">"dev_prod_readonly"</span> {
+  <span style="color:#9cdcfe;">instance_arn</span>       = <span style="color:#9cdcfe;">data</span>.aws_ssoadmin_instances.main.arns[<span style="color:#b5cea8;">0</span>]
+  <span style="color:#9cdcfe;">permission_set_arn</span> = <span style="color:#9cdcfe;">aws_ssoadmin_permission_set</span>.readonly.arn
+  <span style="color:#9cdcfe;">principal_type</span>     = <span style="color:#ce9178;">"GROUP"</span>
+  <span style="color:#9cdcfe;">principal_id</span>       = <span style="color:#9cdcfe;">data</span>.aws_identitystore_group.developers.group_id
+  <span style="color:#9cdcfe;">target_type</span>        = <span style="color:#ce9178;">"AWS_ACCOUNT"</span>
+  <span style="color:#9cdcfe;">target_id</span>          = <span style="color:#9cdcfe;">aws_organizations_account</span>.production.id
+}
+
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_ssoadmin_account_assignment"</span> <span style="color:#ce9178;">"dev_nonprod_developer"</span> {
+  <span style="color:#9cdcfe;">instance_arn</span>       = <span style="color:#9cdcfe;">data</span>.aws_ssoadmin_instances.main.arns[<span style="color:#b5cea8;">0</span>]
+  <span style="color:#9cdcfe;">permission_set_arn</span> = <span style="color:#9cdcfe;">aws_ssoadmin_permission_set</span>.developer.arn
+  <span style="color:#9cdcfe;">principal_type</span>     = <span style="color:#ce9178;">"GROUP"</span>
+  <span style="color:#9cdcfe;">principal_id</span>       = <span style="color:#9cdcfe;">data</span>.aws_identitystore_group.developers.group_id
+  <span style="color:#9cdcfe;">target_type</span>        = <span style="color:#ce9178;">"AWS_ACCOUNT"</span>
+  <span style="color:#9cdcfe;">target_id</span>          = <span style="color:#9cdcfe;">aws_organizations_account</span>.development.id
+}</code></pre>
+
+        <!-- Section 7 -->
+        <h2 id="cross-account-tf">7. Cross-Account Terraform — The IaC Pattern</h2>
+        <p>Managing infrastructure across multiple accounts from a single Terraform codebase requires provider aliases and careful state separation (covered in Blog 14).</p>
+
+<pre><code class="nohighlight"><span style="color:#6a9955;"># providers.tf — one provider alias per account</span>
+<span style="color:#569cd6;">provider</span> <span style="color:#ce9178;">"aws"</span> {
+  <span style="color:#9cdcfe;">alias</span> = <span style="color:#ce9178;">"management"</span>
+  <span style="color:#9cdcfe;">assume_role</span> {
+    <span style="color:#9cdcfe;">role_arn</span> = <span style="color:#ce9178;">"arn:aws:iam::${var.management_account_id}:role/terraform-apply-role"</span>
+  }
+  <span style="color:#9cdcfe;">region</span> = <span style="color:#9cdcfe;">var</span>.region
+}
+
+<span style="color:#569cd6;">provider</span> <span style="color:#ce9178;">"aws"</span> {
+  <span style="color:#9cdcfe;">alias</span> = <span style="color:#ce9178;">"networking"</span>
+  <span style="color:#9cdcfe;">assume_role</span> {
+    <span style="color:#9cdcfe;">role_arn</span> = <span style="color:#ce9178;">"arn:aws:iam::${var.networking_account_id}:role/terraform-apply-role"</span>
+  }
+  <span style="color:#9cdcfe;">region</span> = <span style="color:#9cdcfe;">var</span>.region
+}
+
+<span style="color:#569cd6;">provider</span> <span style="color:#ce9178;">"aws"</span> {
+  <span style="color:#9cdcfe;">alias</span> = <span style="color:#ce9178;">"security"</span>
+  <span style="color:#9cdcfe;">assume_role</span> {
+    <span style="color:#9cdcfe;">role_arn</span> = <span style="color:#ce9178;">"arn:aws:iam::${var.security_account_id}:role/terraform-apply-role"</span>
+  }
+  <span style="color:#9cdcfe;">region</span> = <span style="color:#9cdcfe;">var</span>.region
+}
+
+<span style="color:#569cd6;">provider</span> <span style="color:#ce9178;">"aws"</span> {
+  <span style="color:#9cdcfe;">alias</span> = <span style="color:#ce9178;">"production"</span>
+  <span style="color:#9cdcfe;">assume_role</span> {
+    <span style="color:#9cdcfe;">role_arn</span> = <span style="color:#ce9178;">"arn:aws:iam::${var.production_account_id}:role/terraform-apply-role"</span>
+  }
+  <span style="color:#9cdcfe;">region</span> = <span style="color:#9cdcfe;">var</span>.region
+}
+
+<span style="color:#6a9955;"># Terraform apply role — exists in every account</span>
+<span style="color:#6a9955;"># Created by Control Tower / AFT baseline customisation</span>
+<span style="color:#6a9955;"># Trusted by the Management account's Terraform CI/CD role</span>
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_iam_role"</span> <span style="color:#ce9178;">"terraform_apply"</span> {
+  <span style="color:#9cdcfe;">for_each</span> = <span style="color:#9cdcfe;">toset</span>([
+    <span style="color:#9cdcfe;">var</span>.management_account_id,
+    <span style="color:#9cdcfe;">var</span>.networking_account_id,
+    <span style="color:#9cdcfe;">var</span>.security_account_id,
+    <span style="color:#9cdcfe;">var</span>.production_account_id
+  ])
+
+  <span style="color:#9cdcfe;">name</span> = <span style="color:#ce9178;">"terraform-apply-role"</span>
+
+  <span style="color:#9cdcfe;">assume_role_policy</span> = <span style="color:#9cdcfe;">jsonencode</span>({
+    <span style="color:#9cdcfe;">Version</span> = <span style="color:#ce9178;">"2012-10-17"</span>
+    <span style="color:#9cdcfe;">Statement</span> = [{
+      <span style="color:#9cdcfe;">Effect</span> = <span style="color:#ce9178;">"Allow"</span>
+      <span style="color:#9cdcfe;">Principal</span> = {
+        <span style="color:#9cdcfe;">AWS</span> = <span style="color:#ce9178;">"arn:aws:iam::${var.management_account_id}:role/terraform-ci-role"</span>
+      }
+      <span style="color:#9cdcfe;">Action</span>    = <span style="color:#ce9178;">"sts:AssumeRole"</span>
+      <span style="color:#9cdcfe;">Condition</span> = {
+        <span style="color:#9cdcfe;">StringEquals</span> = {
+          <span style="color:#ce9178;">"sts:ExternalId"</span> = <span style="color:#9cdcfe;">var</span>.terraform_external_id
+        }
+      }
+    }]
+  })
+}</code></pre>
+
+        <!-- Section 8 -->
+        <h2 id="checklist">8. The Landing Zone Checklist</h2>
+        <p>Every new account vended by AFT should arrive with this baseline applied automatically:</p>
+
+<pre><code class="language-plaintext">Account Baseline — applied by AFT Global Customisations:
+  ✅ Default VPC deleted in all regions
+  ✅ IMDSv2 required on all new EC2 instances
+  ✅ S3 Block Public Access enabled at account level
+  ✅ EBS encryption by default enabled
+  ✅ GuardDuty enrolled in Security account
+  ✅ Security Hub enrolled + FSBP standard enabled
+  ✅ CloudTrail Organisation trail covering this account
+  ✅ AWS Config recorder enabled
+  ✅ Cost allocation tags activated
+  ✅ Budget alert at $X (configurable per account)
+  ✅ Baseline IAM roles created (terraform-apply, read-only, break-glass)
+  ✅ SSO permission sets assigned to correct groups
+  ✅ VPC baseline (if networking customisation requested)
+  ✅ TGW attachment (if networking customisation requested)
+
+Account-Specific Customisations (per team):
+  - Additional IAM roles for workloads
+  - ECR repositories
+  - Secrets Manager baseline secrets
+  - Service-specific Config rules</code></pre>
+
+        <!-- Section 9 -->
+        <h2 id="pitfalls"><i class="fa-solid fa-triangle-exclamation" style="color: #d13212; font-size: 22px; margin-right: 8px;"></i>9. Common Mistakes &amp; Anti-Patterns</h2>
+
+        <div class="pitfall-card">
+          <strong>Mistake 1: One Account for Everything</strong>
+          <p>The most common starting mistake. Dev and prod sharing an account means a developer with sufficient IAM permissions can accidentally or intentionally affect production. AWS accounts are the strongest isolation boundary — use them.</p>
+        </div>
+
+        <div class="pitfall-card">
+          <strong>Mistake 2: SCPs That Block AWS Service Operations</strong>
+          <p>SCPs that deny specific actions without excluding the AWS service principals that need them to operate break services silently. For example, denying <code>iam:PassRole</code> without excluding <code>ec2.amazonaws.com</code> breaks EC2 instance launch. Always test SCP changes in a non-production OU before applying to production.</p>
+        </div>
+
+        <div class="pitfall-card">
+          <strong>Mistake 3: Not Deleting the Default VPC</strong>
+          <p>Every new account comes with a default VPC with public subnets, an internet gateway, and a permissive default security group. Engineers who deploy into the default VPC accidentally expose resources to the internet. Delete it as part of account vending.</p>
+        </div>
+
+        <div class="pitfall-card">
+          <strong>Mistake 4: Management Account Used for Workloads</strong>
+          <p>The Management account has elevated privileges — it can see and affect every account in the organisation. Running production workloads in the Management account means a security incident in your production application has access to Organisation-level APIs. The Management account should contain only: Organizations, Control Tower, SSO, consolidated billing, and Terraform state for org-level infrastructure.</p>
+        </div>
+
+        <div class="pitfall-card">
+          <strong>Mistake 5: No Break-Glass Procedure</strong>
+          <p>SSO is the correct access mechanism for daily work. But SSO depends on your identity provider being available. If your Okta tenant has an incident at the same time as an AWS production incident, you cannot access your AWS accounts to respond. Maintain one IAM user per account (or a cross-account break-glass role from the Management account) for emergency access — documented, MFA-protected, and audited in CloudTrail.</p>
+        </div>
+
+        <div class="pitfall-card">
+          <strong>Mistake 6: Applying SCPs Before Testing in Non-Prod</strong>
+          <p>A badly written SCP can deny actions required by AWS-managed services, breaking services like Config, Security Hub, or ECS. Always test new SCPs in the Sandbox OU first, run a Terraform plan to see what would change, then promote to Non-Production, then Production.</p>
+        </div>
+
+        <div class="pitfall-card">
+          <strong>Mistake 7: Sharing the TGW Without Route Table Isolation</strong>
+          <p>A Transit Gateway shared to all accounts via RAM that uses a single default route table means every account can route to every other account — dev can reach production. Apply the route table isolation pattern from Blog 4: separate route tables per OU, Production VPCs only propagate to Production route tables.</p>
+        </div>
+
+        <!-- Architecture Decision Matrix -->
+        <h2 id="decision-matrix">Architecture Decision Matrix</h2>
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th>Capability</th>
+              <th>Single Account</th>
+              <th>Multi-Account (Manual)</th>
+              <th>Multi-Account + Control Tower</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Blast radius isolation</strong></td>
+              <td>❌ None</td>
+              <td>✅ Account boundary</td>
+              <td>✅ Account + SCP boundary</td>
+            </tr>
+            <tr>
+              <td><strong>Compliance audit trail</strong></td>
+              <td>⚠️ Per-account</td>
+              <td>⚠️ Per-account</td>
+              <td>✅ Org-wide CloudTrail</td>
+            </tr>
+            <tr>
+              <td><strong>New account provisioning</strong></td>
+              <td>N/A</td>
+              <td>Manual (~2 days)</td>
+              <td>Automated via AFT (~20 min)</td>
+            </tr>
+            <tr>
+              <td><strong>Centralised security findings</strong></td>
+              <td>❌</td>
+              <td>❌</td>
+              <td>✅ GuardDuty + Security Hub</td>
+            </tr>
+            <tr>
+              <td><strong>Human access management</strong></td>
+              <td>Per-account IAM users</td>
+              <td>Per-account IAM users</td>
+              <td>✅ IAM Identity Center (SSO)</td>
+            </tr>
+            <tr>
+              <td><strong>Network governance</strong></td>
+              <td>❌</td>
+              <td>Per-account</td>
+              <td>✅ Centralised TGW + Networking account</td>
+            </tr>
+            <tr>
+              <td><strong>Cost allocation</strong></td>
+              <td>❌ All in one bill</td>
+              <td>⚠️ Account-level</td>
+              <td>✅ Account + tag-level</td>
+            </tr>
+            <tr>
+              <td><strong>SCP governance</strong></td>
+              <td>❌</td>
+              <td>Manual</td>
+              <td>✅ OU-based, automated</td>
+            </tr>
+            <tr>
+              <td><strong>Operational complexity</strong></td>
+              <td>Low</td>
+              <td>High (manual)</td>
+              <td>Medium (automated)</td>
+            </tr>
+            <tr>
+              <td><strong>Recommended for</strong></td>
+              <td>POC, personal projects</td>
+              <td>Small teams (&lt;5 accounts)</td>
+              <td>Any production organisation</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Golden Rule -->
+        <div style="background: var(--aws-highlight); padding: 32px; border-radius: 8px; border: 1px solid var(--aws-border); margin: 40px 0; text-align: center; border-left: 4px solid var(--aws-orange);">
+          <i class="fa-solid fa-sitemap" style="font-size: 36px; color: var(--aws-orange); display: block; margin-bottom: 16px;"></i>
+          <h3 style="font-size: 18px; color: var(--aws-text); margin-top: 0; margin-bottom: 12px;">The Golden Rule</h3>
+          <p style="font-size: 15px; color: var(--aws-text-light); font-style: italic; margin-bottom: 0;">
+            "A single AWS account is a starting point, not a destination. Move to multiple accounts the moment you have a team, a regulatory requirement, or a distinction between production and non-production that you need to enforce structurally — not just by convention. Use the OU structure to group accounts by function and risk level, not by team name. Apply SCPs at the OU level so governance is automatic, not manual. Centralise security tooling in a dedicated Security account that no workload team can modify. Share networking through a Networking account's Transit Gateway so every workload account gets private connectivity without owning its own NAT Gateways. And vend every new account with a complete, automated baseline — delete the default VPC, enable IMDSv2, enrol in GuardDuty and Security Hub — before any human ever logs in."
+          </p>
+        </div>
+
+      </div><!-- End Blog Body -->
+
+      <div class="share-section">
+        <span style="font-weight: 700; color: var(--aws-text-light);">Share this article:</span>
+        <a href="https://www.linkedin.com/sharing/share-offsite/?url=https://www.ankushpanday.com/blog/architecture/multi-account-aws-strategy.html"
+          target="_blank" class="share-btn linkedin-btn">
+          <i class="fa-brands fa-linkedin"></i> Share on LinkedIn
+        </a>
+      </div>
+
+      <div class="author-card">
+        <div class="author-img"><i class="fa-solid fa-user-tie"></i></div>
+        <div>
+          <h4 style="margin: 0 0 8px 0; color: var(--aws-text);">Ankush Panday</h4>
+          <p style="margin: 0; font-size: 14px; color: var(--aws-text-light);">Specializing in highly scalable AWS infrastructure and automated quality engineering.</p>
+          <a href="https://www.linkedin.com/in/ankush-panday-39b97824/" target="_blank"
+            style="display: inline-block; margin-top: 10px; color: var(--aws-blue); text-decoration: none; font-size: 13px; font-weight: 600;">Connect
+            on LinkedIn <i class="fa-solid fa-external-link" style="font-size: 10px;"></i></a>
+        </div>
+      </div>
+
+    </article>
+
+    <!-- NAVIGATION LINKS -->
+    <div class="nav-links">
+      <a href="multi-region-high-availability.html" class="nav-link">
+        <i class="fa-solid fa-arrow-left"></i> Previous: Multi-Region High Availability
+      </a>
+      <a href="../index.html" class="nav-link">
+        Return to Blog Hub <i class="fa-solid fa-arrow-right"></i>
+      </a>
+    </div>
+
+  </main>
+
+  <footer class="aws-footer">
+    Built for Performance. Architected for the Cloud. &bull; &copy; 2026 <span>Ankush Panday</span>
+  </footer>
+
+  <script>
+    if (window.location.protocol === 'file:') {
+      document.querySelectorAll('a').forEach(link => {
+        let href = link.getAttribute('href');
+        if (href && !href.startsWith('http') && !href.startsWith('#')) {
+          let path = href.split('#')[0];
+          let anchor = href.split('#')[1] ? '#' + href.split('#')[1] : '';
+          if (path && !path.endsWith('.html') && !path.endsWith('/')) {
+            link.setAttribute('href', path + '.html' + anchor);
+          }
+        }
+      });
+    }
+    document.addEventListener('DOMContentLoaded', () => {
+      document.querySelectorAll('pre code:not(.nohighlight)').forEach(block => {
+        hljs.highlightElement(block);
+      });
+    });
+  </script>
+
+</body>
+</html>

@@ -129,9 +129,10 @@
 
     /* ===== Learning Path ===== */
     .learning-path { margin-bottom: 56px; }
-    .learning-path-title { font-size: 26px; color: var(--aws-text); margin: 0 0 8px 0; text-align: center; }
+    .learning-path-eyebrow { text-align: center; color: var(--aws-orange); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 10px; display: flex; align-items: center; justify-content: center; gap: 7px; }
+    .learning-path-title { font-size: 28px; font-weight: 700; color: var(--aws-text); margin: 0 0 10px 0; text-align: center; letter-spacing: -0.3px; }
     .learning-path-title .lp-accent { color: var(--aws-orange); }
-    .learning-path-subtitle { text-align: center; color: var(--aws-text-light); font-size: 15px; margin: 0 auto 28px auto; max-width: 620px; }
+    .learning-path-subtitle { text-align: center; color: var(--aws-text-light); font-size: 15px; line-height: 1.6; margin: 0 auto 28px auto; max-width: 700px; }
     .lp-flow { display: flex; flex-wrap: wrap; align-items: stretch; justify-content: center; gap: 8px; }
     .lp-phase { flex: 1 1 150px; min-width: 140px; max-width: 185px; background: var(--aws-white); border: 1px solid var(--aws-border); border-top: 3px solid var(--aws-orange); border-radius: 8px; padding: 14px 14px 16px 14px; text-decoration: none; display: flex; flex-direction: column; transition: transform 0.2s, box-shadow 0.2s; }
     .lp-phase:hover { transform: translateY(-3px); box-shadow: 0 6px 18px rgba(0,0,0,0.10); }
@@ -177,8 +178,9 @@
 
     <!-- ===== LEARNING PATH ===== -->
     <section class="learning-path">
-      <h2 class="learning-path-title">The <span class="lp-accent">AWS Architecture</span> Learning Path</h2>
-      <p class="learning-path-subtitle">20 posts across 9 phases — from VPC fundamentals to enterprise-grade platforms.</p>
+      <div class="learning-path-eyebrow"><i class="fa-solid fa-route"></i> Learning Path</div>
+      <h2 class="learning-path-title">The AWS <span class="lp-accent">Platform Engineering</span> Roadmap</h2>
+      <p class="learning-path-subtitle">20 published posts across 7 phases — networking, security, containers, IaC, observability, and advanced architecture patterns.</p>
 
       <div class="lp-flow">
 

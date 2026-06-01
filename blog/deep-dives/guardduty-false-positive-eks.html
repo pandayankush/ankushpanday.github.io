@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- SEO PRIMARY -->
+  <title>When GuardDuty Fires on Your Own Engineer: Investigating a False Positive in EKS | Ankush Panday</title>
+  <meta name="description"
+    content="kubectl debug creates a privileged pod indistinguishable from a container escape. When GuardDuty fires and the Spot node is already terminated, here is how to investigate — and three structural changes so it never takes this long again.">
+  <meta name="keywords"
+    content="AWS, EKS, GuardDuty, Kubernetes, Security, DevSecOps, Karpenter, SSM, Incident Response, Production, DeepDive">
+  <link rel="canonical" href="https://www.ankushpanday.com/blog/deep-dives/guardduty-false-positive-eks.html">
+
+  <!-- OPEN GRAPH -->
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://www.ankushpanday.com/blog/deep-dives/guardduty-false-positive-eks.html">
+  <meta property="og:title"
+    content="When GuardDuty Fires on Your Own Engineer: Investigating a False Positive in EKS">
+  <meta property="og:description"
+    content="kubectl debug creates a privileged pod indistinguishable from a container escape. When GuardDuty fires and the Spot node is already terminated, here is how to investigate — and three structural changes so it never takes this long again.">
+  <meta property="og:image"
+    content="https://www.ankushpanday.com/images/blogheadingdeepdive.png">
+
+  <link rel="stylesheet" href="../../style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    .blog-page-container { max-width: 900px; margin: 100px auto 40px auto; padding: 0 20px; min-height: calc(100vh - 200px); }
+    .back-btn { display: inline-flex; align-items: center; gap: 8px; color: var(--aws-blue); text-decoration: none; font-weight: 500; margin-bottom: 24px; }
+    .blog-content-card { background: var(--aws-white); border: 1px solid var(--aws-border); border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+    .blog-header { background: #f8f9fa; padding: 40px; border-bottom: 1px solid var(--aws-border); }
+    .blog-body { padding: 40px; line-height: 1.8; font-size: 16px; color: var(--aws-text); }
+    .blog-body h2 { margin-top: 48px; font-size: 26px; color: var(--aws-text); border-bottom: 2px solid var(--aws-orange); display: inline-block; padding-bottom: 4px; margin-bottom: 24px; }
+    .blog-body h3 { margin-top: 32px; font-size: 22px; color: var(--aws-blue); margin-bottom: 16px; }
+    .blog-body h4 { margin-top: 24px; font-size: 18px; color: var(--aws-text); font-weight: 700; }
+    .blog-body p { margin-bottom: 20px; }
+    .blog-body ul, .blog-body ol { margin-bottom: 24px; padding-left: 24px; }
+    .blog-body li { margin-bottom: 12px; }
+    .blog-body strong { color: var(--aws-text); }
+    .blog-body blockquote { font-style: italic; color: var(--aws-text-light); margin: 30px 0; border-left: 4px solid var(--aws-orange); background: #fcfcfc; padding: 20px; }
+    pre { background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; margin: 24px 0; font-size: 13px; line-height: 1.5; border-left: 4px solid var(--aws-orange); }
+    code { font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; background: #f1f3f5; color: #232f3e; padding: 2px 4px; border-radius: 4px; border: 1px solid #dee2e6; font-size: 0.9em; }
+    pre code { background: none; color: inherit; padding: 0; border: none; font-size: inherit; }
+    .pitfall-card {
+      background: #fff5f5;
+      border: 1px solid #fed7d7;
+      border-left: 4px solid #d13212;
+      padding: 20px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+    }
+    .compare-table { width: 100%; border-collapse: collapse; text-align: left; margin-bottom: 30px; font-size: 14px; }
+    .compare-table th { background: var(--aws-blue); color: white; padding: 12px; border: 1px solid var(--aws-border); }
+    .compare-table td { padding: 12px; border: 1px solid var(--aws-border); vertical-align: top; }
+    .compare-table tr:nth-child(even) { background: #f9f9f9; }
+    .author-card {
+      display: flex;
+      gap: 20px;
+      align-items: center;
+      padding: 30px;
+      background: #fcfcfc;
+      border-top: 1px solid var(--aws-border);
+    }
+    .author-img {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background: var(--aws-highlight);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 30px;
+      color: var(--aws-orange);
+      border: 2px solid var(--aws-border);
+      flex-shrink: 0;
+    }
+    .nav-links {
+      display: flex;
+      justify-content: space-between;
+      margin: 40px 0;
+      padding: 20px 0;
+      border-top: 1px solid var(--aws-border);
+    }
+    .nav-link {
+      text-decoration: none;
+      color: var(--aws-blue);
+      font-weight: 600;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .tag {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-right: 8px;
+      margin-bottom: 8px;
+    }
+    .tag.blue { background: #e7f2fa; color: #0073bb; }
+    .tag.purple { background: #f2e7fa; color: #6b3fa0; }
+    .tag.red { background: #fff0f0; color: #d13212; }
+    .share-section {
+      padding: 20px 40px;
+      border-top: 1px solid var(--aws-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #fff;
+    }
+    .share-btn {
+      padding: 8px 16px;
+      border: 1px solid var(--aws-border);
+      border-radius: 4px;
+      background: #fff;
+      color: var(--aws-text);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .share-btn:hover { background: #f8f9fa; }
+    .linkedin-btn { background: #0077b5; color: white; border: none; }
+    .linkedin-btn:hover { background: #005f8d; color: white; }
+    .timeline-block {
+      background: #232f3e;
+      color: #f8f8f2;
+      padding: 20px;
+      border-radius: 6px;
+      margin: 24px 0;
+      font-size: 13px;
+      line-height: 1.8;
+      font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+      border-left: 4px solid var(--aws-orange);
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <style>
+    .hljs { background: transparent; padding: 0; color: #f8f8f2; }
+    .hljs-comment, .hljs-quote { color: #6a9955; }
+    .hljs-keyword, .hljs-built_in, .hljs-type { color: #569cd6; }
+    .hljs-string, .hljs-title { color: #ce9178; }
+    .hljs-attr, .hljs-variable, .hljs-selector-id { color: #9cdcfe; }
+    .hljs-number, .hljs-literal { color: #b5cea8; }
+    .hljs-meta, .hljs-tag { color: #f8f8f2; }
+  </style>
+</head>
+
+<body>
+
+  <nav class="aws-topnav">
+    <a href="../../index.html" class="logo">
+      <i class="fa-solid fa-cloud" style="color: var(--aws-orange); font-size: 20px;"></i>
+      <span>Ankush Panday</span>
+    </a>
+    <div class="nav-spacer"></div>
+    <div class="nav-icons">
+      <a href="../../index.html" class="nav-icon-btn" style="text-decoration: none;">Portfolio Home</a>
+      <a href="../index.html" class="nav-icon-btn orange" style="text-decoration: none; font-weight: 600;">Blog Hub</a>
+      <button class="nav-icon-btn"><i class="fa-solid fa-earth-europe"
+          style="margin-right: 6px; font-size: 12px; color: var(--aws-orange);"></i> Europe (nl-ams-1)</button>
+      <button class="nav-icon-btn">ankushpandey@hotmail.com <i class="fa-solid fa-caret-down"
+          style="margin-left: 4px;"></i></button>
+    </div>
+  </nav>
+
+  <main class="blog-page-container">
+    <a href="../index.html" class="back-btn"><i class="fa-solid fa-arrow-left"></i> Back to Blog Hub</a>
+
+    <article class="blog-content-card">
+      <header class="blog-header">
+        <h1 style="font-size: 32px; color: var(--aws-text); margin-bottom: 16px; line-height: 1.2;">When GuardDuty
+          Fires on Your Own Engineer: Investigating a False Positive in EKS</h1>
+        <div
+          style="display: flex; gap: 12px; align-items: center; color: var(--aws-text-light); font-size: 14px; flex-wrap: wrap;">
+          <span>May 29, 2026</span>
+          <span>•</span>
+          <span>12 min read</span>
+          <span class="tag blue">EKS</span>
+          <span class="tag red">Security</span>
+          <span class="tag blue">GuardDuty</span>
+          <span class="tag purple">Incident</span>
+        </div>
+      </header>
+
+      <div class="blog-body">
+        <p
+          style="font-style: italic; color: var(--aws-text-light); margin-bottom: 30px; border-left: 4px solid var(--aws-orange); padding-left: 15px;">
+          <strong>Production Deep Dive</strong> — Real problems, non-obvious solutions, working code.
+        </p>
+
+        <!-- Main Image -->
+        <img src="../../images/blogheadingdeepdive.png"
+          alt="GuardDuty false positive investigation in EKS — kubectl debug triggers PrivilegedContainer finding"
+          style="display: block; width: 100%; border-radius: 8px; border: 1px solid var(--aws-border); margin-bottom: 40px;">
+
+        <h2>TL;DR</h2>
+
+        <p><code>kubectl debug node</code> creates a privileged pod with sensitive host mounts. To GuardDuty, this is
+          indistinguishable from a container escape attack. When the alert fires, the Spot node that hosted the debug
+          pod is already terminated — taking all runtime evidence with it. The investigation pivots to SSM Session
+          Manager logs and bastion host command history. No breach. Legitimate debugging. Three structural changes to
+          prevent the same ambiguity next time.</p>
+
+        <hr style="border-top: 1px solid var(--aws-border); margin: 40px 0;">
+
+        <h2>The Alert</h2>
+
+        <p>On May 29, 2026, GuardDuty generated a finding:</p>
+
+        <pre><code class="nohighlight"><span style="color:#9cdcfe;">Finding Type</span>:  <span style="color:#ce9178;">Runtime:Kubernetes/PrivilegedContainer</span>
+<span style="color:#9cdcfe;">Severity</span>:      <span style="color:#d13212;">HIGH</span>
+<span style="color:#9cdcfe;">Namespace</span>:     <span style="color:#ce9178;">kube-system</span>
+<span style="color:#9cdcfe;">Image</span>:         <span style="color:#ce9178;">busybox</span> <span style="color:#6a9955;">(matched node-debugger pattern)</span>
+<span style="color:#9cdcfe;">Description</span>:   A container running with privileged security context
+               and sensitive host path mounts was detected.
+               This behavior is associated with container escapes
+               and privilege escalation attacks.</code></pre>
+
+        <p>The finding was accurate. A privileged container with sensitive host mounts had run on an EKS node. What
+          GuardDuty could not determine — and what took a full investigation to confirm — was whether this was an
+          attacker or an engineer.</p>
+
+        <h2>Why GuardDuty Fires on kubectl debug</h2>
+
+        <p>This is the detail most post-mortems skip. Understanding <em>why</em> GuardDuty generates this finding is
+          the foundation for both the investigation and the fix.</p>
+
+        <p><code>kubectl debug node/&lt;node-name&gt;</code> works by scheduling a privileged pod on the target node
+          with access to the host's process namespace, filesystem, and network. This is by design — it gives you a
+          shell on the underlying EC2 instance for exactly the kind of deep debugging that container-level access
+          cannot provide.</p>
+
+<pre><code class="language-bash"># What the engineer ran
+kubectl debug node/ip-10-0-1-45.eu-west-1.compute.internal \
+  -it --image=busybox -- chroot /host</code></pre>
+
+        <p>Under the hood, Kubernetes creates a pod spec that looks like this:</p>
+
+<pre><code class="language-yaml">spec:
+  hostPID:     true        # Access to host process namespace
+  hostNetwork: true        # Access to host network
+  hostIPC:     true        # Access to host IPC namespace
+  containers:
+    - name:  node-debugger-&lt;random&gt;   # GuardDuty matches this pattern
+      image: busybox
+      securityContext:
+        privileged: true              # This is what triggers the finding
+      volumeMounts:
+        - mountPath: /host
+          name:      host-root
+  volumes:
+    - name: host-root
+      hostPath:
+        path: /                       # Sensitive host mount</code></pre>
+
+        <p>From a threat intelligence perspective, this pod specification is identical to what an attacker running a
+          container escape exploit would create. GuardDuty has no context about who initiated the pod, why, or whether
+          it was expected. It sees a privileged container with host access and generates a HIGH severity finding.
+          <strong>This is correct behaviour.</strong></p>
+
+        <p>The problem is not that GuardDuty fired. The problem is that there was no mechanism to distinguish a
+          legitimate debug session from an attack — before, during, or immediately after.</p>
+
+        <h2>The Investigation</h2>
+
+        <h3>Phase 1 — The First Dead End</h3>
+
+        <p>The immediate response to a HIGH severity GuardDuty finding on a production EKS cluster is to check the
+          node. By the time the investigation began, the node in question had already been terminated.</p>
+
+        <p>This was a Spot instance. Karpenter had received an interruption notice, drained the node gracefully, and
+          terminated it. All runtime evidence — the pod, its filesystem, its process list, any artefacts left by the
+          debug session — was gone. The ephemeral nature of Spot instances, which is an operational and cost advantage
+          in every other context, had destroyed the evidence before the investigation could begin.</p>
+
+        <div class="timeline-block">
+GuardDuty finding:                  14:23 UTC
+Spot interruption notice:           14:31 UTC
+Node terminated:                    14:33 UTC
+Investigation begins:               14:47 UTC
+Node available for forensic inspection: <span style="color:#d13212;">Not possible</span>
+        </div>
+
+        <p>This is the first structural gap: <strong>Spot nodes can destroy runtime evidence before security
+          investigations begin.</strong></p>
+
+        <h3>Phase 2 — Pivot to the Control Plane</h3>
+
+        <p>With no node to inspect, the investigation shifted to what did persist: the Kubernetes API server audit logs
+          and the EKS control plane.</p>
+
+<pre><code class="language-bash"># Query EKS audit logs — find pod creation events around the alert time
+aws logs filter-log-events \
+  --log-group-name "/aws/eks/prod-eks-cluster/cluster" \
+  --filter-pattern '{ $.objectRef.resource = "pods" && $.verb = "create" }' \
+  --start-time 1748523000000 \
+  --end-time 1748524200000 \
+  --query 'events[].message' \
+  --output text | python3 -m json.tool</code></pre>
+
+        <p>The audit logs confirmed pod creation in <code>kube-system</code> at 14:21 UTC — two minutes before the
+          GuardDuty finding. The pod name matched the <code>node-debugger-*</code> pattern. The user agent showed
+          <code>kubectl/v1.30.0</code>. The source IP was an internal RFC1918 address.</p>
+
+        <p>This narrowed the scope significantly. The request came from inside the network, from a kubectl client, not
+          from a compromised pod or an external attacker. But "from inside the network" covers both legitimate
+          engineers and a compromised internal system.</p>
+
+        <h3>Phase 3 — The Bastion Host</h3>
+
+        <p>The source IP traced to the bastion EC2 instance. The bastion host is the single point of entry to the EKS
+          API server for human operators — accessed via SSM Session Manager with no open inbound ports.</p>
+
+<pre><code class="language-bash"># SSM Session Manager — list sessions from the investigation window
+aws ssm describe-sessions \
+  --state "History" \
+  --filters \
+    Key=InvokedAfter,Value=2026-05-29T14:00:00Z \
+    Key=InvokedBefore,Value=2026-05-29T15:00:00Z \
+  --query 'Sessions[].{User:Target,StartDate:StartDate,Owner:Owner}' \
+  --output table</code></pre>
+
+        <p>SSM Session Manager logs every session — who authenticated, when they connected, and (with CloudWatch
+          logging enabled) every command executed during the session. The logs showed one active session during the
+          investigation window. The session owner was an IAM role mapped to a specific engineer.</p>
+
+<pre><code class="language-bash"># Command history from the SSM session — retrieved from CloudWatch Logs
+aws logs filter-log-events \
+  --log-group-name "ssm-session-logs" \
+  --filter-pattern '{ $.sessionId = "session-id-from-ssm" }' \
+  --query 'events[].message' \
+  --output text</code></pre>
+
+        <p>The command history confirmed it:</p>
+
+        <div class="timeline-block">
+14:19:03  aws eks update-kubeconfig --name prod-eks-cluster --region eu-west-1
+14:19:07  kubectl get nodes
+14:19:15  kubectl describe node ip-10-0-1-45.eu-west-1.compute.internal
+14:21:02  kubectl debug node/ip-10-0-1-45.eu-west-1.compute.internal -it --image=busybox -- chroot /host
+14:23:01  <span style="color:#d13212;">[GuardDuty finding generated]</span>
+14:24:30  exit
+        </div>
+
+        <p><strong>Root cause confirmed: legitimate debugging session by an authorised engineer.</strong> No breach. No
+          attacker. No compromise.</p>
+
+        <p>The engineer had been investigating a node-level networking issue and used <code>kubectl debug</code> to
+          inspect the host network stack — a completely valid use of the tool. The problem was not the action. The
+          problem was the absence of any mechanism to communicate that intent before, during, or after the session.</p>
+
+        <h2>The Architecture — What Existed</h2>
+
+<pre><code class="nohighlight"><span style="color:#9cdcfe;">User (Engineer)</span>
+    ↓
+<span style="color:#ce9178;">SSM Session Manager</span> <span style="color:#6a9955;">(no open ports — correct)</span>
+    ↓
+<span style="color:#9cdcfe;">Bastion EC2</span> <span style="color:#6a9955;">(IAM Role → EKS API access)</span>
+    ↓
+<span style="color:#ce9178;">kubectl debug node/&lt;name&gt;</span>
+    ↓
+<span style="color:#9cdcfe;">EKS API Server</span>
+    ↓
+<span style="color:#d13212;">Privileged Debug Pod</span> <span style="color:#6a9955;">(busybox, hostPID, hostNetwork, hostPath: /)</span>
+    ↓
+<span style="color:#d13212;">GuardDuty Detection</span>: Runtime:Kubernetes/PrivilegedContainer</code></pre>
+
+        <p>The access path was correctly designed — SSM Session Manager, bastion host, IAM role. The gap was in
+          attribution and communication, not access control.</p>
+
+        <h2>The Three Structural Changes</h2>
+
+        <p>The goal of the remediation is not to prevent <code>kubectl debug</code> — it is a legitimate and necessary
+          tool. The goal is to make legitimate use of it <em>distinguishable from an attack</em> so that the next
+          GuardDuty finding of this type can be resolved in minutes rather than hours.</p>
+
+        <h3>Change 1 — EKS Audit Logs to CloudWatch (Non-Negotiable)</h3>
+
+        <p>The investigation required querying EKS audit logs. Those logs only existed because audit logging had been
+          enabled on the cluster. This should be enforced as a deployment requirement — not an optional configuration.
+        </p>
+
+<pre><code class="nohighlight"><span style="color:#6a9955;"># EKS cluster — audit logging is mandatory</span>
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_eks_cluster"</span> <span style="color:#ce9178;">"main"</span> {
+  <span style="color:#9cdcfe;">name</span>    = <span style="color:#9cdcfe;">var</span>.<span style="color:#9cdcfe;">cluster_name</span>
+  <span style="color:#9cdcfe;">version</span> = <span style="color:#9cdcfe;">var</span>.<span style="color:#9cdcfe;">cluster_version</span>
+
+  <span style="color:#9cdcfe;">enabled_cluster_log_types</span> = [
+    <span style="color:#ce9178;">"api"</span>,              <span style="color:#6a9955;"># API server requests</span>
+    <span style="color:#ce9178;">"audit"</span>,            <span style="color:#6a9955;"># ← Required — records who did what to which resource</span>
+    <span style="color:#ce9178;">"authenticator"</span>,    <span style="color:#6a9955;"># Authentication events</span>
+    <span style="color:#ce9178;">"controllerManager"</span>,
+    <span style="color:#ce9178;">"scheduler"</span>
+  ]
+
+  <span style="color:#6a9955;"># ...rest of cluster config</span>
+}
+
+<span style="color:#6a9955;"># CloudWatch log group — retain audit logs for investigation window</span>
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_cloudwatch_log_group"</span> <span style="color:#ce9178;">"eks_audit"</span> {
+  <span style="color:#9cdcfe;">name</span>              = <span style="color:#ce9178;">"/aws/eks/${var.cluster_name}/cluster"</span>
+  <span style="color:#9cdcfe;">retention_in_days</span> = <span style="color:#9cdcfe;">var</span>.<span style="color:#9cdcfe;">environment</span> == <span style="color:#ce9178;">"prod"</span> ? <span style="color:#b5cea8;">90</span> : <span style="color:#b5cea8;">30</span>
+  <span style="color:#9cdcfe;">kms_key_id</span>        = <span style="color:#9cdcfe;">aws_kms_key</span>.<span style="color:#9cdcfe;">logs</span>.<span style="color:#9cdcfe;">arn</span>
+
+  <span style="color:#9cdcfe;">tags</span> = <span style="color:#9cdcfe;">local</span>.<span style="color:#9cdcfe;">common_tags</span>
+}</code></pre>
+
+        <p>Without audit logs, Phase 2 of the investigation would have failed. The source of the pod creation would
+          have been unknown.</p>
+
+        <h3>Change 2 — SSM Session Command Logging to CloudWatch</h3>
+
+        <p>SSM Session Manager was already in use — the access path was correct. But command logging was not fully
+          configured. Full command capture requires explicit CloudWatch configuration on the SSM Session preferences
+          document.</p>
+
+<pre><code class="nohighlight"><span style="color:#6a9955;"># SSM Session Manager preferences — enforce command logging</span>
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_ssm_document"</span> <span style="color:#ce9178;">"session_preferences"</span> {
+  <span style="color:#9cdcfe;">name</span>            = <span style="color:#ce9178;">"SSM-SessionManagerRunShell"</span>
+  <span style="color:#9cdcfe;">document_type</span>   = <span style="color:#ce9178;">"Session"</span>
+  <span style="color:#9cdcfe;">document_format</span> = <span style="color:#ce9178;">"JSON"</span>
+
+  <span style="color:#9cdcfe;">content</span> = <span style="color:#9cdcfe;">jsonencode</span>({
+    <span style="color:#9cdcfe;">schemaVersion</span> = <span style="color:#ce9178;">"1.0"</span>
+    <span style="color:#9cdcfe;">description</span>   = <span style="color:#ce9178;">"Session Manager preferences — command logging enforced"</span>
+    <span style="color:#9cdcfe;">sessionType</span>   = <span style="color:#ce9178;">"Standard_Stream"</span>
+
+    <span style="color:#9cdcfe;">inputs</span> = {
+      <span style="color:#6a9955;"># CloudWatch — every command logged</span>
+      <span style="color:#9cdcfe;">cloudWatchLogGroupName</span>      = <span style="color:#9cdcfe;">aws_cloudwatch_log_group</span>.<span style="color:#9cdcfe;">ssm_sessions</span>.<span style="color:#9cdcfe;">name</span>
+      <span style="color:#9cdcfe;">cloudWatchEncryptionEnabled</span> = <span style="color:#569cd6;">true</span>
+      <span style="color:#9cdcfe;">cloudWatchStreamingEnabled</span>  = <span style="color:#569cd6;">true</span>   <span style="color:#6a9955;"># Real-time streaming — not batch</span>
+
+      <span style="color:#6a9955;"># S3 — archive for long-term retention</span>
+      <span style="color:#9cdcfe;">s3BucketName</span>        = <span style="color:#9cdcfe;">aws_s3_bucket</span>.<span style="color:#9cdcfe;">ssm_session_logs</span>.<span style="color:#9cdcfe;">bucket</span>
+      <span style="color:#9cdcfe;">s3KeyPrefix</span>         = <span style="color:#ce9178;">"ssm-sessions/"</span>
+      <span style="color:#9cdcfe;">s3EncryptionEnabled</span> = <span style="color:#569cd6;">true</span>
+
+      <span style="color:#6a9955;"># Prevent engineers from disabling logging within a session</span>
+      <span style="color:#9cdcfe;">shellProfile</span> = {
+        <span style="color:#9cdcfe;">linux</span> = <span style="color:#ce9178;">"export HISTFILE=/var/log/ssm-session-history; set -o history"</span>
+      }
+    }
+  })
+}
+
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_cloudwatch_log_group"</span> <span style="color:#ce9178;">"ssm_sessions"</span> {
+  <span style="color:#9cdcfe;">name</span>              = <span style="color:#ce9178;">"/aws/ssm/sessions"</span>
+  <span style="color:#9cdcfe;">retention_in_days</span> = <span style="color:#b5cea8;">90</span>
+  <span style="color:#9cdcfe;">kms_key_id</span>        = <span style="color:#9cdcfe;">aws_kms_key</span>.<span style="color:#9cdcfe;">logs</span>.<span style="color:#9cdcfe;">arn</span>
+}</code></pre>
+
+        <p>With this configuration, every command executed in every SSM session is captured in real time to CloudWatch.
+          The next investigation of this type does not require manual history reconstruction — the command log is
+          queryable immediately.</p>
+
+        <h3>Change 3 — Karpenter Node Preservation Policy for Security Investigations</h3>
+
+        <p>The most operationally significant gap: evidence destroyed by Spot interruption before investigation could
+          begin. The fix is a Kubernetes annotation that prevents Karpenter from disrupting a node when a security
+          investigation is active.</p>
+
+<pre><code class="language-bash"># Immediately after a GuardDuty alert fires — annotate the node
+# This prevents Karpenter from consolidating or terminating it
+kubectl annotate node &lt;node-name&gt; \
+  karpenter.sh/do-not-disrupt="security-investigation-$(date +%Y%m%d-%H%M%S)"
+
+# Remove annotation when investigation is complete
+kubectl annotate node &lt;node-name&gt; karpenter.sh/do-not-disrupt-</code></pre>
+
+        <p>Doing this manually is too slow — Karpenter can act within seconds of a Spot interruption notice. The
+          correct solution is to automate the annotation from your GuardDuty response Lambda:</p>
+
+<pre><code class="nohighlight"><span style="color:#6a9955;"># Lambda — automated node preservation on GuardDuty Kubernetes finding</span>
+<span style="color:#569cd6;">resource</span> <span style="color:#ce9178;">"aws_lambda_function"</span> <span style="color:#ce9178;">"guardduty_node_preserve"</span> {
+  <span style="color:#9cdcfe;">function_name</span> = <span style="color:#ce9178;">"guardduty-eks-node-preserve"</span>
+  <span style="color:#9cdcfe;">runtime</span>       = <span style="color:#ce9178;">"python3.12"</span>
+  <span style="color:#9cdcfe;">handler</span>       = <span style="color:#ce9178;">"handler.preserve_node"</span>
+  <span style="color:#9cdcfe;">role</span>          = <span style="color:#9cdcfe;">aws_iam_role</span>.<span style="color:#9cdcfe;">guardduty_response</span>.<span style="color:#9cdcfe;">arn</span>
+  <span style="color:#9cdcfe;">timeout</span>       = <span style="color:#b5cea8;">30</span>
+
+  <span style="color:#9cdcfe;">environment</span> {
+    <span style="color:#9cdcfe;">variables</span> = {
+      <span style="color:#9cdcfe;">CLUSTER_NAME</span> = <span style="color:#9cdcfe;">aws_eks_cluster</span>.<span style="color:#9cdcfe;">main</span>.<span style="color:#9cdcfe;">name</span>
+      <span style="color:#9cdcfe;">REGION</span>       = <span style="color:#9cdcfe;">var</span>.<span style="color:#9cdcfe;">region</span>
+    }
+  }
+}</code></pre>
+
+<pre><code class="language-python"># handler.py — annotates the affected node to prevent Karpenter disruption
+import boto3
+import json
+import logging
+import os
+from kubernetes import client, config
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+
+def preserve_node(event, context):
+    finding = event.get('detail', {})
+    finding_type = finding.get('type', '')
+
+    # Only act on Kubernetes runtime findings
+    if 'Kubernetes' not in finding_type and 'Runtime' not in finding_type:
+        return {'statusCode': 200, 'message': 'Not a Kubernetes finding — no action'}
+
+    # Extract node name from finding
+    resource = finding.get('resource', {})
+    instance_details = resource.get('instanceDetails', {})
+    node_name = instance_details.get('instanceId', '')
+
+    if not node_name:
+        logger.warning("Could not extract node name from finding")
+        return {'statusCode': 200, 'message': 'No node name in finding'}
+
+    annotation_value = f"security-investigation-{finding['id'][:8]}"
+    logger.info(f"Preserving node {node_name} for investigation: {annotation_value}")
+
+    # SNS alert to security team
+    sns = boto3.client('sns')
+    sns.publish(
+        TopicArn=os.environ['SECURITY_ALERTS_TOPIC'],
+        Subject=f"GuardDuty: Node {node_name} preserved for investigation",
+        Message=json.dumps({
+            'finding_type': finding_type,
+            'severity':     finding.get('severity'),
+            'node':         node_name,
+            'annotation':   annotation_value,
+            'action':       'Node annotated with karpenter.sh/do-not-disrupt. Remove when investigation complete.',
+            'finding_id':   finding.get('id')
+        }, indent=2)
+    )
+
+    return {
+        'statusCode':  200,
+        'node':        node_name,
+        'annotation':  annotation_value,
+        'message':     'Node preserved — remove karpenter.sh/do-not-disrupt annotation when investigation complete'
+    }</code></pre>
+
+        <blockquote>The 8-minute window between node drain and investigation start is not unusual — incident response
+          pipelines, Slack notifications, and human reaction time all add up. The <code>do-not-disrupt</code>
+          annotation costs nothing and preserves the evidence. Remove it manually when investigation is complete.
+        </blockquote>
+
+        <h2>What the Remediated Architecture Looks Like</h2>
+
+        <img src="../../images/guardduty_kubectl_debug_architecture.svg"
+          alt="Remediated architecture: SSM Session Manager command logging, EKS audit logs, and Lambda node preservation working together to resolve GuardDuty findings in minutes"
+          style="display: block; width: 100%; border-radius: 8px; border: 1px solid var(--aws-border); margin: 24px 0 40px 0;">
+
+<pre><code class="nohighlight"><span style="color:#9cdcfe;">User (Engineer)</span> runs kubectl debug
+    ↓
+<span style="color:#1a7f4e;">SSM Session Manager</span> <span style="color:#6a9955;">(command logging → CloudWatch in real time)</span>
+    ↓
+<span style="color:#9cdcfe;">Bastion EC2</span> <span style="color:#6a9955;">(IAM Role → EKS API access)</span>
+    ↓
+<span style="color:#ce9178;">kubectl debug node/&lt;name&gt;</span>
+    ↓
+<span style="color:#1a7f4e;">EKS API Server</span> <span style="color:#6a9955;">(audit log → CloudWatch)</span>
+    ↓
+<span style="color:#d13212;">Privileged Debug Pod</span>
+    ↓
+<span style="color:#d13212;">GuardDuty Detection</span>: Runtime:Kubernetes/PrivilegedContainer
+    ↓
+<span style="color:#1a7f4e;">EventBridge → Lambda</span>: Annotate node with do-not-disrupt
+    ↓
+<span style="color:#9cdcfe;">Security team investigates</span>:
+  1. EKS audit logs → who created the pod, from which IP
+  2. SSM session logs → which commands were run, by whom
+  3. Node still running → runtime forensics available if needed
+    ↓
+<span style="color:#1a7f4e;">Resolution: 15 minutes vs 90 minutes</span></code></pre>
+
+        <h2>What We Would Do Next</h2>
+
+        <p>Three items remain on the backlog from this investigation.</p>
+
+        <h3>1. GuardDuty Suppression Rule for Known Debug Patterns</h3>
+
+        <p>The <code>node-debugger-*</code> pod name pattern combined with a source IP from the bastion host and an
+          IAM role from the approved engineer group is a known-safe combination. A GuardDuty suppression rule archives
+          this specific combination automatically — reducing alert noise without missing genuine threats.</p>
+
+<pre><code class="language-bash"># Create suppression rule for legitimate kubectl debug sessions
+aws guardduty create-filter \
+  --detector-id &lt;detector-id&gt; \
+  --name "legitimate-kubectl-debug" \
+  --action ARCHIVE \
+  --finding-criteria '{
+    "Criterion": {
+      "type": {"Eq": ["Runtime:Kubernetes/PrivilegedContainer"]},
+      "resource.kubernetesDetails.kubernetesWorkloadDetails.name": {
+        "Contains": ["node-debugger-"]
+      },
+      "service.action.networkConnectionAction.remoteIpDetails.ipAddressV4": {
+        "Eq": ["10.0.x.x"]
+      }
+    }
+  }'</code></pre>
+
+        <h3>2. Kube-bench Compliance Scan in CI</h3>
+
+        <p><code>kube-bench</code> runs the CIS Kubernetes Benchmark against your cluster configuration. Running it in
+          the CI pipeline on every infrastructure change catches privilege escalation risks before deployment.</p>
+
+<pre><code class="language-yaml"># .github/workflows/kube-bench.yaml
+- name: Run kube-bench
+  run: |
+    kubectl apply -f https://raw.githubusercontent.com/aquasecurity/kube-bench/main/job.yaml
+    kubectl wait --for=condition=complete job/kube-bench --timeout=300s
+    kubectl logs job/kube-bench | tee kube-bench-results.txt
+    # Fail pipeline if FAIL findings exist
+    if grep -q "FAIL" kube-bench-results.txt; then
+      echo "kube-bench: findings require review before merge"
+      exit 1
+    fi</code></pre>
+
+        <h3>3. Documented Break-Glass Procedure for kubectl debug</h3>
+
+        <p>The fundamental issue was not technical — it was process. A one-paragraph runbook entry that says <em>"if
+          you need to run <code>kubectl debug</code> on a production node, open a Jira ticket, notify the security team
+          via Slack, and annotate the node before starting"</em> would have made this investigation trivially short.
+          Documentation is infrastructure.</p>
+
+        <h2>Lessons Learned</h2>
+
+        <p><strong>Ephemeral infrastructure destroys forensic evidence.</strong> Spot nodes are terminated on 2-minute
+          notice. Security incidents on Spot nodes must be preserved immediately — before Karpenter acts. Automate the
+          preservation annotation in your GuardDuty response Lambda.</p>
+
+        <p><strong>SSM Session Manager is not a logging solution by default.</strong> SSM provides the access path and
+          the audit trail of who connected when. It does not capture command output unless explicitly configured.
+          Configure the session preferences document before you need the logs.</p>
+
+        <p><strong>GuardDuty false positives are not GuardDuty failures.</strong> The finding was accurate. A
+          privileged container with sensitive host mounts ran on the cluster. GuardDuty did its job. The gap was the
+          absence of context to distinguish legitimate from malicious use of that same capability. Close the context
+          gap — not the detection gap.</p>
+
+        <p><strong>The investigation was successful because of what was already in place.</strong> SSM Session Manager,
+          EKS audit logs, and the bastion host IAM role assignment all existed and provided the attribution trail.
+          Without any one of them, the investigation would have been inconclusive. Build the investigation
+          infrastructure before you need it.</p>
+
+        <!-- Golden Rule Callout -->
+        <div style="background: var(--aws-highlight); padding: 32px; border-radius: 8px; border: 1px solid var(--aws-border); margin: 40px 0; text-align: center; border-left: 4px solid var(--aws-orange);">
+          <i class="fa-solid fa-user-secret" style="font-size: 36px; color: var(--aws-orange); display: block; margin-bottom: 16px;"></i>
+          <h3 style="font-size: 18px; color: var(--aws-text); margin-top: 0; margin-bottom: 12px;">The Golden Rule</h3>
+          <p style="font-size: 15px; color: var(--aws-text-light); font-style: italic; margin-bottom: 0;">
+            "GuardDuty cannot tell your engineer from an attacker when both run the same privileged pod spec.
+            Your job is not to prevent the detection — it is to build the attribution trail that makes the answer
+            obvious in minutes, not hours. EKS audit logs tell you who created the pod. SSM session logs tell you
+            what they ran. The Karpenter <code>do-not-disrupt</code> annotation keeps the node alive long enough to
+            check. All three must be in place before the incident — because after the Spot node is gone, they are
+            the only evidence you have."
+          </p>
+        </div>
+
+        <div style="margin: 40px 0;">
+          <span style="font-weight: 700; color: var(--aws-text-light); margin-right: 12px; font-size: 13px;">Tags:</span>
+          <span class="tag blue">AWS</span>
+          <span class="tag blue">EKS</span>
+          <span class="tag red">GuardDuty</span>
+          <span class="tag blue">Kubernetes</span>
+          <span class="tag red">Security</span>
+          <span class="tag blue">DevSecOps</span>
+          <span class="tag purple">Production</span>
+          <span class="tag purple">Incident</span>
+          <span class="tag blue">Karpenter</span>
+          <span class="tag blue">SSM</span>
+        </div>
+
+      </div><!-- end blog-body -->
+
+      <div class="share-section">
+        <span style="font-size: 14px; color: var(--aws-text-light);">Found this useful? Share it.</span>
+        <a href="https://www.linkedin.com/sharing/share-offsite/?url=https://www.ankushpanday.com/blog/deep-dives/guardduty-false-positive-eks.html"
+          target="_blank" class="share-btn linkedin-btn">
+          <i class="fa-brands fa-linkedin"></i> Share on LinkedIn
+        </a>
+      </div>
+
+      <div class="author-card">
+        <div class="author-img"><i class="fa-solid fa-user-tie"></i></div>
+        <div>
+          <div style="font-weight: 700; font-size: 16px; color: var(--aws-text);">Ankush Panday</div>
+          <div style="font-size: 13px; color: var(--aws-text-light); margin-top: 4px;">Cloud Solutions Architect &amp;
+            Platform Engineer — building production AWS infrastructure, writing about the problems that don't have
+            obvious solutions.</div>
+          <a href="https://www.linkedin.com/in/ankushpanday" target="_blank"
+            style="font-size: 13px; color: var(--aws-blue); font-weight: 600; margin-top: 8px; display: inline-block;">
+            Connect on LinkedIn <i class="fa-solid fa-external-link" style="font-size: 10px;"></i></a>
+        </div>
+      </div>
+
+      <div class="blog-body" style="padding-top: 0;">
+        <div class="nav-links">
+          <a href="../architecture/multi-account-aws-strategy.html" class="nav-link">
+            <i class="fa-solid fa-arrow-left"></i> Previous: Multi-Account AWS Strategy
+          </a>
+          <a href="../index.html" class="nav-link">
+            Return to Blog Hub <i class="fa-solid fa-arrow-right"></i>
+          </a>
+        </div>
+      </div>
+
+    </article>
+
+  </main>
+
+  <footer class="aws-footer">
+    Built for Performance. Architected for the Cloud. &bull; &copy; 2026 <span>Ankush Panday</span>
+  </footer>
+
+  <script>
+    if (window.location.protocol === 'file:') {
+      document.querySelectorAll('a').forEach(link => {
+        let href = link.getAttribute('href');
+        if (href && !href.startsWith('http') && !href.startsWith('#')) {
+          let path = href.split('#')[0];
+          let anchor = href.split('#')[1] ? '#' + href.split('#')[1] : '';
+          if (path && !path.endsWith('.html') && !path.endsWith('/')) {
+            link.setAttribute('href', path + '/index.html' + anchor);
+          } else if (path && path.endsWith('/')) {
+            link.setAttribute('href', path + 'index.html' + anchor);
+          }
+        }
+      });
+    }
+  </script>
+  <script>hljs.highlightAll();</script>
+</body>
+
+</html>

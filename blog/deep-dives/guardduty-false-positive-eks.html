@@ -22,7 +22,7 @@
   <meta property="og:description"
     content="kubectl debug creates a privileged pod indistinguishable from a container escape. When GuardDuty fires and the Spot node is already terminated, here is how to investigate — and three structural changes so it never takes this long again.">
   <meta property="og:image"
-    content="https://www.ankushpanday.com/images/blogheadingdeepdive.png">
+    content="https://www.ankushpanday.com/images/eks-guardduty-false-positive-investigation.png">
 
   <link rel="stylesheet" href="../../style.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -197,7 +197,7 @@
         </p>
 
         <!-- Main Image -->
-        <img src="../../images/blogheadingdeepdive.png"
+        <img src="../../images/eks-guardduty-false-positive-investigation.png"
           alt="GuardDuty false positive investigation in EKS — kubectl debug triggers PrivilegedContainer finding"
           style="display: block; width: 100%; border-radius: 8px; border: 1px solid var(--aws-border); margin-bottom: 40px;">
 
@@ -683,7 +683,7 @@ aws guardduty create-filter \
       </div><!-- end blog-body -->
 
       <div class="share-section">
-        <span style="font-size: 14px; color: var(--aws-text-light);">Found this useful? Share it.</span>
+        <span style="font-weight: 700; color: var(--aws-text-light);">Share this article:</span>
         <a href="https://www.linkedin.com/sharing/share-offsite/?url=https://www.ankushpanday.com/blog/deep-dives/guardduty-false-positive-eks.html"
           target="_blank" class="share-btn linkedin-btn">
           <i class="fa-brands fa-linkedin"></i> Share on LinkedIn
@@ -693,28 +693,26 @@ aws guardduty create-filter \
       <div class="author-card">
         <div class="author-img"><i class="fa-solid fa-user-tie"></i></div>
         <div>
-          <div style="font-weight: 700; font-size: 16px; color: var(--aws-text);">Ankush Panday</div>
-          <div style="font-size: 13px; color: var(--aws-text-light); margin-top: 4px;">Cloud Solutions Architect &amp;
-            Platform Engineer — building production AWS infrastructure, writing about the problems that don't have
-            obvious solutions.</div>
-          <a href="https://www.linkedin.com/in/ankushpanday" target="_blank"
-            style="font-size: 13px; color: var(--aws-blue); font-weight: 600; margin-top: 8px; display: inline-block;">
-            Connect on LinkedIn <i class="fa-solid fa-external-link" style="font-size: 10px;"></i></a>
-        </div>
-      </div>
-
-      <div class="blog-body" style="padding-top: 0;">
-        <div class="nav-links">
-          <a href="../architecture/multi-account-aws-strategy.html" class="nav-link">
-            <i class="fa-solid fa-arrow-left"></i> Previous: Multi-Account AWS Strategy
-          </a>
-          <a href="../index.html" class="nav-link">
-            Return to Blog Hub <i class="fa-solid fa-arrow-right"></i>
-          </a>
+          <h4 style="margin: 0 0 8px 0; color: var(--aws-text);">Ankush Panday</h4>
+          <p style="margin: 0; font-size: 14px; color: var(--aws-text-light);">Specializing in highly scalable AWS
+            infrastructure and automated quality engineering.</p>
+          <a href="https://www.linkedin.com/in/ankush-panday-39b97824/" target="_blank"
+            style="display: inline-block; margin-top: 10px; color: var(--aws-blue); text-decoration: none; font-size: 13px; font-weight: 600;">Connect
+            on LinkedIn <i class="fa-solid fa-external-link" style="font-size: 10px;"></i></a>
         </div>
       </div>
 
     </article>
+
+    <!-- NAVIGATION LINKS -->
+    <div class="nav-links">
+      <a href="../architecture/multi-account-aws-strategy.html" class="nav-link">
+        <i class="fa-solid fa-arrow-left"></i> Previous: Multi-Account AWS Strategy
+      </a>
+      <a href="../index.html" class="nav-link">
+        Return to Blog Hub <i class="fa-solid fa-arrow-right"></i>
+      </a>
+    </div>
 
   </main>
 

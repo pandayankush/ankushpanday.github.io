@@ -195,7 +195,7 @@
         <div style="display: flex; gap: 12px; align-items: center; color: var(--aws-text-light); font-size: 14px; flex-wrap: wrap;">
           <span>June 2, 2026</span>
           <span>•</span>
-          <span>10 min read</span>
+          <span>15 min read</span>
           <span class="tag purple">GenAI</span>
           <span class="tag purple">LLM</span>
           <span class="tag purple">Fine-tuning</span>
@@ -261,6 +261,13 @@
           with good examples. ICL uses up context window space.
         </div>
 
+        <h3>Context Window</h3>
+        <p>The context window is the maximum amount of text the model can "see" at once — both your prompt and the
+          model's response have to fit inside it. I kept seeing this term and not really having a clean definition for
+          it. In short: the bigger the model, generally the larger the context window. When you add examples for
+          few-shot learning, those examples eat into that space. So there's a real trade-off between giving the model
+          more examples and leaving room for the actual input and output.</p>
+
         <h2>3. Prompt Engineering vs Prompt Tuning</h2>
 
         <table class="compare-table">
@@ -280,10 +287,24 @@
           <li><strong>Soft prompts</strong> — learned embedding vectors prepended to the input. Same length as token embeddings. Task-specific. Not interpretable. Trained end-to-end.</li>
         </ul>
 
+        <h3>Prompt Optimization</h3>
+        <p>A term I came across that I want to make sure I don't confuse with prompt engineering. Prompt engineering
+          is about manually choosing better words. Prompt optimization is more systematic — it's about addressing
+          the inconsistency and unreliability of outputs. The question it tries to answer: how do you make the model
+          give you a good answer reliably, not just occasionally? That might involve structuring prompts differently,
+          adding constraints, or using techniques like chain-of-thought. I'll dig into this more in later weeks.</p>
+
         <h2>4. Fine-Tuning</h2>
 
         <p>Supervised learning that updates model weights using labelled examples. Uses a much smaller dataset than
           pre-training (hundreds to thousands of examples vs billions of tokens).</p>
+
+        <div class="key-insight">
+          <strong>Pre-training is self-supervised learning</strong> — something I hadn't connected before. The model
+          learns by predicting the next token from unlabelled text. No human labels required. That's what makes it
+          possible to train on the entire internet. Fine-tuning after that is supervised — you need labelled
+          prompt-completion pairs.
+        </div>
 
         <h3>4a. Instruction Fine-Tuning</h3>
         <p>Trains the model to follow instructions rather than just predict next tokens. Uses prompt-completion pairs.
@@ -310,6 +331,14 @@
         <p>Fine-tune on many tasks at once. Requires significantly more data (50k–100k examples). Avoids catastrophic
           forgetting. FLAN models (e.g. FLAN-T5) use this approach.</p>
 
+        <h3>Cross Entropy Loss</h3>
+        <p>This came up when the course explained how the model actually learns during training. I'm still not fully
+          comfortable with the maths here, but my understanding is: the model outputs a probability distribution
+          across all tokens in its vocabulary. Cross entropy loss measures how wrong that distribution is compared to
+          the actual next token. The model is trying to minimise this loss across all the training examples —
+          that's what drives the weight updates. The reason cross entropy works here is that the LLM is producing
+          probabilities, not a single class prediction like in simpler classifiers.</p>
+
         <h2>5. PEFT — Parameter-Efficient Fine-Tuning</h2>
 
         <p>Full fine-tuning updates every parameter. PEFT updates only 15–20% of parameters (or fewer). Most original
@@ -321,6 +350,13 @@
           <li>Small trained weights (~MBs) can be swapped in/out per task — no need to store full model copies</li>
           <li>Multiple task adapters can share one base model</li>
         </ul>
+
+        <div class="key-insight">
+          <strong>Compute budget matters too, not just memory.</strong> The course asked: "besides memory, what key
+          resource must be sufficient for full fine-tuning?" The answer is compute. Even if you can technically fit
+          the model in memory, full fine-tuning requires enough GPU compute to run all the forward and backward
+          passes. PEFT helps on both fronts — less memory AND less compute because fewer parameters need gradients.
+        </div>
 
         <table class="compare-table">
           <thead><tr><th>Category</th><th>How It Works</th><th>Example</th></tr></thead>
@@ -427,6 +463,14 @@ BLEU ≈ average of unigram, bigram, trigram, 4-gram precisions</code></pre>
           </tbody>
         </table>
 
+        <h3>Perplexity</h3>
+        <p>This was listed in the course evaluation metrics alongside BLEU and ROUGE, and I want to be upfront that
+          I haven't fully internalised it yet. My rough understanding: perplexity measures how "surprised" the model
+          is by a piece of text. A low perplexity score means the model found the text predictable — so it's a
+          measure of how well the model's probability distribution matches real language. Lower is generally better.
+          It's used more for evaluating the base language model quality rather than specific task performance like
+          summarisation or translation. I'll come back to this one.</p>
+
         <h2>8. Evaluation Benchmarks</h2>
 
         <p>For overall model evaluation, use standardised benchmarks rather than task-specific metrics alone:</p>
@@ -452,6 +496,33 @@ BLEU ≈ average of unigram, bigram, trigram, 4-gram precisions</code></pre>
             <tr><td><strong>Decoder only</strong></td><td>Autoregressive</td><td>Unidirectional — predicts next token</td><td>Text generation, chatbots</td><td>GPT family, LLaMA</td></tr>
           </tbody>
         </table>
+
+        <h3>Why Transformers Replaced RNNs and CNNs</h3>
+        <p>Before transformers, sequence tasks were handled by RNNs (Recurrent Neural Networks) and CNNs
+          (Convolutional Neural Networks). The course touched on why transformers won, and the answer that clicked
+          for me was: <strong>RNNs process tokens one at a time, sequentially</strong>. That means they struggle
+          with long-range dependencies — by the time the model gets to the end of a long sentence, information
+          about the beginning has faded. CNNs were faster but had limited receptive fields. Transformers introduced
+          the self-attention mechanism, which lets every token attend to every other token in the sequence
+          simultaneously. That's the key shift — parallel, not sequential. Which also makes them much faster to
+          train on modern GPU hardware.</p>
+
+        <h3>Activation Functions — Softmax, Sigmoid, Tanh, ReLU</h3>
+        <p>These came up in the architecture discussion. I'll be honest — I'm going to need to revisit this properly.
+          My current rough understanding:</p>
+        <ul>
+          <li><strong>Softmax</strong> — converts raw scores into a probability distribution (all values sum to 1). Used in the output layer of the transformer to produce token probabilities.</li>
+          <li><strong>Sigmoid</strong> — squashes values to 0–1. Useful for binary classification.</li>
+          <li><strong>Tanh</strong> — squashes values to -1 to 1. Similar to sigmoid but centred at zero.</li>
+          <li><strong>ReLU</strong> (Rectified Linear Unit) — outputs 0 for negative values, the value itself for positive. Very common in feed-forward layers inside transformers.</li>
+        </ul>
+
+        <div class="key-insight">
+          <strong>Interesting stat from the course:</strong> The new Moore's Law for LLMs — parameter count roughly
+          doubles every 9.8 months. This was cited to show how fast the field is moving. The original Moore's Law
+          was about transistor count on chips. The LLM equivalent tracks model scale. Worth keeping in mind when
+          reading papers with dates on them — a 2022 "large" model may be medium-sized by 2024 standards.
+        </div>
 
         <h3>Key Concepts</h3>
         <ul>
@@ -496,6 +567,14 @@ BLEU ≈ average of unigram, bigram, trigram, 4-gram precisions</code></pre>
             <tr><td><strong>Int4</strong></td><td>0.5 bytes</td><td>Aggressive — reduces size and speeds inference</td></tr>
           </tbody>
         </table>
+
+        <h3>CUDA</h3>
+        <p>CUDA keeps getting mentioned in the context of GPU training and it finally made sense to note it down.
+          CUDA stands for Compute Unified Device Architecture — it's NVIDIA's platform and API for using GPUs for
+          general-purpose computing (not just graphics). Basically, every time you hear about training on a GPU,
+          CUDA is the underlying thing making that possible. PyTorch, TensorFlow, and most deep learning frameworks
+          rely on CUDA under the hood. As an infra person this is the layer I sit above — but it's good to know
+          what it is when it comes up in errors or performance discussions.</p>
 
         <h3>Other Optimisation Techniques</h3>
         <ul>

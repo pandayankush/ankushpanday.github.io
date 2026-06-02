@@ -534,6 +534,31 @@ BLEU ≈ average of unigram, bigram, trigram, 4-gram precisions</code></pre>
           <li><strong>Cross-attention</strong> — decoder attends to encoder output (in encoder-decoder models)</li>
         </ul>
 
+        <h3>What Is Inference?</h3>
+        <p><strong>Inference</strong> is the act of using a trained model to generate a response. When you type a
+          message to ChatGPT and it replies — that's inference. The model is running your input through all its
+          learned weights and producing an output.</p>
+
+        <p>The term that trips people up is the difference between <strong>inference</strong> and a
+          <strong>prompt</strong>:</p>
+        <ul>
+          <li><strong>Prompt</strong> — the text <em>you send in</em>. Your question, instruction, or context. It's just a string.</li>
+          <li><strong>Inference</strong> — the <em>process</em> of the model computing a response from that prompt. It's the neural network doing work.</li>
+        </ul>
+
+        <p>Quick example:</p>
+        <blockquote>
+          Prompt: <em>"Translate 'hello' to French."</em><br>
+          Inference: the model runs that prompt through its layers, samples from a probability distribution over
+          tokens, and produces <em>"Bonjour."</em><br>
+          The prompt is your input. Inference is everything that happens in between.
+        </blockquote>
+
+        <p>This also clears up why "inference cost" is different from "training cost." Training is done once and
+          updates the weights. Inference happens every single time someone sends a prompt — which at scale is
+          millions of times a day. That's why model optimisation (quantisation, distillation) focuses so heavily
+          on making inference faster and cheaper.</p>
+
         <h3>Inference Parameters</h3>
 
         <table class="compare-table">

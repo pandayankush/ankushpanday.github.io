@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Designing a Fraud Detection Platform on AWS EKS — A 33-Microservice Case Study | Ankush Panday</title>
+  <meta name="description"
+    content="A real case study: building a bank's fraud detection platform on Amazon EKS — 33 microservices, device risk plus behavioural AI/ML, Databricks integration, DORA compliance, dual autoscalers, a Fargate detour, and a 40-minute production cutover.">
+  <meta name="keywords"
+    content="AWS, EKS, CaseStudy, FraudDetection, Kubernetes, Databricks, DORA, Karpenter, ClusterAutoscaler, GitOps, PlatformEngineering, FinTech, Fargate">
+  <link rel="canonical" href="https://www.ankushpanday.com/blog/architecture/fraud-detection-platform-eks.html">
+
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://www.ankushpanday.com/blog/architecture/fraud-detection-platform-eks.html">
+  <meta property="og:title" content="Designing a Fraud Detection Platform on AWS EKS — A 33-Microservice Architecture Case Study">
+  <meta property="og:description" content="A real case study: building a bank's fraud detection platform on Amazon EKS — device risk plus behavioural AI/ML, Databricks, DORA compliance, dual autoscalers, and a 40-minute production cutover.">
+  <meta property="og:image" content="https://www.ankushpanday.com/images/fraud-detection-platform-eks-architecture.png">
+
+  <link rel="stylesheet" href="../../style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    .blog-page-container { max-width: 900px; margin: 100px auto 40px auto; padding: 0 20px; min-height: calc(100vh - 200px); }
+    .back-btn { display: inline-flex; align-items: center; gap: 8px; color: var(--aws-blue); text-decoration: none; font-weight: 500; margin-bottom: 24px; }
+    .blog-content-card { background: var(--aws-white); border: 1px solid var(--aws-border); border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+    .blog-header { background: #f8f9fa; padding: 40px; border-bottom: 1px solid var(--aws-border); }
+    .blog-body { padding: 40px; line-height: 1.8; font-size: 16px; color: var(--aws-text); }
+    .blog-body h2 { margin-top: 48px; font-size: 26px; color: var(--aws-text); border-bottom: 2px solid var(--aws-orange); display: inline-block; padding-bottom: 4px; margin-bottom: 24px; }
+    .blog-body h3 { margin-top: 32px; font-size: 22px; color: var(--aws-blue); margin-bottom: 16px; }
+    .blog-body h4 { margin-top: 24px; font-size: 18px; color: var(--aws-text); font-weight: 700; }
+    .blog-body p { margin-bottom: 20px; }
+    .blog-body ul, .blog-body ol { margin-bottom: 24px; padding-left: 24px; }
+    .blog-body li { margin-bottom: 12px; }
+    .blog-body strong { color: var(--aws-text); }
+    .blog-body blockquote { font-style: italic; color: var(--aws-text-light); margin: 30px 0; border-left: 4px solid var(--aws-orange); background: #fcfcfc; padding: 20px; }
+    pre { background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; margin: 24px 0; font-size: 13px; line-height: 1.5; border-left: 4px solid var(--aws-orange); }
+    code { font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; background: #f1f3f5; color: #232f3e; padding: 2px 4px; border-radius: 4px; border: 1px solid #dee2e6; font-size: 0.9em; }
+    pre code { background: none; color: inherit; padding: 0; border: none; font-size: inherit; }
+    .compare-table { width: 100%; border-collapse: collapse; text-align: left; margin-bottom: 30px; font-size: 14px; }
+    .compare-table th { background: var(--aws-blue); color: white; padding: 12px; border: 1px solid var(--aws-border); }
+    .compare-table td { padding: 12px; border: 1px solid var(--aws-border); vertical-align: top; }
+    .compare-table tr:nth-child(even) { background: #f9f9f9; }
+    .pitfall-card { background: #fcfcfc; border: 1px solid var(--aws-border); border-left: 4px solid #d13212; border-radius: 6px; padding: 20px 24px; margin-bottom: 16px; }
+    .pitfall-card strong { color: #d13212; font-size: 15px; }
+    .pitfall-card p { margin: 8px 0 0 0; font-size: 15px; color: var(--aws-text-light); line-height: 1.7; }
+    .author-card { display: flex; gap: 20px; align-items: center; padding: 30px; background: #fcfcfc; border-top: 1px solid var(--aws-border); }
+    .author-img { width: 80px; height: 80px; border-radius: 50%; background: var(--aws-highlight); display: flex; align-items: center; justify-content: center; font-size: 30px; color: var(--aws-orange); border: 2px solid var(--aws-border); flex-shrink: 0; }
+    .nav-links { display: flex; justify-content: space-between; margin: 40px 0; padding: 20px 0; border-top: 1px solid var(--aws-border); }
+    .nav-link { text-decoration: none; color: var(--aws-blue); font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 8px; }
+    .tag { display: inline-block; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: 600; margin-right: 8px; margin-bottom: 8px; }
+    .tag.blue { background: #e7f2fa; color: #0073bb; }
+    .tag.purple { background: #f2e7fa; color: #6b3fa0; }
+    .tag.green { background: #e7faf0; color: #1a7f4e; }
+    .share-section { padding: 20px 40px; border-top: 1px solid var(--aws-border); display: flex; justify-content: space-between; align-items: center; background: #fff; }
+    .share-btn { padding: 8px 16px; border: 1px solid var(--aws-border); border-radius: 4px; background: #fff; color: var(--aws-text); text-decoration: none; font-size: 14px; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
+    .share-btn:hover { background: #f8f9fa; }
+    .linkedin-btn { background: #0077b5; color: white; border: none; }
+    .linkedin-btn:hover { background: #005f8d; color: white; }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <style>
+    .hljs { background: transparent; padding: 0; color: #f8f8f2; }
+    .hljs-comment, .hljs-quote { color: #6a9955; }
+    .hljs-keyword, .hljs-built_in, .hljs-type { color: #569cd6; }
+    .hljs-string, .hljs-title { color: #ce9178; }
+    .hljs-attr, .hljs-variable, .hljs-selector-id { color: #9cdcfe; }
+    .hljs-number, .hljs-literal { color: #b5cea8; }
+    .hljs-meta, .hljs-tag { color: #f8f8f2; }
+  </style>
+</head>
+
+<body>
+
+  <nav class="aws-topnav">
+    <a href="../../index.html" class="logo">
+      <i class="fa-solid fa-cloud" style="color: var(--aws-orange); font-size: 20px;"></i>
+      <span>Ankush Panday</span>
+    </a>
+    <div class="nav-spacer"></div>
+    <div class="nav-icons">
+      <a href="../../index.html" class="nav-icon-btn" style="text-decoration: none;">Portfolio Home</a>
+      <a href="../index.html" class="nav-icon-btn orange" style="text-decoration: none; font-weight: 600;">Blog Hub</a>
+      <button class="nav-icon-btn"><i class="fa-solid fa-earth-europe" style="margin-right: 6px; font-size: 12px; color: var(--aws-orange);"></i> Europe (nl-ams-1)</button>
+      <button class="nav-icon-btn">ankushpandey@hotmail.com <i class="fa-solid fa-caret-down" style="margin-left: 4px;"></i></button>
+    </div>
+  </nav>
+
+  <main class="blog-page-container">
+
+    <a href="../index.html" class="back-btn"><i class="fa-solid fa-arrow-left"></i> Back to Blog Hub</a>
+
+    <article class="blog-content-card">
+      <header class="blog-header">
+        <h1 style="font-size: 32px; color: var(--aws-text); margin-bottom: 16px; line-height: 1.2;">Designing a Fraud Detection Platform on AWS EKS — A 33-Microservice Architecture Case Study</h1>
+        <div style="display: flex; gap: 12px; align-items: center; color: var(--aws-text-light); font-size: 14px; flex-wrap: wrap;">
+          <span>June 9, 2026</span>
+          <span>&bull;</span>
+          <span>18 min read</span>
+          <span class="tag blue">Case Study</span>
+          <span class="tag purple">EKS</span>
+          <span class="tag green">FinTech</span>
+        </div>
+      </header>
+
+      <div class="blog-body">
+        <p style="font-style: italic; color: var(--aws-text-light); margin-bottom: 30px; border-left: 4px solid var(--aws-orange); padding-left: 15px;">
+          <strong>AWS Series | Part 20</strong> — Building secure, cost-optimised, cloud-native infrastructure on AWS.
+        </p>
+
+        <img src="../../images/fraud-detection-platform-eks-architecture.png"
+          alt="Fraud Detection Platform on AWS EKS — 33-microservice architecture across device risk and behavioural AI/ML"
+          style="width: 100%; border-radius: 8px; margin-bottom: 32px; border: 1px solid var(--aws-border);">
+
+        <!-- TL;DR -->
+        <h2 id="tldr">TL;DR</h2>
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th>Dimension</th>
+              <th>The Reality</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Starting point</strong></td>
+              <td>V1 on ECS — device risk only, web channel only</td>
+            </tr>
+            <tr>
+              <td><strong>The build</strong></td>
+              <td>V2 on EKS from scratch — device risk + behavioural AI/ML, all channels</td>
+            </tr>
+            <tr>
+              <td><strong>Workloads</strong></td>
+              <td>Real-time device risk (web + mobile) and Databricks-backed behavioural scoring (mobile)</td>
+            </tr>
+            <tr>
+              <td><strong>Team</strong></td>
+              <td>Two engineers at peak; sole architect for months after cost cuts</td>
+            </tr>
+            <tr>
+              <td><strong>Compliance</strong></td>
+              <td>DORA — DR plan, FIS-tested failover, multi-AZ, AIC ratings, RTO 24h, RPO 8h</td>
+            </tr>
+            <tr>
+              <td><strong>Compute</strong></td>
+              <td>Managed Node Groups (Cluster Autoscaler) + Karpenter in parallel; Fargate attempted and reverted</td>
+            </tr>
+            <tr>
+              <td><strong>Cutover</strong></td>
+              <td>Upstream F5 DNS rule remap, tested in PA, production cutover in under 40 minutes</td>
+            </tr>
+            <tr>
+              <td><strong>Status</strong></td>
+              <td>Web fully migrated; mobile decommissioning of V1 completing mid-2026</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Introduction -->
+        <h2 id="intro">Introduction — The Platform Behind the Series</h2>
+        <p>Every post in this series so far has explained a building block: VPC design, IAM, EKS architecture, Ingress patterns, Karpenter, Terraform structure, GitOps, observability, multi-region HA. This post is where they all converge — the production platform those patterns were drawn from.</p>
+        <p>The system is a fraud detection platform for a major European bank, built on a vendor fraud risk suite and deployed on Amazon EKS. It analyses banking sessions across web and mobile channels in real time, decides whether the person operating a device is who they claim to be, and does it within a latency budget that leaves no room for sloppy infrastructure.</p>
+        <p>This is not a reference architecture. It is a case study of real constraints: a vendor stack that dictated some choices, a compliance regime that dictated others, a team that shrank to one, and a migration that had to happen while the old platform kept serving live banking traffic.</p>
+
+        <!-- Section 1 -->
+        <h2 id="starting-point">1. The Starting Point — V1 and Why It Wasn't Enough</h2>
+        <p>When I joined the platform, V1 was already in production: the vendor's device risk product running on ECS, serving the <strong>web channel only</strong>. My initial brief was to help deploy the <strong>mobile channels</strong> (iOS and Android).</p>
+        <p>That brief grew. The bank's roadmap required the vendor suite's next generation — a version that bundled the existing device risk capability with a new <strong>behavioural detection</strong> layer powered by machine learning. V1's ECS footprint couldn't simply be extended into that; the new version was architected by the vendor as a Kubernetes-native product. So V2 became a greenfield build: a production EKS platform, designed from scratch, that would encompass everything V1 did plus the behavioural AI/ML stack — and eventually replace V1 entirely.</p>
+
+        <h3>Why EKS — Three Honest Reasons</h3>
+        <p>The EKS decision was not a technology beauty contest. Three factors drove it:</p>
+        <p><strong>Vendor alignment.</strong> The vendor ran the suite on EKS themselves. Staying close to the vendor's reference deployment meant that when something broke in production at 2am and our team couldn't isolate whether the fault was infrastructure or application, the vendor could actually help debug. Diverging from their supported topology would have made every future incident a negotiation about whose problem it was.</p>
+        <p><strong>DORA compliance.</strong> As a regulated financial institution, the platform had to satisfy DORA — documented and <em>tested</em> disaster recovery, multi-AZ resilience, backup and restore capability, and auditable change management. EKS with GitOps gave us the audit trail and the failover characteristics to make that case credibly.</p>
+        <p><strong>Future supportability.</strong> Kubernetes skills are transferable and hireable. An ECS-specific platform would have been simpler on day one and harder to staff on day five hundred.</p>
+
+        <blockquote><strong>Why this matters in production:</strong> "Stay close to the vendor's supported topology" is an underrated architecture principle for vendor-software platforms. Every customisation you add is a customisation the vendor has never tested. The question to ask before deviating is not "can we?" but "who debugs this when it breaks?"</blockquote>
+
+        <!-- Section 2 -->
+        <h2 id="two-workloads">2. Two Workloads, One Platform</h2>
+        <p>The platform runs roughly 33 microservices, but architecturally it is two distinct systems sharing a cluster.</p>
+
+        <h3>Path 1 — Device Risk (Real-Time, Web + Mobile)</h3>
+        <p>The device risk path answers: <em>is this device compromised or suspicious?</em></p>
+<pre><code class="nohighlight"><span style="color:#9cdcfe;">Web channel:</span>
+  Banking web app → injected JavaScript → device signals
+      → device risk microservices on EKS → risk verdict
+
+<span style="color:#9cdcfe;">Mobile channel (iOS + Android):</span>
+  Banking app SDK → rule-based scanning (rules authored
+  by business analysts + vendor) → device risk verdict</code></pre>
+        <p>This path is synchronous and latency-sensitive. A fraud check that delays a banking transaction noticeably is a fraud check that gets removed from the flow. The services run on On-Demand capacity with topology spread across availability zones — no Spot interruption risk anywhere near the request path.</p>
+
+        <h3>Path 2 — Behavioural AI/ML (Mobile Only, Databricks-Backed)</h3>
+        <p>The behavioural path answers a harder question: <em>is the legitimate user the one operating this device right now?</em></p>
+        <p>It works on behavioural biometrics — sensor data, typing cadence, how the device is held and handled. The signals stream from mobile sessions into the platform; the machine learning lives in Databricks, which computes behavioural scores that feed the final fraud decision.</p>
+<pre><code class="nohighlight">Mobile session → sensor/behavioural events
+    → behavioural microservices on EKS (ingestion, enrichment)
+    → S3 <span style="color:#6a9955;">(input buckets)</span>
+    → Databricks <span style="color:#6a9955;">(ML scoring jobs on EC2 worker nodes)</span>
+    → S3 <span style="color:#6a9955;">(output buckets)</span>
+    → scoring services on EKS → <span style="color:#1a7f4e;">final combined verdict</span></code></pre>
+        <p>The important nuance: <strong>a mobile transaction flows through both paths.</strong> Device risk gives a fast verdict on the device; behavioural scoring gives a deeper verdict on the human. Web transactions only see path 1. This asymmetry shaped namespace design, scaling behaviour, and where Spot capacity was acceptable (batch-leaning behavioural enrichment) versus forbidden (the synchronous device risk path).</p>
+
+        <!-- Section 3 -->
+        <h2 id="team-reality">3. The Team Reality — Architecting Alone</h2>
+        <p>The staffing story matters because it shaped every pragmatic decision that follows.</p>
+        <p>At the start of the V2 build there were two of us: myself and a Kubernetes expert hired specifically for the project. We designed and built the foundation together. Then cost constraints hit, management decided the contract role had to end, and after a handover period I was the platform's sole engineer and architect — for roughly four to five months, during a greenfield build, on a regulated fraud platform.</p>
+        <p>Two consequences:</p>
+        <p><strong>Every decision biased toward operability over elegance.</strong> A clever architecture that only one person understands is a single point of failure wearing a costume. Managed services over self-hosted, vendor defaults over customisation, boring and documented over novel.</p>
+        <p><strong>Knowledge transfer became a deliverable.</strong> Once the platform stabilised, I trained two colleagues who had shown interest in Kubernetes — pairing on deployments, walking through the Helm structure, handing over V1 maintenance first as a lower-risk training ground. The platform now has more operators than it has ever had. That is an architecture outcome too.</p>
+
+        <!-- Section 4 -->
+        <h2 id="build-sequence">4. The Build Sequence — Migrate First, Greenfield Second</h2>
+        <p>The build order was deliberate:</p>
+        <p><strong>Step 1 — Migrate device risk to EKS.</strong> The known workload first. V1's device risk services were a understood quantity — migrating them onto the new EKS platform validated the cluster design (networking, Ingress, IAM, observability) against a workload whose behaviour we already knew. Any failure was almost certainly the platform, not the application.</p>
+        <p><strong>Step 2 — Greenfield the behavioural stack.</strong> With the platform proven, I wrote the Helm charts for the new behavioural microservices from scratch — base values, environment overrides, service-level overrides (the three-layer hierarchy from <a href="../compute/eks-production-architecture-multi-env.html">Part 11</a>). The vendor supplied the containers; the deployment architecture, chart structure, and operational wiring were built in-house.</p>
+        <p>Traffic entered through <strong>Nginx Ingress fronted by an NLB</strong> — the vendor's reference pattern, and one more place where staying aligned with their topology paid for itself in supportability. TLS terminated at the NLB using ACM certificate ARNs for both internal and external Ingress paths.</p>
+
+        <!-- Section 5 -->
+        <h2 id="databricks">5. The Databricks Integration — An Infrastructure View</h2>
+        <p>Most Databricks content is written by data engineers. This is the platform engineer's view of the integration, because the responsibility split is the interesting part:</p>
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th>Layer</th>
+              <th>Owner</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Databricks control plane deployment</td>
+              <td>Central platform engineering team</td>
+            </tr>
+            <tr>
+              <td>Worker node infrastructure (EC2), S3 wiring</td>
+              <td><strong>Me — Terraform</strong></td>
+            </tr>
+            <tr>
+              <td>Job creation, ML pipelines, scoring logic</td>
+              <td>Data science team</td>
+            </tr>
+          </tbody>
+        </table>
+        <p>My slice was the infrastructure contract: Terraform for the <strong>EC2 worker nodes</strong> Databricks compute runs on, and the <strong>input/output S3 buckets</strong> that connect the EKS platform to the ML layer. With admin access to the workspace, I used <strong>service principal IDs</strong> to automate worker node provisioning rather than wiring automation to any human identity — automation tied to a person's account dies when that person leaves, which on this team was not a theoretical risk.</p>
+        <p>Environment sizing followed the workload honestly: worker nodes in test and pre-acceptance were deliberately small; production ran significantly larger nodes to handle real scoring volume. The S3 buckets formed the clean boundary between the two worlds — EKS services write behavioural events to input buckets, Databricks jobs score them, results land in output buckets for the platform to consume. No tight coupling, no shared runtime, each side independently deployable.</p>
+
+        <blockquote><strong>Why this matters in production:</strong> The S3 boundary is the integration's best feature. The EKS platform and the ML platform can fail, deploy, and scale independently. When a scoring job misbehaves, the fraud platform degrades gracefully instead of falling over — and two different teams can debug their own side without a war room.</blockquote>
+
+        <!-- Section 6 -->
+        <h2 id="cutover">6. The Cutover — 40 Minutes at the F5</h2>
+        <p>V1 and V2 coexisted for one to two months while I worked both platforms in parallel. Then V1 entered maintenance mode and was handed to newly trained engineers for ongoing releases, freeing me to focus entirely on the EKS platform.</p>
+        <p>The web channel cutover itself was almost anticlimactic — by design. The switching point was not inside Kubernetes at all. Upstream of the platform sits an <strong>F5 load balancer</strong> owned by the network team, with routing rules mapping the banking channels to backend platforms. The cutover was a DNS rule remap at the F5: same rules, new targets.</p>
+<pre><code class="nohighlight"><span style="color:#9cdcfe;">Before:</span>  F5 routing rules → V1 ECS endpoints
+<span style="color:#9cdcfe;">Test:</span>    Full rule remap rehearsed in Pre-Acceptance
+<span style="color:#9cdcfe;">After:</span>   F5 routing rules → V2 EKS (NLB → Nginx Ingress)
+
+<span style="color:#1a7f4e;">Production cutover duration: under 40 minutes</span></code></pre>
+        <p>Because the exact remap had been rehearsed in the pre-acceptance environment, production day was execution rather than discovery. We watched the traffic graphs in real time — V1's request rate falling, V2's rising in mirror image — until the old platform went quiet.</p>
+        <p>V1 is still not fully decommissioned. The mobile channel already runs on V2, but business analysts are finalising the last validation items before the old mobile path is switched off — expected mid-2026. Decommissioning in a bank is a compliance process, not a <code>terraform destroy</code>.</p>
+
+        <blockquote><strong>Why this matters in production:</strong> The safest cutover mechanism is often one layer <strong>above</strong> your platform. Kubernetes-level traffic shifting (canary Ingress weights, service mesh) is powerful, but a DNS rule remap at an upstream load balancer — rehearsed in a lower environment — is simpler, instantly reversible, and operated by a team whose entire job is exactly this. Use the boring lever when the boring lever exists.</blockquote>
+
+        <!-- Section 7 -->
+        <h2 id="dora">7. DORA Compliance in Practice</h2>
+        <p>DORA is frequently discussed in the abstract. Here is what it concretely required from this platform.</p>
+        <p>The compliance team provides a <strong>standard template</strong> — every critical platform fills it in, documenting the environment, its resilience characteristics, and the evidence behind each claim. For this platform, that meant:</p>
+        <p><strong>A DR plan that is tested, not just written.</strong> A failover document nobody has executed is a hypothesis. We used <strong>AWS Fault Injection Simulator</strong> to run controlled failure experiments — terminating capacity, validating that workloads rescheduled, and proving the recovery path works as documented (the FIS patterns from <a href="multi-region-high-availability.html">Part 18</a>).</p>
+        <p><strong>Multi-AZ as a hard requirement.</strong> Every tier — nodes, pods via topology spread constraints, RDS, the NLB — deployed across availability zones. Not an optimisation; an audit item.</p>
+        <p><strong>Backup and restore for stateful services.</strong> RDS and the platform's critical storage are backed up on schedule, with documented, rehearsed retrieval so a DR event starts from a known-good restore point rather than a scramble.</p>
+        <p><strong>AIC ratings.</strong> Every system is classified for Availability, Integrity, and Confidentiality — a risk framework used broadly across regulated financial institutions. The AIC rating directly determines the infrastructure requirements a system must meet. A platform with a high Confidentiality rating requires demonstrably stronger access controls and encryption than the baseline. A high Availability rating requires multi-AZ deployment, tested failover, and a documented recovery procedure. You cannot document a rating and then build infrastructure that contradicts it — auditors check both, and the gap between documentation and reality is the most common compliance finding.</p>
+        <p><strong>A defined RTO and RPO.</strong> The platform carries an RTO of 24 hours and RPO of 8 hours — limited data loss — in the event of a complete failure. The GitOps model (<a href="../iac/argocd-gitops-helm-eks.html">Part 15</a>) carries real weight here: the entire platform definition lives in Git, so rebuilding is a bounded, rehearsed procedure rather than archaeology. A 24-hour RTO sounds generous until you are actually rebuilding a production Kubernetes platform with 33 microservices, Helm charts, IRSA roles, and RDS restore validation under audit scrutiny.</p>
+        <p>Banks are audited — internally and by external parties. The DORA documentation is not shelf-ware; it is the artefact you defend in those audits, and the infrastructure has to match what it says.</p>
+
+        <!-- Section 8 -->
+        <h2 id="compute">8. The Compute Story — Karpenter, Cluster Autoscaler, and the Fargate Detour</h2>
+        <p><a href="../compute/karpenter-vs-cluster-autoscaler-eks.html">Part 13</a> covered the mechanics of running Karpenter and Cluster Autoscaler in parallel. This platform is where that pattern comes from, and the choice was deliberate from the start: a Managed Node Group under Cluster Autoscaler as the guaranteed On-Demand baseline for the latency-critical device risk path, Karpenter NodePools for everything that could tolerate more dynamic capacity.</p>
+        <p>The honest part of the story is the experiment that failed.</p>
+        <div class="pitfall-card">
+          <strong>The Fargate detour.</strong>
+          <p>Serverless pods are attractive when you are one person operating a platform — no node patching, no AMI lifecycle, no capacity planning. I built Fargate profiles and moved microservices onto them. They failed — the vendor's container images were incompatible with the <strong>OS architecture</strong> constraints of the Fargate environment. After working the problem, I reverted to the node-based architecture. The experiment cost time; it also produced certainty. "We run nodes because Fargate demonstrably doesn't work for this vendor stack" is a much stronger architectural position than "we never tried."</p>
+        </div>
+
+        <!-- Section 9 -->
+        <h2 id="differently">9. What I Would Do Differently</h2>
+        <p>Three things, honestly held:</p>
+        <p><strong>1. Chase the Fargate failure to root cause — with the vendor.</strong> I reverted when the profiles failed, because a sole engineer on a deadline triages ruthlessly. Starting again, I would engage the vendor's developers directly on <em>why</em> their images fail on Fargate and whether multi-architecture builds could fix it. The operational prize — no node management at all — is worth a proper investigation rather than a tactical retreat.</p>
+        <p><strong>2. Make observability intuitive, not just present.</strong> The platform has metrics, logs, and alarms — but too much engineering time still goes into <em>debugging</em>: correlating signals manually, reconstructing what happened across services. Observability that requires expertise to interpret is a tax on every incident. This is the gap behind the business case I'm currently building: using <strong>Amazon Bedrock</strong> to assist EKS troubleshooting — letting an AI layer do the first pass of correlation that today consumes engineer hours.</p>
+        <p><strong>3. Simplify the dual-autoscaler setup — carefully.</strong> Karpenter plus Cluster Autoscaler works, but it is two control loops to reason about, and at one point it cost us a production race condition (documented in the <a href="../deep-dives/eks-karpenter-shutdown.html">test-environment shutdown Deep Dive</a>). I believe the architecture can be simpler; I have not yet done the investigation to say <em>how</em> without giving up the guaranteed On-Demand isolation the critical path needs. That investigation is on the list — and "I'd simplify this but haven't proven the alternative yet" is the honest status.</p>
+        <p>The DORA process I would not change — the compliance team's template is mature, and fighting a working governance process is rarely the best use of an architect's energy.</p>
+
+        <!-- Section 10 -->
+        <h2 id="whats-next">10. What's Next for the Platform</h2>
+        <p>Two active workstreams, each likely to become its own post:</p>
+        <p><strong>Nginx Ingress → Kubernetes Gateway API.</strong> The platform's traffic layer is being migrated from the vendor-inherited Nginx Ingress + NLB pattern to the Gateway API with ALB — a role-separated, more expressive routing model. The migration across all microservices deserves its own deep dive.</p>
+        <p><strong>AI-assisted operations with Bedrock.</strong> The business case from Section 9: an agent that receives a pod failure signal, investigates against the live cluster, and returns a root-cause report before an engineer opens a terminal. The observability lesson, turned into a roadmap item.</p>
+
+        <!-- Golden Rule -->
+        <div style="background: var(--aws-highlight); padding: 32px; border-radius: 8px; border: 1px solid var(--aws-border); margin: 40px 0; text-align: center; border-left: 4px solid var(--aws-orange);">
+          <i class="fa-solid fa-fingerprint" style="font-size: 36px; color: var(--aws-orange); display: block; margin-bottom: 16px;"></i>
+          <h3 style="font-size: 18px; color: var(--aws-text); margin-top: 0; margin-bottom: 12px;">The Golden Rule</h3>
+          <p style="font-size: 15px; color: var(--aws-text-light); font-style: italic; margin-bottom: 0;">
+            "A vendor-software platform is architected under different rules than a homegrown one. Stay close to the vendor's supported topology, because supportability at 2am is worth more than elegance at design time. Validate the platform with a known workload before trusting it with a new one. Put clean storage boundaries — not shared runtimes — between your platform and adjacent systems like ML. Rehearse your cutover in a lower environment until production day is execution, not discovery. And when you are the only engineer, choose boring: the architecture has to outlive your availability, your tenure, and your memory of why you built it that way."
+          </p>
+        </div>
+
+        <div style="margin: 40px 0;">
+          <span style="font-weight: 700; color: var(--aws-text-light); margin-right: 12px; font-size: 13px;">Tags:</span>
+          <span class="tag blue">AWS</span>
+          <span class="tag blue">EKS</span>
+          <span class="tag purple">Case Study</span>
+          <span class="tag green">FraudDetection</span>
+          <span class="tag blue">Kubernetes</span>
+          <span class="tag purple">Databricks</span>
+          <span class="tag green">DORA</span>
+          <span class="tag blue">Karpenter</span>
+          <span class="tag purple">GitOps</span>
+          <span class="tag green">FinTech</span>
+        </div>
+
+      </div><!-- End Blog Body -->
+
+      <div class="share-section">
+        <span style="font-weight: 700; color: var(--aws-text-light);">Share this article:</span>
+        <a href="https://www.linkedin.com/sharing/share-offsite/?url=https://www.ankushpanday.com/blog/architecture/fraud-detection-platform-eks.html"
+          target="_blank" class="share-btn linkedin-btn">
+          <i class="fa-brands fa-linkedin"></i> Share on LinkedIn
+        </a>
+      </div>
+
+      <div class="author-card">
+        <div class="author-img"><i class="fa-solid fa-user-tie"></i></div>
+        <div>
+          <h4 style="margin: 0 0 8px 0; color: var(--aws-text);">Ankush Panday</h4>
+          <p style="margin: 0; font-size: 14px; color: var(--aws-text-light);">Specializing in highly scalable AWS infrastructure and automated quality engineering.</p>
+          <a href="https://www.linkedin.com/in/ankush-panday-39b97824/" target="_blank"
+            style="display: inline-block; margin-top: 10px; color: var(--aws-blue); text-decoration: none; font-size: 13px; font-weight: 600;">Connect
+            on LinkedIn <i class="fa-solid fa-external-link" style="font-size: 10px;"></i></a>
+        </div>
+      </div>
+
+    </article>
+
+    <!-- NAVIGATION LINKS -->
+    <div class="nav-links">
+      <a href="multi-account-aws-strategy.html" class="nav-link">
+        <i class="fa-solid fa-arrow-left"></i> Previous: Multi-Account AWS Strategy
+      </a>
+      <a href="../index.html" class="nav-link">
+        Return to Blog Hub <i class="fa-solid fa-arrow-right"></i>
+      </a>
+    </div>
+
+  </main>
+
+  <footer class="aws-footer">
+    Built for Performance. Architected for the Cloud. &bull; &copy; 2026 <span>Ankush Panday</span>
+  </footer>
+
+  <script>
+    if (window.location.protocol === 'file:') {
+      document.querySelectorAll('a').forEach(link => {
+        let href = link.getAttribute('href');
+        if (href && !href.startsWith('http') && !href.startsWith('#')) {
+          let path = href.split('#')[0];
+          let anchor = href.split('#')[1] ? '#' + href.split('#')[1] : '';
+          if (path && !path.endsWith('.html') && !path.endsWith('/')) {
+            link.setAttribute('href', path + '.html' + anchor);
+          }
+        }
+      });
+    }
+    document.addEventListener('DOMContentLoaded', () => {
+      document.querySelectorAll('pre code:not(.nohighlight)').forEach(block => {
+        hljs.highlightElement(block);
+      });
+    });
+  </script>
+
+</body>
+</html>

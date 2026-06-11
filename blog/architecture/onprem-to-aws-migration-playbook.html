@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Migrating On-Premises Applications to AWS: The 7Rs, Real Pitfalls &amp; a Working Playbook | Ankush Panday</title>
+  <meta name="description"
+    content="A real datacentre-exit migration to AWS — applying the 7Rs per workload, lift-and-shift with MGN, rebuilding Jenkins, AWS Workspaces, the hidden DNS dependency, replacing a Sophos firewall with Client VPN, and the honest lessons from doing it largely single-handed.">
+  <meta name="keywords"
+    content="AWS, CloudMigration, MGN, 7Rs, Route53, Jenkins, Workspaces, ClientVPN, DataCentreExit, LiftAndShift, CaseStudy">
+  <link rel="canonical" href="https://www.ankushpanday.com/blog/architecture/onprem-to-aws-migration-playbook.html">
+
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://www.ankushpanday.com/blog/architecture/onprem-to-aws-migration-playbook.html">
+  <meta property="og:title" content="Migrating On-Premises Applications to AWS: The 7Rs, Real Pitfalls &amp; a Working Playbook">
+  <meta property="og:description" content="A real datacentre-exit migration to AWS — the 7Rs per workload, MGN lift-and-shift, rebuilding Jenkins, Workspaces, the hidden DNS dependency, and replacing a Sophos firewall with Client VPN.">
+  <meta property="og:image" content="https://www.ankushpanday.com/images/onprem-to-aws-migration-playbook.png">
+
+  <link rel="stylesheet" href="../../style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    .blog-page-container { max-width: 900px; margin: 100px auto 40px auto; padding: 0 20px; min-height: calc(100vh - 200px); }
+    .back-btn { display: inline-flex; align-items: center; gap: 8px; color: var(--aws-blue); text-decoration: none; font-weight: 500; margin-bottom: 24px; }
+    .blog-content-card { background: var(--aws-white); border: 1px solid var(--aws-border); border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+    .blog-header { background: #f8f9fa; padding: 40px; border-bottom: 1px solid var(--aws-border); }
+    .blog-body { padding: 40px; line-height: 1.8; font-size: 16px; color: var(--aws-text); }
+    .blog-body h2 { margin-top: 48px; font-size: 26px; color: var(--aws-text); border-bottom: 2px solid var(--aws-orange); display: inline-block; padding-bottom: 4px; margin-bottom: 24px; }
+    .blog-body h3 { margin-top: 32px; font-size: 22px; color: var(--aws-blue); margin-bottom: 16px; }
+    .blog-body h4 { margin-top: 24px; font-size: 18px; color: var(--aws-text); font-weight: 700; }
+    .blog-body p { margin-bottom: 20px; }
+    .blog-body ul, .blog-body ol { margin-bottom: 24px; padding-left: 24px; }
+    .blog-body li { margin-bottom: 12px; }
+    .blog-body strong { color: var(--aws-text); }
+    .blog-body blockquote { font-style: italic; color: var(--aws-text-light); margin: 30px 0; border-left: 4px solid var(--aws-orange); background: #fcfcfc; padding: 20px; }
+    pre { background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; margin: 24px 0; font-size: 13px; line-height: 1.5; border-left: 4px solid var(--aws-orange); }
+    code { font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; background: #f1f3f5; color: #232f3e; padding: 2px 4px; border-radius: 4px; border: 1px solid #dee2e6; font-size: 0.9em; }
+    pre code { background: none; color: inherit; padding: 0; border: none; font-size: inherit; }
+    .compare-table { width: 100%; border-collapse: collapse; text-align: left; margin-bottom: 30px; font-size: 14px; }
+    .compare-table th { background: var(--aws-blue); color: white; padding: 12px; border: 1px solid var(--aws-border); }
+    .compare-table td { padding: 12px; border: 1px solid var(--aws-border); vertical-align: top; }
+    .compare-table tr:nth-child(even) { background: #f9f9f9; }
+    .pitfall-card { background: #fcfcfc; border: 1px solid var(--aws-border); border-left: 4px solid #d13212; border-radius: 6px; padding: 20px 24px; margin-bottom: 16px; }
+    .pitfall-card strong { color: #d13212; font-size: 15px; }
+    .pitfall-card p { margin: 8px 0 0 0; font-size: 15px; color: var(--aws-text-light); line-height: 1.7; }
+    .author-card { display: flex; gap: 20px; align-items: center; padding: 30px; background: #fcfcfc; border-top: 1px solid var(--aws-border); }
+    .author-img { width: 80px; height: 80px; border-radius: 50%; background: var(--aws-highlight); display: flex; align-items: center; justify-content: center; font-size: 30px; color: var(--aws-orange); border: 2px solid var(--aws-border); flex-shrink: 0; }
+    .nav-links { display: flex; justify-content: space-between; margin: 40px 0; padding: 20px 0; border-top: 1px solid var(--aws-border); }
+    .nav-link { text-decoration: none; color: var(--aws-blue); font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 8px; }
+    .tag { display: inline-block; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: 600; margin-right: 8px; margin-bottom: 8px; }
+    .tag.blue { background: #e7f2fa; color: #0073bb; }
+    .tag.purple { background: #f2e7fa; color: #6b3fa0; }
+    .tag.green { background: #e7faf0; color: #1a7f4e; }
+    .share-section { padding: 20px 40px; border-top: 1px solid var(--aws-border); display: flex; justify-content: space-between; align-items: center; background: #fff; }
+    .share-btn { padding: 8px 16px; border: 1px solid var(--aws-border); border-radius: 4px; background: #fff; color: var(--aws-text); text-decoration: none; font-size: 14px; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
+    .share-btn:hover { background: #f8f9fa; }
+    .linkedin-btn { background: #0077b5; color: white; border: none; }
+    .linkedin-btn:hover { background: #005f8d; color: white; }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <style>
+    .hljs { background: transparent; padding: 0; color: #f8f8f2; }
+    .hljs-comment, .hljs-quote { color: #6a9955; }
+    .hljs-keyword, .hljs-built_in, .hljs-type { color: #569cd6; }
+    .hljs-string, .hljs-title { color: #ce9178; }
+    .hljs-attr, .hljs-variable, .hljs-selector-id { color: #9cdcfe; }
+    .hljs-number, .hljs-literal { color: #b5cea8; }
+    .hljs-meta, .hljs-tag { color: #f8f8f2; }
+  </style>
+</head>
+
+<body>
+
+  <nav class="aws-topnav">
+    <a href="../../index.html" class="logo">
+      <i class="fa-solid fa-cloud" style="color: var(--aws-orange); font-size: 20px;"></i>
+      <span>Ankush Panday</span>
+    </a>
+    <div class="nav-spacer"></div>
+    <div class="nav-icons">
+      <a href="../../index.html" class="nav-icon-btn" style="text-decoration: none;">Portfolio Home</a>
+      <a href="../index.html" class="nav-icon-btn orange" style="text-decoration: none; font-weight: 600;">Blog Hub</a>
+      <button class="nav-icon-btn"><i class="fa-solid fa-earth-europe" style="margin-right: 6px; font-size: 12px; color: var(--aws-orange);"></i> Europe (nl-ams-1)</button>
+      <button class="nav-icon-btn">ankushpandey@hotmail.com <i class="fa-solid fa-caret-down" style="margin-left: 4px;"></i></button>
+    </div>
+  </nav>
+
+  <main class="blog-page-container">
+
+    <a href="../index.html" class="back-btn"><i class="fa-solid fa-arrow-left"></i> Back to Blog Hub</a>
+
+    <article class="blog-content-card">
+      <header class="blog-header">
+        <h1 style="font-size: 32px; color: var(--aws-text); margin-bottom: 16px; line-height: 1.2;">Migrating On-Premises Applications to AWS: The 7Rs, Real Pitfalls &amp; a Working Playbook</h1>
+        <div style="display: flex; gap: 12px; align-items: center; color: var(--aws-text-light); font-size: 14px; flex-wrap: wrap;">
+          <span>June 11, 2026</span>
+          <span>&bull;</span>
+          <span>16 min read</span>
+          <span class="tag blue">Case Study</span>
+          <span class="tag purple">Migration</span>
+          <span class="tag green">MGN</span>
+        </div>
+      </header>
+
+      <div class="blog-body">
+        <p style="font-style: italic; color: var(--aws-text-light); margin-bottom: 30px; border-left: 4px solid var(--aws-orange); padding-left: 15px;">
+          <strong>AWS Series | Part 21</strong> — Building secure, cost-optimised, cloud-native infrastructure on AWS.
+        </p>
+
+        <img src="../../images/onprem-to-aws-migration-playbook.png"
+          alt="Migrating on-premises applications to AWS — the 7Rs, MGN lift-and-shift, and a datacentre-exit playbook"
+          style="width: 100%; border-radius: 8px; margin-bottom: 32px; border: 1px solid var(--aws-border);">
+
+        <!-- TL;DR -->
+        <h2 id="tldr">TL;DR</h2>
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th>Dimension</th>
+              <th>The Reality</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Trigger</strong></td>
+              <td>Office relocation — leaving a building with two on-prem datacentres for leased city-centre space with no DC option</td>
+            </tr>
+            <tr>
+              <td><strong>Scope</strong></td>
+              <td>30–40 servers — Active Directory, Jenkins, developer machines, Sophos firewall, Linux + Windows</td>
+            </tr>
+            <tr>
+              <td><strong>Primary tool</strong></td>
+              <td>AWS Application Migration Service (MGN) — agent-based lift-and-shift</td>
+            </tr>
+            <tr>
+              <td><strong>Strategy</strong></td>
+              <td>Multi-account — developer workloads and tooling separated</td>
+            </tr>
+            <tr>
+              <td><strong>Rebuilt, not migrated</strong></td>
+              <td>Jenkins (old and unmaintained), developer desktops (→ Workspaces), firewall (→ Client VPN)</td>
+            </tr>
+            <tr>
+              <td><strong>The hidden dependency</strong></td>
+              <td>DNS servers lived in the DCs too — full migration to Route 53</td>
+            </tr>
+            <tr>
+              <td><strong>Timeline</strong></td>
+              <td>3–4 months, largely single-handed</td>
+            </tr>
+            <tr>
+              <td><strong>Biggest lesson</strong></td>
+              <td>Document during knowledge transfer, not after — and nothing is as impossible as it first looks</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Introduction -->
+        <h2 id="intro">Introduction — The Migration Nobody Plans For</h2>
+        <p>Most cloud migrations start with a strategy deck. This one started with a moving van.</p>
+        <p>The company was leaving a building it had outgrown — a building that happened to house two small on-premises datacentres, one in each wing, four racks each, packed with the servers that ran the business. The destination was leased office space in the city centre, where running a datacentre was not an option. That left one question: what happens to the workloads?</p>
+        <p>The answer was AWS, because AWS was already in use for greenfield projects. But "we already use AWS" is not a migration plan. Thirty to forty servers — Active Directory, a Jenkins cluster, developer machines, a Sophos firewall, a mix of Linux and Windows — had to move, be rebuilt, or be replaced, and the datacentres had a decommission date that did not move.</p>
+        <p>This is the playbook from that migration: what was lifted, what was rebuilt, what broke, and what I would do differently. It is also an honest account of doing a year's worth of migration in three to four months, largely alone, learning most of it on the way.</p>
+
+        <!-- Section 1 -->
+        <h2 id="seven-rs">1. The 7Rs — The Framework Behind Every Migration Decision</h2>
+        <p>Before any server moves, every workload needs a migration strategy. AWS frames this as the 7Rs. You do not need to memorise them — you need to apply the right one to each workload:</p>
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th>Strategy</th>
+              <th>What It Means</th>
+              <th>Used Here For</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Rehost</strong></td>
+              <td>Lift-and-shift, no changes ("move the VM as-is")</td>
+              <td>Most servers — via MGN</td>
+            </tr>
+            <tr>
+              <td><strong>Replatform</strong></td>
+              <td>Lift-and-tinker — minor optimisation during move</td>
+              <td>—</td>
+            </tr>
+            <tr>
+              <td><strong>Repurchase</strong></td>
+              <td>Replace with a SaaS/managed equivalent</td>
+              <td>Developer machines → Workspaces</td>
+            </tr>
+            <tr>
+              <td><strong>Refactor</strong></td>
+              <td>Re-architect for cloud-native</td>
+              <td>Jenkins (rebuilt fresh)</td>
+            </tr>
+            <tr>
+              <td><strong>Relocate</strong></td>
+              <td>Move at the hypervisor level (e.g. VMware)</td>
+              <td>—</td>
+            </tr>
+            <tr>
+              <td><strong>Retain</strong></td>
+              <td>Keep on-premises (for now)</td>
+              <td>—</td>
+            </tr>
+            <tr>
+              <td><strong>Retire</strong></td>
+              <td>Decommission — no longer needed</td>
+              <td>Legacy tooling that didn't justify migration</td>
+            </tr>
+          </tbody>
+        </table>
+        <p>The mistake teams make is treating a migration as a single strategy. In reality, every workload gets its own R. The old Jenkins server was a Refactor, not a Rehost, because lifting unmaintained technical debt into the cloud just gives you cloud-hosted technical debt. The developer machines were a Repurchase. The bulk of the servers were a straightforward Rehost. Choosing the right R per workload is the actual skill.</p>
+
+        <!-- Section 2 -->
+        <h2 id="account-strategy">2. The Account Strategy — Multi-Account From the Start</h2>
+        <p>The migration landed into a <strong>new, purpose-built account structure</strong> rather than a single migration account. The multi-account model (<a href="multi-account-aws-strategy.html">Part 19</a>) applied here even at this scale:</p>
+<pre><code class="nohighlight"><span style="color:#9cdcfe;">Development Account</span>   → developer workloads, dev tooling
+<span style="color:#9cdcfe;">Tools Account</span>         → Jenkins, shared build infrastructure</code></pre>
+        <p>Separating like-with-like by account meant the blast radius of any change was contained, the billing was attributable, and access could be scoped per team. It would have been faster to dump everything into one account. It would also have created a single flat environment that we would have had to untangle later — and "later" in a regulated or growing company always arrives.</p>
+
+        <blockquote><strong>Why this matters in production:</strong> A migration is the cheapest possible time to get your account structure right, because you are touching every workload anyway. Migrating into a clean multi-account layout costs a little more up front and saves a painful re-segmentation project later. Do the account design before the first server moves.</blockquote>
+
+        <!-- Section 3 -->
+        <h2 id="mgn">3. The Lift-and-Shift — AWS MGN in Practice</h2>
+        <p>The bulk of the 30–40 servers were rehosted using <strong>AWS Application Migration Service (MGN)</strong> — the agent-based replication service that became the standard lift-and-shift tool after the older Server Migration Service.</p>
+
+        <h3>The MGN Workflow</h3>
+<pre><code class="nohighlight"><span style="color:#b5cea8;">1.</span> Install the MGN agent on the source machine <span style="color:#6a9955;">(on-prem)</span>
+<span style="color:#b5cea8;">2.</span> Agent begins continuous block-level replication to AWS
+<span style="color:#b5cea8;">3.</span> Leave it to replicate — overnight for large machines,
+   hours for smaller ones, until fully synced
+<span style="color:#b5cea8;">4.</span> Launch a TEST/cutover instance from the replicated volume
+<span style="color:#b5cea8;">5.</span> Validate the instance — does it boot, does the app work,
+   is networking correct?
+<span style="color:#b5cea8;">6.</span> If good → perform cutover, then decommission the source
+<span style="color:#b5cea8;">7.</span> Repeat per machine / per batch</code></pre>
+        <p>The discipline that made this work was <strong>validate-then-decommission, never the reverse</strong>. Each machine was replicated, launched as a cutover instance, checked end-to-end, and only then was the on-premises source retired. A server-by-server cadence meant a problem with one machine never threatened the others.</p>
+        <p>Both Linux and Windows workloads migrated through the same MGN process. The agent handles the OS differences; the workflow stays the same.</p>
+
+        <blockquote><strong>Why this matters in production:</strong> MGN's continuous replication means the actual cutover window is short — the data is already in AWS, you are only switching over. The long part (replication) happens with the source still running and serving. The risky part (cutover) is brief and reversible until you decommission. Respect that sequence and a lift-and-shift becomes low-drama.</blockquote>
+
+        <!-- Section 4 -->
+        <h2 id="jenkins">4. Jenkins — Why I Rebuilt Instead of Migrating</h2>
+        <p>Not everything deserves to be lifted. The Jenkins cluster running in the datacentre was old, full of warnings, and evidently un-maintained for a long time — the kind of server everyone depends on and nobody touches. Migrating it via MGN would have faithfully reproduced years of accumulated technical debt in the cloud.</p>
+        <p>So Jenkins was a <strong>Refactor</strong> — rebuilt fresh:</p>
+        <ul>
+          <li><strong>A clean, current Jenkins</strong> with up-to-date plugins instead of the legacy mess</li>
+          <li><strong>Job definitions carried over via S3</strong> — the existing project/job configuration was exported, staged in S3, and imported into the new cluster, so pipelines came back without re-authoring everything by hand</li>
+          <li><strong>Worker nodes sized to the work</strong> — performance-testing jobs needed bigger machines, so those Linux workers (3–4 nodes) were larger; the Windows workers (2 nodes) were sized for their lighter load</li>
+        </ul>
+        <p>The result was a Jenkins that did everything the old one did, minus the warnings and the fragility.</p>
+
+        <h3>What I'd Do Differently Today</h3>
+        <p>If I rebuilt this Jenkins now, I would not run fixed EC2 worker nodes at all. I would run the controller on <strong>EKS or ECS</strong> with <strong>Spot-backed dynamic workers</strong> — agents that spin up per build and disappear when idle. The fixed Linux and Windows worker fleet I built was the right call with the time and tools I had then; today it is paying for idle capacity that dynamic, containerised, Spot-backed agents would eliminate. (The autoscaling and Spot patterns in <a href="../compute/karpenter-vs-cluster-autoscaler-eks.html">Part 13</a> and <a href="../finops/aws-finops-in-practice.html">Part 17</a> are exactly this.)</p>
+
+        <!-- Section 5 -->
+        <h2 id="workspaces">5. Developer Machines — Repurchase to AWS Workspaces</h2>
+        <p>The on-premises developer machines were replaced — a <strong>Repurchase</strong> — with <strong>AWS Workspaces</strong>, cloud desktops integrated with Azure AD so developers logged in with their existing corporate identity.</p>
+        <p>The technical part was straightforward. The human part is what made it succeed:</p>
+        <p>Ten to twelve developers were affected — the people whose daily working environment was about to change. Rather than announce it and hope, I ran a <strong>demo first</strong>, showed the team what the Workspaces experience would look like, and <strong>assigned one developer to work alongside me</strong> to test the setup before it reached everyone else. That developer became the internal advocate. When the rollout came, it came with a colleague's endorsement rather than an IT mandate.</p>
+
+        <blockquote><strong>Why this matters in production:</strong> A migration that changes how people work is a change-management problem wearing a technical costume. The demo-first, one-trusted-tester approach cost a few days and bought the trust of the entire team. Technical migrations fail on adoption far more often than on technology.</blockquote>
+
+        <!-- Section 6 -->
+        <h2 id="dns">6. The Hidden Dependency — DNS Lived in the Datacentre Too</h2>
+        <p>Here is the surprise that the original plan did not fully account for: the <strong>DNS servers were in the datacentres</strong>. The same datacentres being decommissioned. Migrating the application servers and forgetting the DNS that pointed to them would have produced a cloud full of working servers that nothing could find.</p>
+        <p>So DNS became its own migration: the full move to <strong>Amazon Route 53</strong>, coordinated with the <strong>domain registrar</strong> to transfer the domains and recreate every record safely. Despite being the kind of task where one wrong record breaks everything, it went smoothly — careful record-by-record migration, validation against the registrar, and a clean cutover.</p>
+
+        <blockquote><strong>Why this matters in production:</strong> The workloads you remember to migrate are the easy ones. The infrastructure those workloads silently depend on — DNS, certificate authorities, directory services, time servers — lives in the same datacentre and is easy to forget until a cutover fails for a reason nobody can immediately explain. Inventory the dependencies, not just the applications.</blockquote>
+
+        <!-- Section 7 -->
+        <h2 id="firewall">7. Sophos Firewall — Replacing a Multi-Function Appliance</h2>
+        <p>The Sophos appliance was doing more than its job title suggested. On paper, a firewall. In practice: perimeter firewall, DNS safeguarding, URL-path filtering, and IP-forwarding rules that routed requests to the right internal machines. A single box quietly holding several responsibilities.</p>
+        <p>Replacing it meant unpicking those responsibilities and re-homing them in AWS — with <strong>AWS Client VPN</strong> providing the secure remote-access path, integrated with Active Directory so users authenticated with their existing identity.</p>
+        <p>This was the hardest technical piece of the entire migration. It was completely new territory, it involved a lot of networking that did not click into place immediately, and getting it right took working through the detail carefully — with <strong>AWS Support's help</strong>, which was genuinely valuable on the Client VPN networking specifics.</p>
+
+        <div class="pitfall-card">
+          <strong><i class="fa-solid fa-triangle-exclamation" style="color: #d13212; margin-right: 8px;"></i>The Honest Lesson — Undocumented Expertise</strong>
+          <p>I got the Sophos configuration through knowledge transfer at the time, got reasonably good at it, made the migration work — and did not document it properly. Three years on, most of that detail has faded. That is the real lesson, and it is worth more than any networking tip: <strong>document during the knowledge transfer, while it is fresh, not after the project ships.</strong> Undocumented expertise is a liability with a delay timer on it — it works fine until the person who holds it moves on or simply forgets.</p>
+        </div>
+
+        <!-- Section 8 -->
+        <h2 id="went-well">8. What Went Better Than Expected</h2>
+        <p>Two parts of the migration were smoother than the planning feared:</p>
+        <p><strong>The MGN server migrations.</strong> The agent-based, replicate-validate-cutover workflow was reliable and low-drama. Once the rhythm was established — install, replicate, test, cut over, decommission — the bulk of the 30–40 servers moved through it predictably.</p>
+        <p><strong>The DNS migration to Route 53.</strong> Despite being the highest-stakes single task (one bad record breaks resolution for everything), the careful migration and registrar coordination went cleanly. Route 53's reliability and the methodical record-by-record approach turned a scary task into an uneventful one.</p>
+
+        <!-- Section 9 -->
+        <h2 id="lessons">9. Lessons Learned — The Honest Reflection</h2>
+        <p><strong>Doing it single-handed taught more than any course could.</strong> Active Directory, MGN, Workspaces, Route 53, Client VPN, the Sophos teardown — most of it was new. Doing it alone, under a fixed decommission deadline, compressed a year's worth of learning into three to four months. The lasting outcome was not the architecture — it was the confidence that a problem being unfamiliar does not make it impossible.</p>
+        <p><strong>AWS Support earned its place.</strong> On the Client VPN networking — the most unfamiliar and most complex part — AWS Support was genuinely helpful. Knowing when to use the support channel rather than burning days alone is itself an operational skill.</p>
+        <p><strong>Document while the knowledge is fresh.</strong> The Sophos gap is the one I would most want back. Knowledge transferred under deadline pressure feels permanent in the moment and evaporates within months. The hour spent writing it down during the project is the cheapest insurance you will ever buy.</p>
+        <p><strong>Right-size the strategy per workload.</strong> The migration worked because Jenkins was refactored, desktops were repurchased, the firewall was replaced, and the rest were rehosted — each workload got the R that fit it, not a blanket lift-and-shift.</p>
+
+        <!-- Section 10 -->
+        <h2 id="differently">10. What I'd Do Differently</h2>
+        <p><strong>Jenkins on EKS/ECS with Spot workers</strong> instead of fixed EC2 nodes — dynamic, containerised agents that scale to zero when idle, eliminating the cost of a standing worker fleet.</p>
+        <p><strong>Document the firewall and networking configuration in real time</strong> — capturing the Sophos responsibilities and the Client VPN networking decisions as they were made, not relying on memory that fades.</p>
+        <p><strong>Build a dependency map before touching the first server</strong> — DNS being in the datacentre was a manageable surprise here, but on a larger migration an un-inventoried dependency is how cutovers fail. Map directory services, DNS, certificates, and time sources explicitly before starting.</p>
+
+        <!-- Playbook -->
+        <h2 id="playbook">The Migration Playbook — Distilled</h2>
+<pre><code class="nohighlight"><span style="color:#b5cea8;">1.</span> Inventory everything — applications AND their hidden
+   dependencies <span style="color:#6a9955;">(DNS, AD, certs, firewalls)</span>
+<span style="color:#b5cea8;">2.</span> Assign each workload an R — rehost, refactor, repurchase, retire
+<span style="color:#b5cea8;">3.</span> Design the target account structure BEFORE migrating
+<span style="color:#b5cea8;">4.</span> Rehost the bulk via MGN — replicate, validate, cut over, decommission
+<span style="color:#b5cea8;">5.</span> Refactor the technical debt — don't lift unmaintained systems
+<span style="color:#b5cea8;">6.</span> Repurchase commodity workloads — desktops → Workspaces
+<span style="color:#b5cea8;">7.</span> Treat people-facing changes as change management — demo first
+<span style="color:#b5cea8;">8.</span> Migrate the dependencies too — DNS to Route 53, identity to AD-integrated services
+<span style="color:#b5cea8;">9.</span> Use AWS Support for genuinely unfamiliar territory
+<span style="color:#b5cea8;">10.</span> Document as you go — not after</code></pre>
+
+        <!-- Golden Rule -->
+        <div style="background: var(--aws-highlight); padding: 32px; border-radius: 8px; border: 1px solid var(--aws-border); margin: 40px 0; text-align: center; border-left: 4px solid var(--aws-orange);">
+          <i class="fa-solid fa-truck-moving" style="font-size: 36px; color: var(--aws-orange); display: block; margin-bottom: 16px;"></i>
+          <h3 style="font-size: 18px; color: var(--aws-text); margin-top: 0; margin-bottom: 12px;">The Golden Rule</h3>
+          <p style="font-size: 15px; color: var(--aws-text-light); font-style: italic; margin-bottom: 0;">
+            "A datacentre migration is not one migration — it is thirty small ones, each needing its own strategy. Rehost what is healthy, refactor what is rotten, repurchase what is commodity, and retire what nobody will miss. The servers you remember are the easy part; the DNS, directory services, and firewall rules they silently depend on are what break cutovers. Validate before you decommission, design your accounts before you migrate, and document while the knowledge is fresh — because the expertise you gain under deadline pressure fades faster than you expect, and the only version that survives is the version you wrote down."
+          </p>
+        </div>
+
+        <div style="margin: 40px 0;">
+          <span style="font-weight: 700; color: var(--aws-text-light); margin-right: 12px; font-size: 13px;">Tags:</span>
+          <span class="tag blue">AWS</span>
+          <span class="tag green">CloudMigration</span>
+          <span class="tag blue">MGN</span>
+          <span class="tag purple">7Rs</span>
+          <span class="tag blue">Route53</span>
+          <span class="tag purple">Jenkins</span>
+          <span class="tag green">Workspaces</span>
+          <span class="tag blue">ClientVPN</span>
+          <span class="tag purple">DataCentreExit</span>
+          <span class="tag green">CaseStudy</span>
+        </div>
+
+      </div><!-- End Blog Body -->
+
+      <div class="share-section">
+        <span style="font-weight: 700; color: var(--aws-text-light);">Share this article:</span>
+        <a href="https://www.linkedin.com/sharing/share-offsite/?url=https://www.ankushpanday.com/blog/architecture/onprem-to-aws-migration-playbook.html"
+          target="_blank" class="share-btn linkedin-btn">
+          <i class="fa-brands fa-linkedin"></i> Share on LinkedIn
+        </a>
+      </div>
+
+      <div class="author-card">
+        <div class="author-img"><i class="fa-solid fa-user-tie"></i></div>
+        <div>
+          <h4 style="margin: 0 0 8px 0; color: var(--aws-text);">Ankush Panday</h4>
+          <p style="margin: 0; font-size: 14px; color: var(--aws-text-light);">Specializing in highly scalable AWS infrastructure and automated quality engineering.</p>
+          <a href="https://www.linkedin.com/in/ankush-panday-39b97824/" target="_blank"
+            style="display: inline-block; margin-top: 10px; color: var(--aws-blue); text-decoration: none; font-size: 13px; font-weight: 600;">Connect
+            on LinkedIn <i class="fa-solid fa-external-link" style="font-size: 10px;"></i></a>
+        </div>
+      </div>
+
+    </article>
+
+    <!-- NAVIGATION LINKS -->
+    <div class="nav-links">
+      <a href="fraud-detection-platform-eks.html" class="nav-link">
+        <i class="fa-solid fa-arrow-left"></i> Previous: Fraud Detection Platform on EKS
+      </a>
+      <a href="../index.html" class="nav-link">
+        Return to Blog Hub <i class="fa-solid fa-arrow-right"></i>
+      </a>
+    </div>
+
+  </main>
+
+  <footer class="aws-footer">
+    Built for Performance. Architected for the Cloud. &bull; &copy; 2026 <span>Ankush Panday</span>
+  </footer>
+
+  <script>
+    if (window.location.protocol === 'file:') {
+      document.querySelectorAll('a').forEach(link => {
+        let href = link.getAttribute('href');
+        if (href && !href.startsWith('http') && !href.startsWith('#')) {
+          let path = href.split('#')[0];
+          let anchor = href.split('#')[1] ? '#' + href.split('#')[1] : '';
+          if (path && !path.endsWith('.html') && !path.endsWith('/')) {
+            link.setAttribute('href', path + '.html' + anchor);
+          }
+        }
+      });
+    }
+    document.addEventListener('DOMContentLoaded', () => {
+      document.querySelectorAll('pre code:not(.nohighlight)').forEach(block => {
+        hljs.highlightElement(block);
+      });
+    });
+  </script>
+
+</body>
+</html>

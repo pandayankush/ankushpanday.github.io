@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- SEO PRIMARY -->
+  <title>From Nginx Ingress to Kubernetes Gateway API: A Production Cutover Story | Ankush Panday</title>
+  <meta name="description"
+    content="A production cutover from Nginx Ingress to the Kubernetes Gateway API on EKS — path inventory, rewrite translation to filters, external/internal Gateway split, and the troubleshooting war stories (a healthy route sending traffic to the wrong app, OIDC, WAF).">
+  <meta name="keywords"
+    content="AWS, EKS, Kubernetes, GatewayAPI, Ingress, Nginx, Migration, GitOps, OIDC, WAF, Networking, DeepDive">
+  <link rel="canonical" href="https://www.ankushpanday.com/blog/deep-dives/nginx-to-gateway-api-migration.html">
+
+  <!-- OPEN GRAPH -->
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://www.ankushpanday.com/blog/deep-dives/nginx-to-gateway-api-migration.html">
+  <meta property="og:title" content="From Nginx Ingress to Kubernetes Gateway API: A Production Cutover Story">
+  <meta property="og:description"
+    content="A production cutover from Nginx Ingress to the Kubernetes Gateway API on EKS — path inventory, rewrite translation, external/internal Gateway split, and the troubleshooting war stories.">
+  <meta property="og:image" content="https://www.ankushpanday.com/images/nginx-to-gateway-api-migration.png">
+
+  <link rel="stylesheet" href="../../style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    .blog-page-container { max-width: 900px; margin: 100px auto 40px auto; padding: 0 20px; min-height: calc(100vh - 200px); }
+    .back-btn { display: inline-flex; align-items: center; gap: 8px; color: var(--aws-blue); text-decoration: none; font-weight: 500; margin-bottom: 24px; }
+    .blog-content-card { background: var(--aws-white); border: 1px solid var(--aws-border); border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+    .blog-header { background: #f8f9fa; padding: 40px; border-bottom: 1px solid var(--aws-border); }
+    .blog-body { padding: 40px; line-height: 1.8; font-size: 16px; color: var(--aws-text); }
+    .blog-body h2 { margin-top: 48px; font-size: 26px; color: var(--aws-text); border-bottom: 2px solid var(--aws-orange); display: inline-block; padding-bottom: 4px; margin-bottom: 24px; }
+    .blog-body h3 { margin-top: 32px; font-size: 22px; color: var(--aws-blue); margin-bottom: 16px; }
+    .blog-body h4 { margin-top: 24px; font-size: 18px; color: var(--aws-text); font-weight: 700; }
+    .blog-body p { margin-bottom: 20px; }
+    .blog-body ul, .blog-body ol { margin-bottom: 24px; padding-left: 24px; }
+    .blog-body li { margin-bottom: 12px; }
+    .blog-body strong { color: var(--aws-text); }
+    .blog-body blockquote { font-style: italic; color: var(--aws-text-light); margin: 30px 0; border-left: 4px solid var(--aws-orange); background: #fcfcfc; padding: 20px; }
+    pre { background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; overflow-x: auto; margin: 24px 0; font-size: 13px; line-height: 1.5; border-left: 4px solid var(--aws-orange); }
+    code { font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; background: #f1f3f5; color: #232f3e; padding: 2px 4px; border-radius: 4px; border: 1px solid #dee2e6; font-size: 0.9em; }
+    pre code { background: none; color: inherit; padding: 0; border: none; font-size: inherit; }
+    .compare-table { width: 100%; border-collapse: collapse; text-align: left; margin-bottom: 30px; font-size: 14px; }
+    .compare-table th { background: var(--aws-blue); color: white; padding: 12px; border: 1px solid var(--aws-border); }
+    .compare-table td { padding: 12px; border: 1px solid var(--aws-border); vertical-align: top; }
+    .compare-table tr:nth-child(even) { background: #f9f9f9; }
+    .pitfall-card { background: #fcfcfc; border: 1px solid var(--aws-border); border-left: 4px solid #d13212; border-radius: 6px; padding: 20px 24px; margin-bottom: 16px; }
+    .pitfall-card strong { color: #d13212; font-size: 15px; }
+    .pitfall-card p { margin: 8px 0 0 0; font-size: 15px; color: var(--aws-text-light); line-height: 1.7; }
+    .author-card { display: flex; gap: 20px; align-items: center; padding: 30px; background: #fcfcfc; border-top: 1px solid var(--aws-border); }
+    .author-img { width: 80px; height: 80px; border-radius: 50%; background: var(--aws-highlight); display: flex; align-items: center; justify-content: center; font-size: 30px; color: var(--aws-orange); border: 2px solid var(--aws-border); flex-shrink: 0; }
+    .nav-links { display: flex; justify-content: space-between; margin: 40px 0; padding: 20px 0; border-top: 1px solid var(--aws-border); }
+    .nav-link { text-decoration: none; color: var(--aws-blue); font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 8px; }
+    .tag { display: inline-block; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: 600; margin-right: 8px; margin-bottom: 8px; }
+    .tag.blue { background: #e7f2fa; color: #0073bb; }
+    .tag.purple { background: #f2e7fa; color: #6b3fa0; }
+    .tag.green { background: #e7faf0; color: #1a7f4e; }
+    .share-section { padding: 20px 40px; border-top: 1px solid var(--aws-border); display: flex; justify-content: space-between; align-items: center; background: #fff; }
+    .share-btn { padding: 8px 16px; border: 1px solid var(--aws-border); border-radius: 4px; background: #fff; color: var(--aws-text); text-decoration: none; font-size: 14px; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
+    .share-btn:hover { background: #f8f9fa; }
+    .linkedin-btn { background: #0077b5; color: white; border: none; }
+    .linkedin-btn:hover { background: #005f8d; color: white; }
+    .timeline-block { background: #232f3e; color: #f8f8f2; padding: 20px; border-radius: 6px; margin: 24px 0; font-size: 13px; line-height: 1.8; font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; border-left: 4px solid var(--aws-orange); }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <style>
+    .hljs { background: transparent; padding: 0; color: #f8f8f2; }
+    .hljs-comment, .hljs-quote { color: #6a9955; }
+    .hljs-keyword, .hljs-built_in, .hljs-type { color: #569cd6; }
+    .hljs-string, .hljs-title { color: #ce9178; }
+    .hljs-attr, .hljs-variable, .hljs-selector-id { color: #9cdcfe; }
+    .hljs-number, .hljs-literal { color: #b5cea8; }
+    .hljs-meta, .hljs-tag { color: #f8f8f2; }
+  </style>
+</head>
+
+<body>
+
+  <nav class="aws-topnav">
+    <a href="../../index.html" class="logo">
+      <i class="fa-solid fa-cloud" style="color: var(--aws-orange); font-size: 20px;"></i>
+      <span>Ankush Panday</span>
+    </a>
+    <div class="nav-spacer"></div>
+    <div class="nav-icons">
+      <a href="../../index.html" class="nav-icon-btn" style="text-decoration: none;">Portfolio Home</a>
+      <a href="../index.html" class="nav-icon-btn orange" style="text-decoration: none; font-weight: 600;">Blog Hub</a>
+      <button class="nav-icon-btn"><i class="fa-solid fa-earth-europe" style="margin-right: 6px; font-size: 12px; color: var(--aws-orange);"></i> Europe (nl-ams-1)</button>
+      <button class="nav-icon-btn">ankushpandey@hotmail.com <i class="fa-solid fa-caret-down" style="margin-left: 4px;"></i></button>
+    </div>
+  </nav>
+
+  <main class="blog-page-container">
+    <a href="../index.html" class="back-btn"><i class="fa-solid fa-arrow-left"></i> Back to Blog Hub</a>
+
+    <article class="blog-content-card">
+      <header class="blog-header">
+        <h1 style="font-size: 32px; color: var(--aws-text); margin-bottom: 16px; line-height: 1.2;">From Nginx Ingress to
+          Kubernetes Gateway API: A Production Cutover Story</h1>
+        <div style="display: flex; gap: 12px; align-items: center; color: var(--aws-text-light); font-size: 14px; flex-wrap: wrap;">
+          <span>June 17, 2026</span>
+          <span>&bull;</span>
+          <span>14 min read</span>
+          <span class="tag blue">EKS</span>
+          <span class="tag blue">Gateway API</span>
+          <span class="tag purple">Migration</span>
+          <span class="tag green">Networking</span>
+        </div>
+      </header>
+
+      <div class="blog-body">
+        <p style="font-style: italic; color: var(--aws-text-light); margin-bottom: 30px; border-left: 4px solid var(--aws-orange); padding-left: 15px;">
+          <strong>Production Deep Dive</strong> — Real problems, non-obvious solutions, working code.
+        </p>
+
+        <!-- Main Image -->
+        <img src="../../images/nginx-to-gateway-api-migration.png"
+          alt="Migrating from Nginx Ingress to the Kubernetes Gateway API on EKS — a production cutover"
+          style="display: block; width: 100%; border-radius: 8px; border: 1px solid var(--aws-border); margin-bottom: 40px;">
+
+        <!-- TL;DR -->
+        <h2 id="tldr">TL;DR</h2>
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th>Concern</th>
+              <th>Nginx Ingress (Before)</th>
+              <th>Gateway API (After)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td><strong>Routing model</strong></td><td>Controller-specific annotations</td><td>Portable, role-oriented resources</td></tr>
+            <tr><td><strong>Traffic path</strong></td><td>DNS → NLB → Nginx pods → Service → Pod</td><td>DNS → Gateway LB → Service → Pod (no in-cluster L7 hop)</td></tr>
+            <tr><td><strong>Rewrites</strong></td><td>Hidden in annotations and snippets</td><td>Explicit <code>URLRewrite</code> filters in <code>HTTPRoute</code></td></tr>
+            <tr><td><strong>Ownership</strong></td><td>Mixed infra/app concerns in one Ingress</td><td>Platform owns Gateways, apps own HTTPRoutes</td></tr>
+            <tr><td><strong>Route health</strong></td><td>Controller-specific</td><td>Standard <code>Accepted</code> + <code>ResolvedRefs</code> conditions</td></tr>
+            <tr><td><strong>DNS automation</strong></td><td>Ingress-based</td><td>ExternalDNS reads HTTPRoute intent</td></tr>
+            <tr><td><strong>External vs internal</strong></td><td>Ingress class annotation</td><td>First-class external/internal Gateways</td></tr>
+          </tbody>
+        </table>
+        <p>The migration was done in test first — remove Nginx Ingress entirely, serve all traffic through Gateway API.
+          <strong>The hard part wasn't the happy path. It was a healthy route quietly sending traffic to the wrong
+          application.</strong></p>
+
+        <hr style="border-top: 1px solid var(--aws-border); margin: 40px 0;">
+
+        <!-- Why -->
+        <h2 id="why">Why Move Away From Nginx Ingress?</h2>
+        <p>Nginx Ingress served the platform well — host-based routing, path-based routing, regex rewrites, TLS
+          termination, internal and external ingress classes, and a handful of application-specific behaviours. It
+          worked.</p>
+        <p>But as the platform matured, the Gateway API became the better target for specific reasons:</p>
+        <ul>
+          <li><strong>Clearer ownership separation</strong> — infrastructure teams own load balancer policy, application teams own routing</li>
+          <li><strong>Native external/internal Gateway modelling</strong> — not an annotation, a first-class resource</li>
+          <li><strong>Better alignment with cloud load balancer controllers</strong> — a direct path from cloud LB to application targets, without an in-cluster L7 proxy as a required hop</li>
+          <li><strong>First-class route status</strong> — <code>Accepted</code> and <code>ResolvedRefs</code> conditions tell you exactly what a route is doing</li>
+          <li><strong>Cleaner DNS automation</strong> — ExternalDNS reads <code>HTTPRoute</code> resources directly as a source</li>
+        </ul>
+        <p>The deeper reason: Nginx makes routing behaviour <em>implicit</em>. Regex matching, rewrite targets,
+          snippet-based rewrites, and ingress class behaviour quietly become part of the application contract — buried
+          inside annotations that nobody reads until they break. The Gateway API forces those contracts into explicit,
+          versioned route rules. The migration work is the price; visible, reviewable routing is the reward.</p>
+
+        <!-- Target architecture -->
+        <h2 id="target">The Target Architecture</h2>
+        <p>Two Gateways, by traffic exposure:</p>
+<pre><code class="nohighlight"><span style="color:#9cdcfe;">Public client</span>
+  → Public DNS
+  → External Gateway load balancer
+  → HTTPRoute host/path rule
+  → Kubernetes Service
+  → Application pod
+
+<span style="color:#9cdcfe;">Private client</span>
+  → Private DNS
+  → Internal Gateway load balancer
+  → HTTPRoute host/path rule
+  → Kubernetes Service
+  → Application pod</code></pre>
+        <p>Replacing the old model:</p>
+<pre><code class="nohighlight">Client
+  → DNS
+  → Nginx ingress load balancer
+  → <span style="color:#d13212;">Nginx ingress controller</span>   <span style="color:#6a9955;">← the extra in-cluster hop being removed</span>
+  → Ingress host/path rule
+  → Kubernetes Service
+  → Application pod</code></pre>
+        <p>Each Gateway is backed by a cloud load balancer through the cloud load balancer controller. Application Helm
+          charts render <code>HTTPRoute</code> resources and attach them to the correct Gateway via
+          <code>parentRefs</code>. The headline benefit is not removing Nginx — it is making route ownership explicit
+          at the Gateway API layer.</p>
+
+        <!-- Step 1 -->
+        <h2 id="inventory">Step 1 — Inventory Every Ingress Path</h2>
+        <p>The first rule of this migration: <strong>do not move only the obvious paths.</strong></p>
+        <p>Ingress configurations contain far more than <code>/</code> routing. In this environment, application
+          behaviour depended on regex paths, prefix paths, rewrite targets, public and private hostnames, admin UI
+          paths, OAuth login and callback paths, identity provider endpoints, legacy path aliases, and static
+          configuration endpoints.</p>
+        <p>For each application, the inventory answered four questions:</p>
+        <ol>
+          <li>Which hostnames does this app own?</li>
+          <li>Which paths does it expose publicly?</li>
+          <li>Which paths does it expose privately?</li>
+          <li>Which paths depend on Nginx-specific rewrite behaviour?</li>
+        </ol>
+        <p>This mattered most for the admin application. The old Nginx setup had both an external API rewrite and a
+          broad private root route — plus a separate static Ingress that rewrote short configuration paths into backend
+          API paths. Those had to be <em>preserved</em> in Gateway API, not approximated.</p>
+
+        <blockquote><strong>Why this matters in production:</strong> The paths you forget are the paths that break login
+          at 2am. An OAuth callback path or a legacy alias that lived quietly inside an Nginx annotation does not
+          announce itself — it just stops working after cutover, and the failure looks like an application bug, not a
+          routing gap. Inventory exhaustively before you write a single HTTPRoute.</blockquote>
+
+        <!-- Step 2 -->
+        <h2 id="rewrites">Step 2 — Translate Nginx Rewrites to Gateway API Filters</h2>
+        <p>Nginx expresses rewrites through annotations:</p>
+<pre><code class="language-yaml">nginx.ingress.kubernetes.io/use-regex: "true"
+nginx.ingress.kubernetes.io/rewrite-target: /api/$1</code></pre>
+        <p>Gateway API has no annotations. It models rewrites as explicit filters on the route:</p>
+<pre><code class="language-yaml">filters:
+  - type: URLRewrite
+    urlRewrite:
+      path:
+        type: ReplacePrefixMatch
+        replacePrefixMatch: /api/</code></pre>
+        <p>A legacy regex admin API route:</p>
+<pre><code class="nohighlight">/admin/api/(.*)  →  /api/$1</code></pre>
+        <p>became an explicit Gateway prefix rewrite:</p>
+<pre><code class="nohighlight">/admin/api/  →  /api/</code></pre>
+        <p>Short configuration paths translated into explicit, readable route rules:</p>
+<pre><code class="nohighlight">/w/configuration  →  /api/configuration-entries/platform/web
+/i/configuration  →  /api/configuration-entries/platform/ios
+/a/configuration  →  /api/configuration-entries/platform/android</code></pre>
+        <p>This was one of the most useful moments in the migration. Nginx let these behaviours hide inside annotations
+          and snippets. The Gateway API forced them into visible, versioned route rules that a reviewer can actually
+          read in a pull request.</p>
+
+        <!-- Step 3 -->
+        <h2 id="ownership">Step 3 — Split External and Internal Route Ownership</h2>
+        <p>An early lesson: avoid unnecessary overlap between internal and external routes.</p>
+        <p>The first attempt attached one route to <em>both</em> Gateways with both public and private hostnames. That
+          works in simple cases — and becomes very hard to reason about when a shared internal hostname accumulates
+          many path rules from many applications.</p>
+        <p>The cleaner pattern separated them completely:</p>
+<pre><code class="nohighlight">external route
+  → external gateway only
+  → public hostname only
+  → public application paths
+
+internal route
+  → internal gateway only
+  → private hostname only
+  → private application paths</code></pre>
+        <p>This made listener rules easier to inspect and made it obvious which application owned which internal path.</p>
+        <p>For the admin application, the internal route explicitly covered:</p>
+<pre><code class="nohighlight">/admin-base-path
+/login
+/oauth2
+/api
+/</code></pre>
+        <p>The broad <code>/</code> fallback preserved the old private Ingress behaviour, while the explicit
+          <code>/login</code>, <code>/oauth2</code>, and <code>/api</code> paths made login and application traffic
+          unambiguous in the shared internal load balancer rule table.</p>
+
+        <blockquote><strong>Why this matters in production:</strong> A single route spanning both Gateways feels
+          efficient and becomes a debugging nightmare. When a shared internal hostname has fifty path rules contributed
+          by a dozen applications, you want each application to own its slice explicitly. Clarity of ownership beats
+          brevity of configuration every time.</blockquote>
+
+        <!-- Step 4 -->
+        <h2 id="sequence">Step 4 — Disable Ingress Before Removing Nginx</h2>
+        <p>The cutover <em>sequence</em> was the safety mechanism.</p>
+        <p>We did not remove Nginx first. We proved Gateway API worked, <em>then</em> removed Nginx. The safe order:</p>
+<pre><code class="nohighlight"><span style="color:#b5cea8;">1.</span> Add GatewayClasses and Gateways
+<span style="color:#b5cea8;">2.</span> Add HTTPRoute resources for applications
+<span style="color:#b5cea8;">3.</span> Configure ExternalDNS to read Gateway API routes
+<span style="color:#b5cea8;">4.</span> Validate route acceptance and DNS
+<span style="color:#b5cea8;">5.</span> Disable application Ingress objects in test values
+<span style="color:#b5cea8;">6.</span> Remove stale static Ingress templates
+<span style="color:#b5cea8;">7.</span> Exclude Nginx ingress controller apps from the test ArgoCD ApplicationSet
+<span style="color:#b5cea8;">8.</span> Confirm no Ingress resources remain
+<span style="color:#b5cea8;">9.</span> Confirm no Nginx ingress pods, services, deployments, or Argo apps remain</code></pre>
+        <p>Each step kept rollback options open until the Gateway path was proven. Nginx was decommissioned only after
+          the Gateway layer was serving every path correctly.</p>
+
+        <blockquote><strong>Why this matters in production:</strong> Cutover order is risk management. Remove the old
+          path first and a single missed route is an outage with no fallback. Build the new path alongside the old,
+          prove it, then remove the old — and a mistake is a quick revert, not an incident. The boring sequence is the
+          safe sequence.</blockquote>
+
+        <!-- Step 5 -->
+        <h2 id="conditions">Step 5 — Validate With Conditions, Not Hope</h2>
+        <p>Gateway API exposes route health as standard conditions. We leaned on them heavily:</p>
+<pre><code class="language-bash">kubectl get httproute -A -o jsonpath='{range .items[*]}{.metadata.namespace}{"/"}{.metadata.name}{"\n"}{range .status.parents[*].conditions[*]}{"  "}{.type}{"="}{.status}{" "}{.reason}{"\n"}{end}{end}'</code></pre>
+        <p>Every route had to show:</p>
+<pre><code class="nohighlight">ResolvedRefs=True
+Accepted=True</code></pre>
+        <p>Plus the platform-level checks:</p>
+<pre><code class="language-bash">kubectl get ingress -A        # expect: none
+kubectl get gateway -A        # expect: Programmed=True
+kubectl get gatewayclass      # expect: Accepted=True</code></pre>
+        <p>A clean cutover state:</p>
+        <div class="timeline-block">
+No Ingress resources found
+External Gateway programmed
+Internal Gateway programmed
+GatewayClasses accepted
+All HTTPRoutes accepted and resolved
+        </div>
+
+        <!-- Step 6 -->
+        <h2 id="dns">Step 6 — Validate DNS From the Right Place</h2>
+        <p>Private DNS was the easiest thing to misread.</p>
+        <p>Internal hostnames resolved correctly <em>inside the VPC</em> but not necessarily from a local machine —
+          which is expected. Private hosted zones need the right resolver path, VPN, or bastion context. Validating
+          private DNS from a laptop and panicking at the result is a classic false alarm.</p>
+        <p>Validation ran from an environment that could actually use the VPC resolver:</p>
+<pre><code class="language-bash">dig api.&lt;test-domain&gt;
+dig api.internal.&lt;test-domain&gt;
+dig auth.internal.&lt;test-domain&gt;</code></pre>
+        <p>Expected:</p>
+        <ul>
+          <li>Public API hostname → public load balancer addresses</li>
+          <li>Internal API hostname → private load balancer addresses</li>
+          <li>Internal identity hostname → private load balancer addresses</li>
+        </ul>
+
+        <blockquote><strong>Why this matters in production:</strong> Half of "DNS is broken" reports are really "I
+          queried private DNS from a place that can't see private DNS." Validate from inside the network that actually
+          uses the records. Otherwise you will chase a resolver problem that does not exist while the real cutover
+          waits.</blockquote>
+
+        <!-- Troubleshooting 1 -->
+        <h2 id="wrong-app">Troubleshooting Lesson 1 — A Healthy Route Can Still Send Traffic to the Wrong App</h2>
+        <p>This was the most instructive issue of the entire migration. It was not a <em>failed</em> route. It was a
+          <em>wrong</em> route.</p>
+        <p>The admin application login returned <code>504 Gateway Time-out</code>. The admin internal
+          <code>HTTPRoute</code> looked perfectly healthy:</p>
+<pre><code class="nohighlight">ResolvedRefs=True
+Accepted=True</code></pre>
+        <p>The target group was healthy too — the load balancer could clearly reach a backend. Everything the route
+          status could tell us said the route was fine.</p>
+        <p>The breakthrough came from inspecting the <strong>generated load balancer listener rules</strong>. A
+          <em>different</em> application still owned this path:</p>
+<pre><code class="nohighlight">/admin-base-path/*</code></pre>
+        <p>That rule had a higher priority than the admin catch-all route and forwarded the admin login callback to the
+          wrong service. The request never reached the admin pod — which is exactly why the admin application logs were
+          empty. We were looking for the failure in the right app's logs, but the traffic was going to a different app
+          entirely.</p>
+        <p>The fix: remove the misplaced route from the wrong application's chart and make the admin application
+          explicitly own its login and callback paths.</p>
+
+        <div class="pitfall-card">
+          <strong><i class="fa-solid fa-triangle-exclamation" style="color: #d13212; margin-right: 8px;"></i>The lesson worth underlining</strong>
+          <p><code>Accepted=True</code> means the route is <em>valid</em>. It does <strong>not</strong> prove that
+            another route isn't taking precedence for the same host and path. When debugging Gateway API on a cloud
+            load balancer, inspect the generated listener rules — route status describes one route in isolation, but
+            traffic is decided by all routes together, in priority order.</p>
+        </div>
+
+        <!-- Troubleshooting 2 -->
+        <h2 id="login-paths">Troubleshooting Lesson 2 — Preserve Login and Callback Paths Explicitly</h2>
+        <p>OAuth/OIDC flows are path-sensitive in ways that are easy to underestimate.</p>
+        <p>A single login can start at a friendly login page, redirect to the identity provider, return to a callback
+          path, request account metadata, and then load static frontend resources. If any one of those paths is
+          missing or routed to the wrong backend, the symptom is rarely a clean error — it surfaces as a login loop, a
+          blank page, a <code>401</code>, a <code>404</code>, a CSP warning, or a <code>504</code>.</p>
+        <p>The important internal paths were made explicit rather than relying on a single <code>/</code> catch-all:</p>
+<pre><code class="nohighlight">/login
+/oauth2
+/api
+/admin-base-path
+/</code></pre>
+        <p>On a shared internal hostname with many applications and many generated load balancer rules, explicit beats
+          implicit every time.</p>
+
+        <!-- Troubleshooting 3 -->
+        <h2 id="context-path">Troubleshooting Lesson 3 — App Context Path and Redirect URI Must Agree</h2>
+        <p>Another failure came from a mismatch between where the application served and what the OAuth callback
+          expected.</p>
+        <p>The live pod showed:</p>
+<pre><code class="nohighlight">SERVER_SERVLET_CONTEXT_PATH=/</code></pre>
+        <p>So the correct callback was root-based:</p>
+<pre><code class="nohighlight">https://api.internal.&lt;test-domain&gt;/login/oauth2/code/oidc</code></pre>
+        <p>not the older base-path version:</p>
+<pre><code class="nohighlight">https://api.internal.&lt;test-domain&gt;/admin-base-path/login/oauth2/code/oidc</code></pre>
+        <p>After correcting the environment configuration, the application still needed a restart to pick up the new
+          OAuth client registration.</p>
+
+        <blockquote><strong>The lesson:</strong> during cutover, verify the <em>live pod environment and rendered
+          application configuration</em> — not only the Git values. What's in Git is the intent; what's in the running
+          pod is the reality, and during a migration those two drift more often than you'd expect.</blockquote>
+
+        <!-- Troubleshooting 4 -->
+        <h2 id="waf">Troubleshooting Lesson 4 — WAF Can Look Like an App Problem</h2>
+        <p>The identity provider appeared to fail for some requests. WAF logs revealed the truth: managed bot rules
+          were blocking HTTP-library-style requests while allowing normal browser traffic.</p>
+        <p>That distinction is sharp and important. A <code>curl</code> or Java-client request can be blocked while the
+          exact same flow succeeds in a browser. If you test with a script and it fails, you might "fix" an application
+          that was never broken.</p>
+        <p>For identity routes, the WAF allow rule needed to cover the internal identity host and the relevant OIDC
+          paths — authorization, token, userinfo, discovery, and broker callback endpoints.</p>
+
+        <blockquote><strong>The lesson:</strong> when OIDC breaks behind a cloud WAF, check the WAF logs <em>before</em>
+          changing application code. The request that never reaches your app cannot be fixed in your app.</blockquote>
+
+        <!-- Troubleshooting 5 -->
+        <h2 id="restarts">Troubleshooting Lesson 5 — Restarts Still Matter</h2>
+        <p>GitOps sync applied the desired manifests faithfully — but the running application kept using its previous
+          behaviour until the deployment was restarted.</p>
+        <p>That is normal for many Spring-style applications: configuration, especially OAuth client registration and
+          redirect URI settings, is read at startup. A GitOps sync changes the desired state; it does not always change
+          the <em>running</em> state.</p>
+        <p>The final fix required a deployment rollout restart and a fresh browser session.</p>
+
+        <blockquote><strong>The lesson:</strong> after changing authentication configuration, include a rollout restart
+          in the operational plan — unless the application is known to reload that configuration dynamically. "ArgoCD
+          synced" is not the same as "the app picked up the change."</blockquote>
+
+        <!-- Final checklist -->
+        <h2 id="checklist">The Final Validation Checklist</h2>
+<pre><code class="language-bash"># 1. No Ingress, all Gateway resources healthy
+kubectl get ingress -A          # expect: none
+kubectl get httproute -A        # expect: all Accepted=True, ResolvedRefs=True
+kubectl get gateway -A          # expect: Programmed=True
+kubectl get gatewayclass        # expect: Accepted=True
+
+# 2. No Nginx remnants
+kubectl get pods,svc,deploy -A | grep ingress-nginx     # expect: none
+kubectl get applications -n argocd | grep ingress-nginx # expect: none
+
+# 3. DNS resolves to the right load balancers
+dig api.&lt;test-domain&gt;           # public host → external Gateway LB
+dig api.internal.&lt;test-domain&gt;  # internal host → internal Gateway LB
+dig auth.internal.&lt;test-domain&gt; # identity host → internal Gateway LB</code></pre>
+        <p>Then the application smoke tests: public portal loads, internal portal loads, admin login succeeds, identity
+          provider login succeeds, API endpoints respond, reporting/proxy/collector paths respond, and the ArgoCD UI
+          remains reachable.</p>
+
+        <!-- Recommendations -->
+        <h2 id="recommendations">Recommendations for Teams Planning the Same Move</h2>
+        <ol>
+          <li>Treat Nginx annotations as <strong>application behaviour</strong>, not implementation detail — they are part of your contract</li>
+          <li>Build a <strong>path inventory</strong> before writing a single Gateway route</li>
+          <li>Translate rewrites <strong>explicitly</strong> with Gateway API filters</li>
+          <li><strong>Split internal and external routes</strong> where it improves ownership clarity</li>
+          <li>Watch for <strong>shared-host route priority conflicts</strong> — the silent killer</li>
+          <li><strong>Inspect generated load balancer listener rules</strong> when symptoms don't match route status</li>
+          <li>Validate <strong>private DNS from inside the network</strong> that actually uses it</li>
+          <li>Include <strong>WAF logs</strong> in the authentication troubleshooting workflow</li>
+          <li><strong>Restart applications</strong> after changing authentication configuration</li>
+          <li>Keep <strong>Nginx decommissioning as the final step</strong>, never the first</li>
+        </ol>
+
+        <!-- Decision matrix -->
+        <h2 id="matrix">Architecture Decision Matrix</h2>
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th>Concern</th>
+              <th>Nginx Ingress</th>
+              <th>Gateway API</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>Maturity / familiarity</td><td>✅ Battle-tested, widely known</td><td>⚠️ Newer, smaller knowledge base</td></tr>
+            <tr><td>Routing expressiveness</td><td>⚠️ Via controller annotations</td><td>✅ Native, portable resources</td></tr>
+            <tr><td>Rewrite visibility</td><td>❌ Hidden in annotations/snippets</td><td>✅ Explicit filters</td></tr>
+            <tr><td>External/internal modelling</td><td>⚠️ Ingress class</td><td>✅ First-class Gateways</td></tr>
+            <tr><td>Ownership separation</td><td>❌ Mixed in one resource</td><td>✅ Gateway vs HTTPRoute split</td></tr>
+            <tr><td>Route health observability</td><td>⚠️ Controller-specific</td><td>✅ Standard conditions</td></tr>
+            <tr><td>DNS automation</td><td>✅ ExternalDNS (Ingress)</td><td>✅ ExternalDNS (HTTPRoute)</td></tr>
+            <tr><td>In-cluster L7 hop</td><td>❌ Required (Nginx pods)</td><td>✅ Removed (LB → Service)</td></tr>
+            <tr><td>Migration effort</td><td>—</td><td>⚠️ Real — inventory + rewrites + testing</td></tr>
+          </tbody>
+        </table>
+
+        <!-- Golden Rule -->
+        <div style="background: var(--aws-highlight); padding: 32px; border-radius: 8px; border: 1px solid var(--aws-border); margin: 40px 0; text-align: center; border-left: 4px solid var(--aws-orange);">
+          <i class="fa-solid fa-signs-post" style="font-size: 36px; color: var(--aws-orange); display: block; margin-bottom: 16px;"></i>
+          <h3 style="font-size: 18px; color: var(--aws-text); margin-top: 0; margin-bottom: 12px;">The Golden Rule</h3>
+          <p style="font-size: 15px; color: var(--aws-text-light); font-style: italic; margin-bottom: 0;">
+            "Migrating from Nginx Ingress to Gateway API is not a resource swap — it is making traffic ownership
+            visible. The happy path is straightforward: GatewayClasses, Gateways, HTTPRoutes, DNS. The migration's real
+            work is in the details Nginx let you ignore — a regex rewrite hiding in an annotation, an OAuth callback
+            path nobody inventoried, a stale route in the wrong chart silently outranking the right one.
+            <code>Accepted=True</code> tells you a route is valid, not that it wins. Build the new path beside the old,
+            validate with conditions and listener rules rather than hope, decommission Nginx last, and remember that a
+            GitOps sync changes desired state — not always the running process. Get the details right and the end state
+            is simpler than where you started: no controller, no Ingress, just explicit routes serving traffic."
+          </p>
+        </div>
+
+        <div style="margin: 40px 0;">
+          <span style="font-weight: 700; color: var(--aws-text-light); margin-right: 12px; font-size: 13px;">Tags:</span>
+          <span class="tag blue">AWS</span>
+          <span class="tag blue">EKS</span>
+          <span class="tag blue">Kubernetes</span>
+          <span class="tag green">Gateway API</span>
+          <span class="tag purple">Ingress</span>
+          <span class="tag purple">Nginx</span>
+          <span class="tag purple">Migration</span>
+          <span class="tag blue">GitOps</span>
+          <span class="tag green">OIDC</span>
+          <span class="tag green">WAF</span>
+        </div>
+
+      </div><!-- end blog-body -->
+
+      <div class="share-section">
+        <span style="font-weight: 700; color: var(--aws-text-light);">Share this article:</span>
+        <a href="https://www.linkedin.com/sharing/share-offsite/?url=https://www.ankushpanday.com/blog/deep-dives/nginx-to-gateway-api-migration.html"
+          target="_blank" class="share-btn linkedin-btn">
+          <i class="fa-brands fa-linkedin"></i> Share on LinkedIn
+        </a>
+      </div>
+
+      <div class="author-card">
+        <div class="author-img"><i class="fa-solid fa-user-tie"></i></div>
+        <div>
+          <h4 style="margin: 0 0 8px 0; color: var(--aws-text);">Ankush Panday</h4>
+          <p style="margin: 0; font-size: 14px; color: var(--aws-text-light);">Specializing in highly scalable AWS infrastructure and automated quality engineering.</p>
+          <a href="https://www.linkedin.com/in/ankush-panday-39b97824/" target="_blank"
+            style="display: inline-block; margin-top: 10px; color: var(--aws-blue); text-decoration: none; font-size: 13px; font-weight: 600;">Connect
+            on LinkedIn <i class="fa-solid fa-external-link" style="font-size: 10px;"></i></a>
+        </div>
+      </div>
+
+    </article>
+
+    <!-- NAVIGATION LINKS -->
+    <div class="nav-links">
+      <a href="guardduty-false-positive-eks.html" class="nav-link">
+        <i class="fa-solid fa-arrow-left"></i> Previous: When GuardDuty Fires on Your Own Engineer
+      </a>
+      <a href="../index.html" class="nav-link">
+        Return to Blog Hub <i class="fa-solid fa-arrow-right"></i>
+      </a>
+    </div>
+
+  </main>
+
+  <footer class="aws-footer">
+    Built for Performance. Architected for the Cloud. &bull; &copy; 2026 <span>Ankush Panday</span>
+  </footer>
+
+  <script>
+    if (window.location.protocol === 'file:') {
+      document.querySelectorAll('a').forEach(link => {
+        let href = link.getAttribute('href');
+        if (href && !href.startsWith('http') && !href.startsWith('#')) {
+          let path = href.split('#')[0];
+          let anchor = href.split('#')[1] ? '#' + href.split('#')[1] : '';
+          if (path && !path.endsWith('.html') && !path.endsWith('/')) {
+            link.setAttribute('href', path + '.html' + anchor);
+          }
+        }
+      });
+    }
+    document.addEventListener('DOMContentLoaded', () => {
+      document.querySelectorAll('pre code:not(.nohighlight)').forEach(block => {
+        hljs.highlightElement(block);
+      });
+    });
+  </script>
+
+</body>
+</html>

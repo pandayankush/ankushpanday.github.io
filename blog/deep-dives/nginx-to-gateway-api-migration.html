@@ -131,7 +131,8 @@
           </thead>
           <tbody>
             <tr><td><strong>Routing model</strong></td><td>Controller-specific annotations</td><td>Portable, role-oriented resources</td></tr>
-            <tr><td><strong>Traffic path</strong></td><td>DNS → NLB → Nginx pods → Service → Pod</td><td>DNS → Gateway LB → Service → Pod (no in-cluster L7 hop)</td></tr>
+            <tr><td><strong>Load balancer</strong></td><td>NLB (L4) fronting Nginx pods</td><td>ALB (L7) provisioned by the AWS Load Balancer Controller</td></tr>
+            <tr><td><strong>Traffic path</strong></td><td>DNS → NLB → Nginx pods → Service → Pod</td><td>DNS → ALB → Service → Pod (no in-cluster L7 hop)</td></tr>
             <tr><td><strong>Rewrites</strong></td><td>Hidden in annotations and snippets</td><td>Explicit <code>URLRewrite</code> filters in <code>HTTPRoute</code></td></tr>
             <tr><td><strong>Ownership</strong></td><td>Mixed infra/app concerns in one Ingress</td><td>Platform owns Gateways, apps own HTTPRoutes</td></tr>
             <tr><td><strong>Route health</strong></td><td>Controller-specific</td><td>Standard <code>Accepted</code> + <code>ResolvedRefs</code> conditions</td></tr>
@@ -154,7 +155,7 @@
         <ul>
           <li><strong>Clearer ownership separation</strong> — infrastructure teams own load balancer policy, application teams own routing</li>
           <li><strong>Native external/internal Gateway modelling</strong> — not an annotation, a first-class resource</li>
-          <li><strong>Better alignment with cloud load balancer controllers</strong> — a direct path from cloud LB to application targets, without an in-cluster L7 proxy as a required hop</li>
+          <li><strong>Better alignment with the AWS Load Balancer Controller</strong> — a direct path from the ALB to application targets, without an in-cluster L7 proxy (Nginx) as a required hop</li>
           <li><strong>First-class route status</strong> — <code>Accepted</code> and <code>ResolvedRefs</code> conditions tell you exactly what a route is doing</li>
           <li><strong>Cleaner DNS automation</strong> — ExternalDNS reads <code>HTTPRoute</code> resources directly as a source</li>
         </ul>
@@ -168,14 +169,14 @@
         <p>Two Gateways, by traffic exposure:</p>
 <pre><code class="nohighlight"><span style="color:#9cdcfe;">Public client</span>
   → Public DNS
-  → External Gateway load balancer
+  → External Gateway (internet-facing ALB, via AWS LB Controller)
   → HTTPRoute host/path rule
   → Kubernetes Service
   → Application pod
 
 <span style="color:#9cdcfe;">Private client</span>
   → Private DNS
-  → Internal Gateway load balancer
+  → Internal Gateway (internal ALB, via AWS LB Controller)
   → HTTPRoute host/path rule
   → Kubernetes Service
   → Application pod</code></pre>
@@ -187,10 +188,33 @@
   → Ingress host/path rule
   → Kubernetes Service
   → Application pod</code></pre>
-        <p>Each Gateway is backed by a cloud load balancer through the cloud load balancer controller. Application Helm
-          charts render <code>HTTPRoute</code> resources and attach them to the correct Gateway via
-          <code>parentRefs</code>. The headline benefit is not removing Nginx — it is making route ownership explicit
-          at the Gateway API layer.</p>
+        <p>Each Gateway is backed by an Application Load Balancer provisioned by the <strong>AWS Load Balancer
+          Controller</strong>, which now implements the Gateway API directly. Application Helm charts render
+          <code>HTTPRoute</code> resources and attach them to the correct Gateway via <code>parentRefs</code>. The
+          headline benefit is not removing Nginx — it is making route ownership explicit at the Gateway API layer.</p>
+
+        <h3>The Load Balancer Change — NLB to ALB</h3>
+        <p>This migration also changed the load balancer itself, not just the routing resources. The two models put
+          the L7 routing in completely different places:</p>
+        <ul>
+          <li><strong>Before:</strong> a <strong>Network Load Balancer (NLB)</strong> fronted the Nginx Ingress
+            controller. The NLB is L4 — it does not understand HTTP. It simply forwarded traffic to the Nginx pods,
+            and <em>Nginx</em> did all the host/path routing, rewrites, and TLS inside the cluster. The L7 brain lived
+            in pods you had to run, patch, and scale.</li>
+          <li><strong>After:</strong> the AWS Load Balancer Controller provisions an <strong>Application Load Balancer
+            (ALB)</strong> per Gateway. The ALB is L7 — it does the host/path routing and rewrites itself, directly
+            from the <code>HTTPRoute</code> rules, and forwards straight to the Service targets. There is no Nginx pod
+            in the path at all.</li>
+        </ul>
+        <p>That is the in-cluster L7 hop the TL;DR refers to: moving from "NLB → Nginx pods (L7) → Service" to
+          "ALB (L7) → Service" removes an entire tier of software you owned. The trade-off is that your routing now
+          lives in ALB listener rules generated by the controller — which is exactly why inspecting those generated
+          rules becomes a core debugging skill later in this post.</p>
+
+        <blockquote><strong>Why this matters in production:</strong> An NLB-plus-Nginx setup means you operate the L7
+          layer — Nginx upgrades, CVEs, pod scaling, and config reloads are all yours. Moving the L7 decisions onto an
+          ALB driven by the AWS Load Balancer Controller hands that operational surface to a managed service. You trade
+          a component you run for listener rules you read.</blockquote>
 
         <!-- Step 1 -->
         <h2 id="inventory">Step 1 — Inventory Every Ingress Path</h2>
@@ -467,6 +491,7 @@ dig auth.internal.&lt;test-domain&gt; # identity host → internal Gateway LB</c
             </tr>
           </thead>
           <tbody>
+            <tr><td>L7 engine / load balancer</td><td>❌ Nginx pods behind an NLB (you run the L7 tier)</td><td>✅ ALB via AWS Load Balancer Controller (managed L7)</td></tr>
             <tr><td>Maturity / familiarity</td><td>✅ Battle-tested, widely known</td><td>⚠️ Newer, smaller knowledge base</td></tr>
             <tr><td>Routing expressiveness</td><td>⚠️ Via controller annotations</td><td>✅ Native, portable resources</td></tr>
             <tr><td>Rewrite visibility</td><td>❌ Hidden in annotations/snippets</td><td>✅ Explicit filters</td></tr>

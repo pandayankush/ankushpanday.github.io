@@ -101,7 +101,7 @@
         <div style="display: flex; gap: 12px; align-items: center; color: var(--aws-text-light); font-size: 14px; flex-wrap: wrap;">
           <span>June 17, 2026</span>
           <span>&bull;</span>
-          <span>14 min read</span>
+          <span>18 min read</span>
           <span class="tag blue">EKS</span>
           <span class="tag blue">Gateway API</span>
           <span class="tag purple">Migration</span>
@@ -262,6 +262,337 @@ nginx.ingress.kubernetes.io/rewrite-target: /api/$1</code></pre>
         <p>This was one of the most useful moments in the migration. Nginx let these behaviours hide inside annotations
           and snippets. The Gateway API forced them into visible, versioned route rules that a reviewer can actually
           read in a pull request.</p>
+
+        <!-- Building Blocks -->
+        <h2 id="building-blocks">The Gateway API Building Blocks</h2>
+        <p>The migration walkthrough above is the <em>story</em>. This section is the <em>config</em> — the actual
+          GitOps resources that stand up the ALB-backed Gateway API layer, with every environment-specific value
+          replaced by a <code>&lt;placeholder&gt;</code>. The whole thing is driven through ArgoCD with sync-waves, so
+          the ordering you see in the annotations is load-bearing: CRDs first, then load balancer config, then Gateways,
+          then HTTPRoutes.</p>
+
+        <h3>Step 0 — Install the Gateway API CRDs (sync-wave -1)</h3>
+        <p>The Gateway API is not built into Kubernetes — the CRDs have to be installed before anything else can
+          reference them. Two sets are needed: the upstream Gateway API standard CRDs, and the AWS Load Balancer
+          Controller's own Gateway CRDs (the <code>LoadBalancerConfiguration</code> kind that lets you configure the
+          ALB). A bootstrap Job handles both, ordered ahead of everything via <code>sync-wave: "-1"</code>.</p>
+<pre><code class="language-yaml"># gateway-api-crds — values.yaml
+gatewayApiVersion: "v1.3.0"
+installExperimental: true
+# AWS LBC gateway CRDs source ref — must match your controller major version
+awsLbcGatewayCrdsRef: "v3.0.0"   # v3.x LBC ships native Gateway API support</code></pre>
+<pre><code class="language-yaml"># install-crds-job.yaml — runs before the controller (sync-wave -1)
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: install-gateway-api-crds
+  namespace: kube-system
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+    argocd.argoproj.io/sync-options: Replace=true
+spec:
+  ttlSecondsAfterFinished: 600
+  template:
+    spec:
+      serviceAccountName: gateway-crd-installer
+      containers:
+        - name: install-crds
+          image: bitnami/kubectl:latest
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              # 1. Upstream Gateway API standard CRDs
+              kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.3.0/standard-install.yaml
+              # 2. Experimental CRDs (optional — for features not yet in standard)
+              kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.3.0/experimental-install.yaml
+              # 3. AWS LBC Gateway CRDs (LoadBalancerConfiguration kind)
+              kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/v3.0.0/config/crd/gateway/gateway-crds.yaml
+      restartPolicy: OnFailure
+  backoffLimit: 3</code></pre>
+        <blockquote><strong>Why this matters in production:</strong> The AWS Load Balancer Controller's Gateway API
+          support arrived in the v3.x line. The version of the controller, the version of the Gateway API CRDs, and the
+          AWS LBC Gateway CRDs all have to agree — a mismatch shows up as a Gateway that never gets
+          <code>Programmed=True</code> and gives you very little to debug. Pin all three versions explicitly and install
+          the CRDs as an ordered bootstrap step, not by hand.</blockquote>
+
+        <h3>Step 1 — The Two GatewayClasses</h3>
+        <p>A <code>GatewayClass</code> is the template that ties Gateways to a controller and a configuration. We run
+          two — one for the internet-facing ALB, one for the internal ALB — each pointing at its own
+          <code>LoadBalancerConfiguration</code> via <code>parametersRef</code>.</p>
+<pre><code class="language-yaml"># External GatewayClass — internet-facing ALB
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: aws-alb-gateway-class
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  controllerName: gateway.k8s.aws/alb
+  parametersRef:
+    group: gateway.k8s.aws
+    kind: LoadBalancerConfiguration
+    name: external-alb-config
+    namespace: kube-system
+---
+# Internal GatewayClass — internal ALB
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: aws-alb-internal-gateway-class
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  controllerName: gateway.k8s.aws/alb
+  parametersRef:
+    group: gateway.k8s.aws
+    kind: LoadBalancerConfiguration
+    name: internal-alb-config
+    namespace: kube-system</code></pre>
+
+        <h3>Step 2 — The LoadBalancerConfiguration (where the ALB is actually configured)</h3>
+        <p>This is the AWS-specific resource that the GatewayClass references. It is where scheme, subnets, security
+          groups, SSL policy, and WAF association live — everything that used to be Nginx annotations now lives here as
+          structured config (sync-wave <code>0</code>, before the Gateways).</p>
+<pre><code class="language-yaml"># External ALB configuration — internet-facing
+apiVersion: gateway.k8s.aws/v1beta1
+kind: LoadBalancerConfiguration
+metadata:
+  name: external-alb-config
+  namespace: kube-system
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  scheme: internet-facing
+  loadBalancerSubnets:
+    - identifier: &lt;public-subnet-a&gt;
+    - identifier: &lt;public-subnet-b&gt;
+  securityGroups:
+    - &lt;external-alb-security-group-id&gt;
+  loadBalancerAttributes:
+    - key: idle_timeout.timeout_seconds
+      value: "60"
+    - key: routing.http2.enabled
+      value: "true"
+  listenerConfigurations:
+    - protocolPort: HTTPS:443
+      sslPolicy: &lt;ssl-policy&gt;          # e.g. ELBSecurityPolicy-TLS13-1-2-2021-06
+  wafV2:
+    webACL: &lt;waf-web-acl-arn&gt;          # WAF association — see Troubleshooting Lesson 4
+---
+# Internal ALB configuration — private
+apiVersion: gateway.k8s.aws/v1beta1
+kind: LoadBalancerConfiguration
+metadata:
+  name: internal-alb-config
+  namespace: kube-system
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  scheme: internal
+  loadBalancerSubnets:
+    - identifier: &lt;private-subnet-a&gt;
+    - identifier: &lt;private-subnet-b&gt;
+  securityGroups:
+    - &lt;internal-alb-security-group-id&gt;
+  loadBalancerAttributes:
+    - key: idle_timeout.timeout_seconds
+      value: "60"
+    - key: routing.http2.enabled
+      value: "true"
+  listenerConfigurations:
+    - protocolPort: HTTPS:443
+      sslPolicy: &lt;ssl-policy&gt;
+  wafV2:
+    webACL: &lt;waf-web-acl-arn&gt;</code></pre>
+        <blockquote><strong>Why this matters in production:</strong> This is the single biggest readability win of the
+          migration. Everything that used to be scattered across Nginx annotations — TLS policy, WAF, idle timeouts,
+          HTTP/2, subnet placement — is now one structured, reviewable resource per load balancer. A reviewer can see
+          the entire ALB posture in a pull request instead of reconstructing it from a dozen annotation strings.</blockquote>
+
+        <h3>Step 3 — The Gateways (sync-wave 2)</h3>
+        <p>The <code>Gateway</code> defines the listeners — ports, protocols, hostnames, and TLS. Note the
+          <strong>wildcard listener</strong> pattern: a dedicated <code>*.&lt;test-domain&gt;</code> listener means new
+          applications can attach an HTTPRoute for their own subdomain without editing the Gateway itself.</p>
+<pre><code class="language-yaml"># External Gateway — public listeners
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: external-gateway
+  namespace: kube-system
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  gatewayClassName: aws-alb-gateway-class
+  listeners:
+    - name: http
+      port: 80
+      protocol: HTTP
+      allowedRoutes:
+        namespaces:
+          from: All
+    - name: https
+      port: 443
+      protocol: HTTPS
+      hostname: "api.&lt;test-domain&gt;"
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - group: ""
+            kind: Secret
+            name: external-tls-dummy   # placeholder ref; real cert via ACM on the LB
+      allowedRoutes:
+        namespaces:
+          from: All
+    # Wildcard listener — new apps attach by subdomain, no Gateway edit needed
+    - name: https-wildcard
+      port: 443
+      protocol: HTTPS
+      hostname: "*.&lt;test-domain&gt;"
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - group: ""
+            kind: Secret
+            name: external-tls-dummy
+      allowedRoutes:
+        namespaces:
+          from: All
+---
+# Internal Gateway — private listeners (api, wildcard, and a dedicated auth host)
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: internal-gateway
+  namespace: kube-system
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  gatewayClassName: aws-alb-internal-gateway-class
+  listeners:
+    - name: http
+      port: 80
+      protocol: HTTP
+      allowedRoutes:
+        namespaces: { from: All }
+    - name: https
+      port: 443
+      protocol: HTTPS
+      hostname: "api.internal.&lt;test-domain&gt;"
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - { group: "", kind: Secret, name: internal-tls-dummy }
+      allowedRoutes:
+        namespaces: { from: All }
+    - name: https-wildcard
+      port: 443
+      protocol: HTTPS
+      hostname: "*.internal.&lt;test-domain&gt;"
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - { group: "", kind: Secret, name: internal-tls-dummy }
+      allowedRoutes:
+        namespaces: { from: All }
+    # Dedicated identity-provider listener — see OIDC lessons below
+    - name: https-auth
+      port: 443
+      protocol: HTTPS
+      hostname: "auth.internal.&lt;test-domain&gt;"
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - { group: "", kind: Secret, name: internal-tls-dummy }
+      allowedRoutes:
+        namespaces: { from: All }</code></pre>
+
+        <h3>Step 4 — An HTTPRoute Attached to a Gateway</h3>
+        <p>Applications own their own HTTPRoutes and attach to a Gateway listener via <code>parentRefs</code> +
+          <code>sectionName</code>. This is the ArgoCD server's own route — attaching to the internal Gateway's
+          wildcard listener:</p>
+<pre><code class="language-yaml">apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: argocd-httproute
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  parentRefs:
+    - name: internal-gateway
+      namespace: kube-system
+      sectionName: https-wildcard     # which listener on the Gateway to attach to
+  hostnames:
+    - "argocd.internal.&lt;test-domain&gt;"
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: "/"
+      backendRefs:
+        - name: argocd-server
+          port: 80</code></pre>
+        <p>For an application needing a rewrite (the admin API example from earlier), the rule carries a
+          <code>URLRewrite</code> filter:</p>
+<pre><code class="language-yaml">rules:
+  - matches:
+      - path:
+          type: PathPrefix
+          value: "/admin/api/"
+    filters:
+      - type: URLRewrite
+        urlRewrite:
+          path:
+            type: ReplacePrefixMatch
+            replacePrefixMatch: "/api/"
+    backendRefs:
+      - name: admin-api-service
+        port: 8080</code></pre>
+
+        <h3>Step 5 — ExternalDNS Reading HTTPRoutes</h3>
+        <p>The final piece: ExternalDNS configured to treat HTTPRoutes as a DNS source
+          (<code>--source=gateway-httproute</code>). When an HTTPRoute is created with a hostname, ExternalDNS creates
+          the matching Route 53 record pointing at the right ALB — no manual DNS step. Two instances run: one for the
+          public zone, one for the private zone.</p>
+<pre><code class="language-yaml"># external-dns (internal) — reads HTTPRoutes, manages the private zone
+external-dns:
+  provider:
+    name: aws
+  extraArgs:
+    - --source=ingress
+    - --source=gateway-httproute       # ← the key flag: HTTPRoute as a DNS source
+    - --gateway-namespace=kube-system
+    - --ingress-class=internal
+    - --aws-zone-type=private
+    # Keep TXT registry records off the CNAME names
+    - --txt-prefix=extdns-%{record_type}-
+  txtOwnerId: external-dns-internal
+  policy: sync
+  # ExternalDNS needs RBAC to read Gateway API resources
+  rbac:
+    additionalPermissions:
+      - apiGroups: ["gateway.networking.k8s.io"]
+        resources: ["gateways", "gatewayclasses", "httproutes"]
+        verbs: ["get", "list", "watch"]</code></pre>
+        <blockquote><strong>Why this matters in production:</strong> Wiring ExternalDNS to read HTTPRoutes is what makes
+          the whole layer self-service. A team ships an application with an HTTPRoute declaring its hostname, and DNS
+          appears automatically — pointed at the correct internal or external ALB. The RBAC block is the part people
+          miss: ExternalDNS cannot read Gateway API resources without being explicitly granted access to the
+          <code>gateway.networking.k8s.io</code> API group, and the symptom of forgetting it is silent — no records, no
+          obvious error.</blockquote>
+
+        <h3>How It All Fits — The Sync-Wave Order</h3>
+<pre><code class="nohighlight"><span style="color:#b5cea8;">sync-wave -1</span>:  Gateway API CRDs + AWS LBC Gateway CRDs   <span style="color:#6a9955;">(bootstrap)</span>
+<span style="color:#b5cea8;">sync-wave  0</span>:  LoadBalancerConfiguration (external + internal)
+<span style="color:#b5cea8;">sync-wave  1</span>:  GatewayClasses (external + internal)
+<span style="color:#b5cea8;">sync-wave  2</span>:  Gateways (external + internal) → ALBs provisioned
+<span style="color:#b5cea8;">sync-wave  3</span>:  HTTPRoutes → routes attach, ExternalDNS creates records</code></pre>
+        <p>That ordering is the difference between a clean <code>argocd sync</code> and a pile of resources that fail
+          because they reference CRDs or configs that do not exist yet. The dependency chain is real: a Gateway cannot
+          reference a GatewayClass that references a LoadBalancerConfiguration that has not been applied, and none of it
+          works before the CRDs are installed.</p>
 
         <!-- Step 3 -->
         <h2 id="ownership">Step 3 — Split External and Internal Route Ownership</h2>
